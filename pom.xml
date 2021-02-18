@@ -2,12 +2,12 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 	
-	<groupId>org.springtribe.framework</groupId>
+	<groupId>indi.atlantis.framework</groupId>
 	<version>1.0-RC1</version>
     <artifactId>greenfinger</artifactId>
 	
     <modules>
-		<module>greenfinger-ui</module>
+		<module>greenfinger-console</module>
 		<module>greenfinger-spring-boot-starter</module>
     </modules>
 	
