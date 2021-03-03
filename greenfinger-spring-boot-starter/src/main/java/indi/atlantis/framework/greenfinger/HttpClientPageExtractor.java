@@ -15,7 +15,7 @@ import com.github.paganini2008.devtools.CharsetUtils;
 import com.github.paganini2008.devtools.RandomUtils;
 import com.github.paganini2008.devtools.collection.MapUtils;
 
-import indi.atlantis.framework.seafloor.http.CharsetDefinedRestTemplate;
+import indi.atlantis.framework.tridenter.http.CharsetDefinedRestTemplate;
 
 /**
  * 

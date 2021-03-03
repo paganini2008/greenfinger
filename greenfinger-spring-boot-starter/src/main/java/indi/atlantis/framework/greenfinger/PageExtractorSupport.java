@@ -9,7 +9,7 @@ import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import indi.atlantis.framework.seafloor.utils.BeanLifeCycle;
+import indi.atlantis.framework.tridenter.utils.BeanLifeCycle;
 
 /**
  * 

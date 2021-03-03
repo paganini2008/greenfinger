@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
 import org.springframework.context.annotation.Import;
 
 import indi.atlantis.framework.jdbc.annotations.DaoScan;
-import indi.atlantis.framework.seafloor.EnableApplicationCluster;
+import indi.atlantis.framework.tridenter.EnableApplicationCluster;
 import indi.atlantis.framework.vortex.EnableNioTransport;
 
 /**
