@@ -12,11 +12,11 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.http.client.ClientHttpRequestFactory;
 
 import com.github.paganini2008.devtools.date.DateUtils;
+import com.github.paganini2008.springworld.reditools.common.IdGenerator;
+import com.github.paganini2008.springworld.reditools.common.TimeBasedIdGenerator;
 
 import indi.atlantis.framework.greenfinger.es.IndexedResourceService;
 import indi.atlantis.framework.greenfinger.jdbc.JdbcResourceManger;
-import indi.atlantis.framework.reditools.common.IdGenerator;
-import indi.atlantis.framework.reditools.common.TimestampIdGenerator;
 import indi.atlantis.framework.vortex.common.HashPartitioner;
 import indi.atlantis.framework.vortex.common.NamedSelectionPartitioner;
 import indi.atlantis.framework.vortex.common.Partitioner;
@@ -75,7 +75,7 @@ public class GreenFingerAutoConfiguration {
 	@Bean
 	public IdGenerator timestampIdGenerator(RedisConnectionFactory redisConnectionFactory) {
 		final String keyPrefix = String.format("spring:application:cluster:%s:id:", clusterName);
-		return new TimestampIdGenerator(keyPrefix, redisConnectionFactory);
+		return new TimeBasedIdGenerator(keyPrefix, redisConnectionFactory);
 	}
 
 	@ConditionalOnMissingBean

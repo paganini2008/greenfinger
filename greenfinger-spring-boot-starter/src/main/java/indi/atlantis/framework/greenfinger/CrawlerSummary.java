@@ -13,8 +13,8 @@ import com.github.paganini2008.devtools.collection.MapUtils;
 import com.github.paganini2008.devtools.date.DateUtils;
 import com.github.paganini2008.devtools.multithreads.Executable;
 import com.github.paganini2008.devtools.multithreads.ThreadUtils;
+import com.github.paganini2008.springworld.reditools.common.GenericRedisTemplate;
 
-import indi.atlantis.framework.reditools.common.GenericRedisTemplate;
 import indi.atlantis.framework.tridenter.utils.BeanLifeCycle;
 import lombok.extern.slf4j.Slf4j;
 

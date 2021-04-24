@@ -7,14 +7,14 @@ import static indi.atlantis.framework.greenfinger.jdbc.JdbcResourceManger.SQL_CA
 import static indi.atlantis.framework.greenfinger.jdbc.JdbcResourceManger.SQL_CATALOG_UPDATE;
 
 import com.github.paganini2008.devtools.jdbc.ResultSetSlice;
+import com.github.paganini2008.springworld.jdbc.annotations.Arg;
+import com.github.paganini2008.springworld.jdbc.annotations.Dao;
+import com.github.paganini2008.springworld.jdbc.annotations.Example;
+import com.github.paganini2008.springworld.jdbc.annotations.Get;
+import com.github.paganini2008.springworld.jdbc.annotations.Query;
+import com.github.paganini2008.springworld.jdbc.annotations.Update;
 
 import indi.atlantis.framework.greenfinger.model.Catalog;
-import indi.atlantis.framework.jdbc.annotations.Arg;
-import indi.atlantis.framework.jdbc.annotations.Dao;
-import indi.atlantis.framework.jdbc.annotations.Example;
-import indi.atlantis.framework.jdbc.annotations.Get;
-import indi.atlantis.framework.jdbc.annotations.Query;
-import indi.atlantis.framework.jdbc.annotations.Update;
 
 /**
  * 

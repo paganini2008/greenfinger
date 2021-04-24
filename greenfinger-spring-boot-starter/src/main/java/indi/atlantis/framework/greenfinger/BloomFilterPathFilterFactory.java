@@ -4,7 +4,7 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
-import indi.atlantis.framework.reditools.common.RedisBloomFilter;
+import com.github.paganini2008.springworld.reditools.common.RedisBloomFilter;
 
 /**
  * 

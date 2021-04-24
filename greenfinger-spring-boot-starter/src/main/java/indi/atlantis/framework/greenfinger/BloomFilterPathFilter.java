@@ -1,6 +1,6 @@
 package indi.atlantis.framework.greenfinger;
 
-import indi.atlantis.framework.reditools.common.RedisBloomFilter;
+import com.github.paganini2008.springworld.reditools.common.RedisBloomFilter;
 
 /**
  * 
