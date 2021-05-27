@@ -22,7 +22,7 @@ import lombok.extern.slf4j.Slf4j;
  * 
  * CrawlerSummary
  *
- * @author Jimmy Hoff
+ * @author Fred Feng
  * 
  * @since 1.0
  */
@@ -98,7 +98,7 @@ public class CrawlerSummary implements BeanLifeCycle, Executable {
 	 * 
 	 * Summary
 	 *
-	 * @author Jimmy Hoff
+	 * @author Fred Feng
 	 * 
 	 * @since 1.0
 	 */

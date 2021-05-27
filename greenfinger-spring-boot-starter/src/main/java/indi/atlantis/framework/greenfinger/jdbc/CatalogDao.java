@@ -11,7 +11,7 @@ import com.github.paganini2008.springworld.jdbc.annotations.Arg;
 import com.github.paganini2008.springworld.jdbc.annotations.Dao;
 import com.github.paganini2008.springworld.jdbc.annotations.Example;
 import com.github.paganini2008.springworld.jdbc.annotations.Get;
-import com.github.paganini2008.springworld.jdbc.annotations.Query;
+import com.github.paganini2008.springworld.jdbc.annotations.Select;
 import com.github.paganini2008.springworld.jdbc.annotations.Update;
 
 import indi.atlantis.framework.greenfinger.model.Catalog;
@@ -20,7 +20,7 @@ import indi.atlantis.framework.greenfinger.model.Catalog;
  * 
  * CatalogDao
  *
- * @author Jimmy Hoff
+ * @author Fred Feng
  * 
  * @since 1.0
  */
@@ -39,7 +39,7 @@ public interface CatalogDao {
 	@Get(SQL_CATALOG_SELECT_ONE)
 	Catalog getCatalog(@Arg("id") long id);
 
-	@Query(SQL_CATALOG_SELECT_ALL)
+	@Select(SQL_CATALOG_SELECT_ALL)
 	ResultSetSlice<Catalog> queryForCatalog();
 
 }

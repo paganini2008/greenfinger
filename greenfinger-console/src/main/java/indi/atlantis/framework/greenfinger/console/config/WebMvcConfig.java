@@ -31,7 +31,7 @@ import lombok.extern.slf4j.Slf4j;
  * 
  * WebMvcConfig
  * 
- * @author Jimmy Hoff
+ * @author Fred Feng
  * 
  * @version 2.0.0
  */

@@ -17,7 +17,7 @@ import indi.atlantis.framework.vortex.EnableNioTransport;
  * 
  * EnableGreenFingerServer
  * 
- * @author Jimmy Hoff
+ * @author Fred Feng
  *
  * @version 1.0
  */

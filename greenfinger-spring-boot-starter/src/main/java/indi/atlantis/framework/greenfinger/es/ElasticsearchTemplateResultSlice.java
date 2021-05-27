@@ -23,7 +23,7 @@ import com.github.paganini2008.devtools.jdbc.PageableResultSetSlice;
  * 
  * ElasticsearchTemplateResultSlice
  *
- * @author Jimmy Hoff
+ * @author Fred Feng
  * 
  * @since 1.0
  */

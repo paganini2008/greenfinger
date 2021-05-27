@@ -18,7 +18,7 @@ import lombok.extern.slf4j.Slf4j;
  * 
  * GlobalExceptionalHandler
  *
- * @author Jimmy Hoff
+ * @author Fred Feng
  * @since 1.0
  */
 @Slf4j

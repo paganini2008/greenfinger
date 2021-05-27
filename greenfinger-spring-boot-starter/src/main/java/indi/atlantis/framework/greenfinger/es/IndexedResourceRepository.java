@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
  * 
  * IndexedResourceRepository
  *
- * @author Jimmy Hoff
+ * @author Fred Feng
  * 
  * @since 1.0
  */

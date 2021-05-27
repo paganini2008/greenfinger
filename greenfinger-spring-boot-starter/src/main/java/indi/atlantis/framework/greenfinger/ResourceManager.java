@@ -10,7 +10,7 @@ import indi.atlantis.framework.greenfinger.model.Resource;
  * 
  * ResourceManager
  *
- * @author Jimmy Hoff
+ * @author Fred Feng
  * 
  * @since 1.0
  */

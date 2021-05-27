@@ -19,7 +19,7 @@ import com.github.paganini2008.devtools.collection.MapUtils;
  * 
  * SeleniumPageExtractor
  *
- * @author Jimmy Hoff
+ * @author Fred Feng
  * 
  * @since 1.0
  */

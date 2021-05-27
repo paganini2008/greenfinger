@@ -19,7 +19,7 @@ import indi.atlantis.framework.greenfinger.model.Resource;
  * 
  * JdbcResourceManger
  *
- * @author Jimmy Hoff
+ * @author Fred Feng
  * 
  * @since 1.0
  */

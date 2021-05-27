@@ -18,7 +18,7 @@ import indi.atlantis.framework.greenfinger.model.CatalogIndex;
  * 
  * CatalogIndexDao
  *
- * @author Jimmy Hoff
+ * @author Fred Feng
  * 
  * @since 1.0
  */

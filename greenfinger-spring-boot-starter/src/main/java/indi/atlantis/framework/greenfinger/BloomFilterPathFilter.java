@@ -6,7 +6,7 @@ import com.github.paganini2008.springworld.reditools.common.RedisBloomFilter;
  * 
  * BloomFilterPathFilter
  *
- * @author Jimmy Hoff
+ * @author Fred Feng
  * 
  * @since 1.0
  */

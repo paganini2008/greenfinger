@@ -21,7 +21,7 @@ import indi.atlantis.framework.vortex.common.Tuple;
  * 
  * DefaultPathAcceptor
  *
- * @author Jimmy Hoff
+ * @author Fred Feng
  * @since 1.0
  */
 public class DefaultPathAcceptor implements PathAcceptor {

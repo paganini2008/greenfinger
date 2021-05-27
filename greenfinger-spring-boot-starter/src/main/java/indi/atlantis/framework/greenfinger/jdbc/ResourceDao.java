@@ -12,7 +12,7 @@ import com.github.paganini2008.springworld.jdbc.annotations.Arg;
 import com.github.paganini2008.springworld.jdbc.annotations.Dao;
 import com.github.paganini2008.springworld.jdbc.annotations.Example;
 import com.github.paganini2008.springworld.jdbc.annotations.Get;
-import com.github.paganini2008.springworld.jdbc.annotations.Query;
+import com.github.paganini2008.springworld.jdbc.annotations.Select;
 import com.github.paganini2008.springworld.jdbc.annotations.Update;
 
 import indi.atlantis.framework.greenfinger.model.Resource;
@@ -21,7 +21,7 @@ import indi.atlantis.framework.greenfinger.model.Resource;
  * 
  * ResourceDao
  *
- * @author Jimmy Hoff
+ * @author Fred Feng
  * 
  * @since 1.0
  */
@@ -34,7 +34,7 @@ public interface ResourceDao {
 	@Get(SQL_RESOURCE_SELECT_ONE)
 	Resource getResource(@Arg("id") long id);
 
-	@Query(SQL_RESOURCE_SELECT_FOR_INDEX)
+	@Select(SQL_RESOURCE_SELECT_FOR_INDEX)
 	ResultSetSlice<Resource> queryForResourceForIndex(@Arg("catalogId") long catalogId);
 
 	@Update(SQL_RESOURCE_VERSION_UPDATE)

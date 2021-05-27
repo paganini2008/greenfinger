@@ -25,7 +25,7 @@ import indi.atlantis.framework.greenfinger.model.Catalog;
  * 
  * CrawlerController
  *
- * @author Jimmy Hoff
+ * @author Fred Feng
  * @since 1.0
  */
 @RequestMapping("/catalog")

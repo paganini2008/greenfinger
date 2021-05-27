@@ -6,7 +6,7 @@ import org.springframework.http.HttpStatus;
  * 
  * PageExtractorException
  *
- * @author Jimmy Hoff
+ * @author Fred Feng
  * 
  * @since 1.0
  */

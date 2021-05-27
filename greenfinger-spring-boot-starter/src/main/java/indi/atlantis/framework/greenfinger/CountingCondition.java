@@ -6,7 +6,7 @@ import indi.atlantis.framework.vortex.common.Tuple;
  * 
  * CountingCondition
  *
- * @author Jimmy Hoff
+ * @author Fred Feng
  * 
  * @since 1.0
  */

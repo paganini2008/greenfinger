@@ -11,7 +11,7 @@ import indi.atlantis.framework.greenfinger.CrawlerSummary.Summary;
  * 
  * ConditionalCountingType
  *
- * @author Jimmy Hoff
+ * @author Fred Feng
  * 
  * @since 1.0
  */

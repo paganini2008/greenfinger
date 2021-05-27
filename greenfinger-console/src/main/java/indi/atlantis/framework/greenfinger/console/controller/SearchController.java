@@ -18,7 +18,7 @@ import indi.atlantis.framework.greenfinger.es.SearchResult;
  * 
  * SearchController
  *
- * @author Jimmy Hoff
+ * @author Fred Feng
  * @since 1.0
  */
 @RequestMapping("/catalog/index")

@@ -14,7 +14,7 @@ import indi.atlantis.framework.greenfinger.EnableGreenFingerServer;
  * 
  * GreenFingerConsoleMain
  *
- * @author Jimmy Hoff
+ * @author Fred Feng
  * 
  * @since 1.0
  */

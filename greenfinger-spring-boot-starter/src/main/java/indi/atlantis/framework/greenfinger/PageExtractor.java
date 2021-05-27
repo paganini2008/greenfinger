@@ -9,7 +9,7 @@ import java.util.List;
  * 
  * PageExtractor
  *
- * @author Jimmy Hoff
+ * @author Fred Feng
  * 
  * @since 1.0
  */
