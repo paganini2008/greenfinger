@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.github.paganini2008.devtools.jdbc.PageRequest;
 import com.github.paganini2008.devtools.jdbc.PageResponse;
 import com.github.paganini2008.devtools.jdbc.ResultSetSlice;
-import com.github.paganini2008.springworld.reditools.common.IdGenerator;
+import com.github.paganini2008.springdessert.reditools.common.IdGenerator;
 
 import indi.atlantis.framework.greenfinger.ResourceManager;
 import indi.atlantis.framework.greenfinger.model.Catalog;

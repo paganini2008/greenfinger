@@ -12,8 +12,8 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.http.client.ClientHttpRequestFactory;
 
 import com.github.paganini2008.devtools.date.DateUtils;
-import com.github.paganini2008.springworld.reditools.common.IdGenerator;
-import com.github.paganini2008.springworld.reditools.common.TimeBasedIdGenerator;
+import com.github.paganini2008.springdessert.reditools.common.IdGenerator;
+import com.github.paganini2008.springdessert.reditools.common.TimeBasedIdGenerator;
 
 import indi.atlantis.framework.greenfinger.es.IndexedResourceService;
 import indi.atlantis.framework.greenfinger.jdbc.JdbcResourceManger;
