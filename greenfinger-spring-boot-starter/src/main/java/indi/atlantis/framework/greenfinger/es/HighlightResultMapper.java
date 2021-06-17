@@ -57,11 +57,8 @@ public class HighlightResultMapper extends AbstractResultMapper {
 
 	public HighlightResultMapper(
 			MappingContext<? extends ElasticsearchPersistentEntity<?>, ElasticsearchPersistentProperty> mappingContext) {
-
 		super(new DefaultEntityMapper(mappingContext));
-
 		Assert.notNull(mappingContext, "MappingContext must not be null!");
-
 		this.mappingContext = mappingContext;
 	}
 
@@ -71,11 +68,8 @@ public class HighlightResultMapper extends AbstractResultMapper {
 
 	public HighlightResultMapper(MappingContext<? extends ElasticsearchPersistentEntity<?>, ElasticsearchPersistentProperty> mappingContext,
 			EntityMapper entityMapper) {
-
 		super(entityMapper);
-
 		Assert.notNull(mappingContext, "MappingContext must not be null!");
-
 		this.mappingContext = mappingContext;
 	}
 

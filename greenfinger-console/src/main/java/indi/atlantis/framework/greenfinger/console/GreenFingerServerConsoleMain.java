@@ -12,7 +12,7 @@ import indi.atlantis.framework.greenfinger.EnableGreenFingerServer;
 
 /**
  * 
- * GreenFingerConsoleMain
+ * GreenFingerServerConsoleMain
  *
  * @author Fred Feng
  * 
@@ -20,11 +20,11 @@ import indi.atlantis.framework.greenfinger.EnableGreenFingerServer;
  */
 @EnableGreenFingerServer
 @SpringBootApplication
-public class GreenFingerConsoleMain {
+public class GreenFingerServerConsoleMain {
 
 	static {
 		System.setProperty("spring.devtools.restart.enabled", "false");
-		File logDir = FileUtils.getFile(FileUtils.getUserDirectory(), "logs", "springworld", "examples");
+		File logDir = FileUtils.getFile(FileUtils.getUserDirectory(), "logs", "atlantis", "framework", "greenfinger", "console");
 		if (!logDir.exists()) {
 			logDir.mkdirs();
 		}
@@ -32,7 +32,7 @@ public class GreenFingerConsoleMain {
 	}
 
 	public static void main(String[] args) {
-		SpringApplication.run(GreenFingerConsoleMain.class, args);
+		SpringApplication.run(GreenFingerServerConsoleMain.class, args);
 		System.out.println(Env.getPid());
 	}
 }

@@ -8,7 +8,7 @@ package indi.atlantis.framework.greenfinger.console;
  * 
  * @since 1.0
  */
-public abstract class Constants {
+public abstract class WebConstants {
 
 	public final static String REQUEST_ATTRIBUTE_START_TIME = "request-start-time";
 }

@@ -16,7 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * 
- * DbPoolConfig
+ * DataSourceConfig
  *
  * @author Fred Feng
  * @since 1.0
@@ -26,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 @Getter
 @Configuration
 @ConfigurationProperties(prefix = "greenfinger.datasource")
-public class DbPoolConfig {
+public class DataSourceConfig {
 
 	private String jdbcUrl;
 	private String username;
@@ -34,10 +34,12 @@ public class DbPoolConfig {
 	private String driverClassName;
 
 	private HikariConfig getDbConfig() {
-		log.info("DbPool JdbcUrl: " + jdbcUrl);
-		log.info("DbPool Username: " + username);
-		log.info("DbPool Password: " + password);
-		log.info("DbPool DriverClassName: " + driverClassName);
+		if (log.isTraceEnabled()) {
+			log.trace("DataSourceConfig JdbcUrl: " + jdbcUrl);
+			log.trace("DataSourceConfig Username: " + username);
+			log.trace("DataSourceConfig Password: " + password);
+			log.trace("DataSourceConfig DriverClassName: " + driverClassName);
+		}
 		final HikariConfig config = new HikariConfig();
 		config.setDriverClassName(driverClassName);
 		config.setJdbcUrl(jdbcUrl);

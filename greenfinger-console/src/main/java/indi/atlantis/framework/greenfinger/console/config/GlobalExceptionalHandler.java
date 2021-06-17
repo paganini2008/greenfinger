@@ -1,6 +1,6 @@
 package indi.atlantis.framework.greenfinger.console.config;
 
-import static indi.atlantis.framework.greenfinger.console.Constants.REQUEST_ATTRIBUTE_START_TIME;
+import static indi.atlantis.framework.greenfinger.console.WebConstants.REQUEST_ATTRIBUTE_START_TIME;
 
 import javax.servlet.http.HttpServletRequest;
 

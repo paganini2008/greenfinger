@@ -16,28 +16,22 @@ import com.github.paganini2008.devtools.jdbc.PageResponse;
 public class PageBean<T> implements Serializable {
 
 	private static final long serialVersionUID = 8934378634483462296L;
-
 	private static final int PAGE_SIZE = 20;
 
-	private int rows; // 记录总数
-	private int size = PAGE_SIZE; // 每页显示记录数
-	private int page; // 当前页
+	private int rows;
+	private int size = PAGE_SIZE;
+	private int page;
 
-	private int totalPages; // 总页数
-	private int showPages; // 每页显示页数
+	private int totalPages;
+	private int showPages;
 
 	private int start;
 	private int end;
 
-	private int[][] showArray; // 二维长度为2 [*][1] 数值 [*][2]页类型 －1记录总数 0当前页 1 首页
-								// 2上一页 3普通页 4末页 5下一页
-
+	private int[][] showArray;
 	private int firstPage;
-
 	private int previousPage;
-
 	private int nextPage;
-
 	private int endPage;
 
 	private List<Integer> pageNos = new ArrayList<Integer>();
