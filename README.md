@@ -1,5 +1,5 @@
 # Greenfinger Project
-**Greenfinger** is a **distributed web crawler framework** based on springboot framework. With a little configuration, you can easily build a distributed web crawler micro service. In addition, the greenfinger framework provides rich interfaces to customize your system
+**Greenfinger** is a high-performance **distributed web crawler framework** based on springboot framework. With a little configuration, you can easily build a distributed web crawler microservice. In addition, the greenfinger framework provides rich interfaces to customize your system
 
 ### Compatibility
 1. jdk8 (or later)
