@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 
 import org.springframework.context.annotation.Import;
 
-import com.github.paganini2008.springdesert.jdbc.annotations.DaoScan;
+import com.github.paganini2008.springdesert.fastjdbc.annotations.DaoScan;
 
 import indi.atlantis.framework.tridenter.EnableApplicationCluster;
 import indi.atlantis.framework.vortex.EnableNioTransport;

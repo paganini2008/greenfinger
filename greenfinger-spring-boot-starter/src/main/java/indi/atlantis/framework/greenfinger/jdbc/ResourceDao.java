@@ -8,12 +8,12 @@ import static indi.atlantis.framework.greenfinger.jdbc.JdbcResourceManger.SQL_RE
 import static indi.atlantis.framework.greenfinger.jdbc.JdbcResourceManger.SQL_RESOURCE_VERSION_UPDATE;
 
 import com.github.paganini2008.devtools.jdbc.ResultSetSlice;
-import com.github.paganini2008.springdesert.jdbc.annotations.Arg;
-import com.github.paganini2008.springdesert.jdbc.annotations.Dao;
-import com.github.paganini2008.springdesert.jdbc.annotations.Example;
-import com.github.paganini2008.springdesert.jdbc.annotations.Get;
-import com.github.paganini2008.springdesert.jdbc.annotations.Select;
-import com.github.paganini2008.springdesert.jdbc.annotations.Update;
+import com.github.paganini2008.springdesert.fastjdbc.annotations.Arg;
+import com.github.paganini2008.springdesert.fastjdbc.annotations.Dao;
+import com.github.paganini2008.springdesert.fastjdbc.annotations.Example;
+import com.github.paganini2008.springdesert.fastjdbc.annotations.Get;
+import com.github.paganini2008.springdesert.fastjdbc.annotations.Select;
+import com.github.paganini2008.springdesert.fastjdbc.annotations.Update;
 
 import indi.atlantis.framework.greenfinger.model.Resource;
 
