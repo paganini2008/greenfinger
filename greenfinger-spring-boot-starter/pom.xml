@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
-		<groupId>indi.atlantis.framework</groupId>
+		<groupId>com.github.paganini2008.atlantis</groupId>
 		<version>1.0-RC1</version>
 		<artifactId>greenfinger</artifactId>
 		<relativePath>../pom.xml</relativePath>
@@ -72,7 +72,7 @@
 		</dependency>
 
 		<dependency>
-			<groupId>indi.atlantis.framework</groupId>
+			<groupId>com.github.paganini2008.atlantis</groupId>
 			<artifactId>vortex-spring-boot-starter</artifactId>
 			<version>1.0-RC1</version>
 		</dependency>
