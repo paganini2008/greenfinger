@@ -11,9 +11,9 @@
 ### Install
 ``` xml
 <dependency>
-	<groupId>indi.atlantis.framework</groupId>
-	<artifactId>greenfinger-spring-boot-starter</artifactId
-	<version>1.0-RC1</version>
+    <groupId>com.github.paganini2008.atlantis</groupId>
+    <artifactId>greenfinger-spring-boot-starter</artifactId
+    <version>1.0-RC1</version>
 </dependency>
 ```
 
