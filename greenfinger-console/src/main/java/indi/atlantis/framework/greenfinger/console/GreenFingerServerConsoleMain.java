@@ -22,6 +22,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import com.github.paganini2008.devtools.Env;
 import com.github.paganini2008.devtools.io.FileUtils;
+import com.github.paganini2008.springdessert.reditools.common.EnableRedisClient;
 
 import indi.atlantis.framework.greenfinger.EnableGreenFingerServer;
 
@@ -33,17 +34,20 @@ import indi.atlantis.framework.greenfinger.EnableGreenFingerServer;
  * 
  * @since 1.0
  */
+@EnableRedisClient
 @EnableGreenFingerServer
 @SpringBootApplication
 public class GreenFingerServerConsoleMain {
 
 	static {
+		System.setProperty("es.set.netty.runtime.available.processors", "false");
 		System.setProperty("spring.devtools.restart.enabled", "false");
 		File logDir = FileUtils.getFile(FileUtils.getUserDirectory(), "logs", "atlantis", "framework", "greenfinger", "console");
 		if (!logDir.exists()) {
 			logDir.mkdirs();
 		}
 		System.setProperty("LOG_BASE", logDir.getAbsolutePath());
+		
 	}
 
 	public static void main(String[] args) {

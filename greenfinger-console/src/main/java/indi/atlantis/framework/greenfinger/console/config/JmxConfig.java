@@ -38,7 +38,7 @@ public class JmxConfig {
 
 	public JmxConfig() {
 		this.rmiHost = NetUtils.getLocalHost();
-		this.rmiPort = NetUtils.getRandomPort(51000, 52000);
+		this.rmiPort = NetUtils.getRandomPort(50000, 60000);
 	}
 
 	private String rmiHost;

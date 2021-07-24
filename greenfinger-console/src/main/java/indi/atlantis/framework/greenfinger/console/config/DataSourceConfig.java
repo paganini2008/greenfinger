@@ -40,7 +40,7 @@ import lombok.extern.slf4j.Slf4j;
 @Setter
 @Getter
 @Configuration
-@ConfigurationProperties(prefix = "greenfinger.datasource")
+@ConfigurationProperties(prefix = "spring.datasource")
 public class DataSourceConfig {
 
 	private String jdbcUrl;
