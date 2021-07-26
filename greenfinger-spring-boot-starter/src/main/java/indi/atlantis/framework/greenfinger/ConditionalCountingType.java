@@ -28,7 +28,7 @@ import indi.atlantis.framework.greenfinger.CrawlerSummary.Summary;
  *
  * @author Fred Feng
  * 
- * @since 1.0
+ * @since 2.0.1
  */
 public enum ConditionalCountingType implements EnumConstant {
 

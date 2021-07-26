@@ -27,7 +27,7 @@ import indi.atlantis.framework.greenfinger.model.Resource;
  *
  * @author Fred Feng
  * 
- * @since 1.0
+ * @since 2.0.1
  */
 public interface ResourceManager {
 

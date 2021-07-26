@@ -23,7 +23,7 @@ import com.github.paganini2008.springdessert.reditools.common.RedisBloomFilter;
  *
  * @author Fred Feng
  * 
- * @since 1.0
+ * @since 2.0.1
  */
 public class BloomFilterPathFilter implements PathFilter {
 

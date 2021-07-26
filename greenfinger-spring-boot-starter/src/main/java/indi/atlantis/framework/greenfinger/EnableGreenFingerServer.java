@@ -34,7 +34,7 @@ import indi.atlantis.framework.vortex.EnableNioTransport;
  * 
  * @author Fred Feng
  *
- * @version 1.0
+ * @since 2.0.1
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)

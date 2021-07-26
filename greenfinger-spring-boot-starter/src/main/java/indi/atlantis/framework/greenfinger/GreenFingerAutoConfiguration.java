@@ -42,7 +42,7 @@ import indi.atlantis.framework.vortex.common.Partitioner;
  *
  * @author Fred Feng
  * 
- * @since 1.0
+ * @since 2.0.1
  */
 @EnableElasticsearchRepositories("indi.atlantis.framework.greenfinger.es")
 @Configuration

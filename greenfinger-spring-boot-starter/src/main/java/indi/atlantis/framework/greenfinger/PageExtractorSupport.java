@@ -32,7 +32,7 @@ import indi.atlantis.framework.tridenter.utils.BeanLifeCycle;
  *
  * @author Fred Feng
  * 
- * @since 1.0
+ * @since 2.0.1
  */
 public abstract class PageExtractorSupport<T> extends BasePooledObjectFactory<T> implements BeanLifeCycle {
 
