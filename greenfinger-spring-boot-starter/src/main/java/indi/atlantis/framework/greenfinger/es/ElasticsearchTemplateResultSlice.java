@@ -57,8 +57,7 @@ public class ElasticsearchTemplateResultSlice extends PageableResultSetSlice<Sea
 	@Override
 	public int rowCount() {
 		BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(QueryBuilders.termQuery(SEARCH_FIELD_VERSION, version))
-				.must(QueryBuilders.matchQuery(SEARCH_FIELD_TITLE, keyword))
-				.must(QueryBuilders.matchQuery(SEARCH_FIELD_CONTENT, keyword));
+				.must(QueryBuilders.matchQuery(SEARCH_FIELD_TITLE, keyword)).must(QueryBuilders.matchQuery(SEARCH_FIELD_CONTENT, keyword));
 		NativeSearchQuery searchQuery = new NativeSearchQueryBuilder().withQuery(boolQueryBuilder).build();
 		return (int) elasticsearchTemplate.count(searchQuery, IndexedResource.class);
 	}
@@ -66,12 +65,11 @@ public class ElasticsearchTemplateResultSlice extends PageableResultSetSlice<Sea
 	@Override
 	public List<SearchResult> list(int maxResults, int firstResult) {
 		BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(QueryBuilders.termQuery(SEARCH_FIELD_VERSION, version))
-				.must(QueryBuilders.matchQuery(SEARCH_FIELD_TITLE, keyword))
-				.must(QueryBuilders.matchQuery(SEARCH_FIELD_CONTENT, keyword));
+				.must(QueryBuilders.matchQuery(SEARCH_FIELD_TITLE, keyword)).must(QueryBuilders.matchQuery(SEARCH_FIELD_CONTENT, keyword));
 		NativeSearchQueryBuilder searchQueryBuilder = new NativeSearchQueryBuilder().withQuery(boolQueryBuilder)
 				.withHighlightFields(new HighlightBuilder.Field(SEARCH_FIELD_TITLE), new HighlightBuilder.Field(SEARCH_FIELD_CONTENT))
 				.withHighlightBuilder(new HighlightBuilder().preTags("<font class=\"search-keyword\" color=\"#FF0000\">")
-						.postTags("</font>").fragmentSize(10).numOfFragments(3).noMatchSize(150));
+						.postTags("</font>").fragmentSize(120).numOfFragments(3).noMatchSize(100));
 		if (maxResults > 0) {
 			searchQueryBuilder = searchQueryBuilder.withPageable(PageRequest.of(getPageNumber(), maxResults));
 		}

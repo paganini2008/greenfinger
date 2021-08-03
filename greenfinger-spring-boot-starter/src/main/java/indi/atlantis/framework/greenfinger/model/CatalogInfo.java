@@ -13,19 +13,29 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
-package indi.atlantis.framework.greenfinger.es;
+package indi.atlantis.framework.greenfinger.model;
 
-import org.springframework.stereotype.Component;
+import java.util.Date;
+
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
 
 /**
  * 
- * ResourceSearchService
+ * CatalogInfo
  *
  * @author Fred Feng
- * 
- * @since 2.0.1
+ *
+ * @since 2.0.2
  */
-@Component
-public class ResourceSearchService {
-	
+@Getter
+@Setter
+@ToString
+public class CatalogInfo extends Catalog {
+
+	private static final long serialVersionUID = -4801844866936776180L;
+
+	private Integer version;
+	private Date lastIndexed;
 }

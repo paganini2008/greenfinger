@@ -41,5 +41,14 @@ public class CatalogIndex implements Serializable {
 	private Long catalogId;
 	private Date lastModified;
 	private Integer version;
+	
+	public CatalogIndex(Long catalogId, Integer version,Date lastModified) {
+		this.catalogId = catalogId;
+		this.version = version;
+		this.lastModified = lastModified;
+	}
+	
+	public CatalogIndex() {
+	}
 
 }

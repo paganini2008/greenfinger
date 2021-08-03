@@ -1,0 +1,594 @@
+* {
+	margin: 0px;
+	padding: 0px;
+}
+
+body {
+	margin: 0px;
+	padding: 0px;
+	width: 100%;
+	height: 100%;
+	text-align: center;
+	background-color: #F0FFF0;
+	font-style: normal;
+	font-size: 13px;
+	font-family: Arial, Helvetica, sans-serif;
+	color: #000;
+}
+
+#top {
+	height: 50px;
+	line-height: 50px;
+	background-color: #00BB00;
+	width: 100%;
+	position: absolute;
+	z-index: 5;
+	top: 0;
+	text-align: center;
+	clear: both;
+}
+
+#title {
+	font-size: 22pt;
+	font-weight: 800;
+	display: inline-block;
+	float: left;
+	margin-left: 120px;
+	color: #fff;
+}
+
+#nav {
+	display: inline-block;
+	float: right;
+	height: 32px;
+	line-height: 32px;
+	margin-top: 20px;
+}
+
+#nav li {
+	list-style: none;
+	float: left;
+	margin-right: 5px;
+	height: 32px;
+	line-height: 32px;
+	padding-right: 5px;
+	cursor: pointer;
+	font-weight: 800;
+}
+
+#nav li a {
+	text-decoration: none;
+}
+
+#foot {
+	height: 50px;
+	line-height: 50px;
+	background-color: #00BB00;
+	color: #fff;
+	width: 100%;
+	position: absolute;
+	z-index: 200;
+	bottom: 0;
+	text-align: center;
+	clear: both;
+	font-weight: 800;
+}
+
+#container {
+	width: calc(100% - 100px);
+	height: calc(100% - 100px);
+	background-color: #F0FFF0;
+	overflow: hidden;
+	top: 50px;
+	bottom: 50px;
+	left: 50px;
+	right: 50px;
+	position: absolute;
+	z-index: 0;
+	clear: both;
+	text-align: left;
+}
+
+#searchBox {
+	width: 100%;
+	height: 36px;
+	overflow: hidden;
+	clear: both;
+	margin: 10px auto;
+}
+
+#tabBox {
+	width: 100%;
+	height: calc(100% - 60px);
+	overflow: hidden; 
+	clear : both;
+	margin: 10px auto;
+	clear: both;
+}
+
+#searchResult {
+	width: 100%;
+	height: calc(100% - 60px);
+	overflow-y: scroll;
+	overflow-x: hidden; 
+	clear : both;
+	margin: 10px auto;
+	clear: both;
+}
+
+#tabContent {
+	width: 100%;
+	height: auto;
+}
+
+.search-result-title {
+	width: 100%;
+	height: 36px;
+	line-height: 36px;
+	font-size: 16pt;
+}
+
+.search-result-content {
+	width: 100%;
+	height: auto;
+	padding: 0px 5px;
+}
+
+.search-result-catalog {
+	width: 100%;
+	height: 28px;
+	line-height: 28px;
+	padding: 0px 5px;
+}
+
+#tableBox {
+	width: calc(100% - 20px);
+	text-align: left;
+	margin: 10px auto;
+	clear: both;
+}
+
+.searchCondition {
+	width: 100%;
+	height: 30px;
+	line-height: 30px;
+	clear: both;
+	margin: 5px auto;
+}
+
+.searchCondition span {
+	display: inline-block;
+	float: left;
+	width: 25%;
+	height: 30px;
+}
+
+.searchCondition span label {
+	width: 140px;
+	height: 22px;
+	line-height: 22px;
+	text-align: right;
+	padding-right: 5px;
+	display: inline-block;
+	float: left;
+	font-weight: 800;
+}
+
+.searchCondition span input {
+	display: inline-block;
+	float: left;
+}
+
+.searchCondition span b {
+	display: inline-block;
+	float: left;
+	width: 26px;
+	height: 22px;
+	line-height: 22px;
+	text-align: right;
+	padding-right: 5px;
+}
+
+.searchCondition span input[type="text"] {
+	width: calc(100% - 170px);
+	height: 22px;
+	line-height: 22px;
+	padding-left: 5px;
+}
+
+.searchCondition span input[type="radio"] {
+	margin: 5px;
+}
+
+#keyword {
+	width: calc(100% - 160px);
+	height: 32px;
+	line-height: 32px;
+	padding-left: 10px;
+	float: left;
+	margin: auto 0px;
+	text-align: left;
+}
+
+#searchBtn {
+	width: 120px;
+	height: 32px;
+	font-size: 13px;
+	font-weight: 800;
+	padding: 5px 20px;
+	text-align: center;
+	float: right;
+	margin: auto 10px;
+	cursor: pointer;
+}
+
+.searchKeyword {
+	color: #FF0000;
+	font-weight: bold;
+}
+
+#chartBox {
+	width: 100%;
+	height: calc(100% - 10px);
+	overflow-y: scroll;
+	overflow-x: hidden;
+}
+
+#infoBox {
+	width: 90%;
+	height: 360px;
+	clear: both;
+	margin: 5px auto;
+	overflow: hidden;
+}
+
+.opCatalog{
+	float: left;
+	display: inline-block;
+	margin: auto 2px;
+}
+
+.summaryBox {
+	width: 90%;
+	height: 320px;
+	clear: both;
+	margin: 5px auto;
+	overflow: hidden;
+}
+
+.summary {
+	width: 25%;
+	height: 50%;
+	display: inline-block;
+	float: left;
+	margin: 60px auto;
+	font-size: 13px;
+}
+
+.summary p label {
+	width: 120px;
+	display: inline-block;
+	height: 32px;
+	line-height: 32px;
+	text-align: right;
+	padding-right: 10px;
+	font-weight: 800;
+}
+
+.summary p span {
+	width: calc(100% - 150px);
+	display: inline-block;
+	height: 32px;
+	line-height: 32px;
+	text-align: left;
+}
+
+.chartObj {
+	width: 90%;
+	height: 360px;
+	margin: 5px auto;
+	clear: both;
+}
+
+img {
+	cursor: pointer;
+}
+
+.fatal {
+	color: #AE57A4;
+}
+
+.error {
+	color: #FF0000;
+}
+
+.warn {
+	color: #FF8800;
+}
+
+.info {
+	color: #00FF00;
+}
+
+.debug {
+	color: #8080C0;
+}
+
+.trace {
+	color: #A5A552;
+}
+
+.indexSummary label{
+	width: 160px;
+	display: inline-block;
+	height: 32px;
+	line-height: 32px;
+	text-align: right;
+	padding-right: 10px;
+	font-weight: 800;
+}
+
+.indexSummary span{
+	width: calc(32% - 160px);
+	display: inline-block;
+	height: 32px;
+	line-height: 32px;
+	text-align: left;
+}
+
+#logoText {
+	font-weight: bold;
+	font-size: 26pt;
+	float: left;
+	display: inline-block;
+	height: 100%;
+	color: #fff;
+	margin-left: 110px;
+	cursor: pointer;
+}
+
+#navBox {
+	width: 100%;
+	display: block;
+	margin-top: 60px;
+	font-size: 14pt;
+}
+
+#navBox li {
+	list-style: none;
+	display: block;
+	width: 100%;
+	height: 36px;
+	line-height: 36px;
+	text-align: left;
+	margin-top: 5px;
+	cursor: pointer;
+	font-weight: bold;
+	clear: both;
+}
+
+#navBox li a {
+	display: inline-block;
+	float: left;
+	margin-left: 10px;
+}
+
+#sec-nav {
+	width: 100%;
+	clear: both;
+	padding: 5px 0px 10px 0px;
+}
+
+#sec-nav ul {
+	width: auto;
+	height: 28px;
+	line-height: 28px;
+	display: block;
+	font-size: 13px;
+}
+
+#sec-nav ul li {
+	list-style: none;
+	float: left;
+	display: inline-block;
+	margin-right: 5px;
+	width: 80px;
+	height: 28px;
+	line-height: 28px;
+	text-align: center;
+	border: 1px solid #DCDCDC;
+	cursor: pointer;
+	background-color: #fff;
+	border-radius: 10px;
+	padding: 0px 10px;
+}
+
+#leftTop {
+	width: 70%;
+	height: 50px;
+	float: left;
+	display: inline-block;
+	margin-top: 5px;
+}
+
+#rightTop {
+	width: 30%;
+	height: 50px;
+	float: left;
+	display: inline-block;
+	margin-top: 20px;
+}
+
+#rightTop span {
+	display: block;
+	text-align: right;
+	left: right;
+	height: 20px;
+	margin: 2px 20px 2px;
+}
+
+.cBtn {
+	width: 80px;
+	padding: 5px 20px;
+	cursor: pointer;
+}
+
+.tblCom {
+	table-layout: fixed;
+	text-align: center;
+}
+
+.tblCom thead tr {
+	height: 38px;
+	line-height: 38px;
+	border-top: 1px solid #BEBEBE;
+	background-color: #000;
+}
+
+.tblCom thead tr td {
+	height: 38px;
+	line-height: 38px;
+	font-weight: 800;
+	color: #fff;
+	border-left: 1px solid #BEBEBE;
+	border-top: 1px solid #BEBEBE;
+	border-bottom: 1px solid #BEBEBE;
+}
+
+.tblCom thead tr td:nth-child(1) {
+	border-left: 1px solid #BEBEBE;
+	text-align: center;
+}
+
+.tblCom thead tr td:last-child {
+	border-right: 1px solid #BEBEBE;
+}
+
+.tblCom tbody tr {
+	height: 38px;
+	line-height: 38px;
+}
+
+.tblCom tbody tr td {
+	height: 38px;
+	line-height: 38px;
+	word-break: keep-all;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	border-left: 1px solid #BEBEBE;
+	border-bottom: 1px solid #BEBEBE;
+	text-indent: 5px;
+}
+
+.tblCom tbody tr td:nth-child(1) {
+	border-left: 1px solid #BEBEBE;
+	text-align: center;
+}
+
+.tblCom tbody tr td:last-child {
+	border-right: 1px solid #BEBEBE;
+	text-align: center;
+}
+
+.tdLeft5 {
+	text-align: left;
+	padding-left: 5px;
+}
+
+.tdLeft10 {
+	text-align: left;
+	padding-left: 10px;
+}
+
+.tdRight5 {
+	text-align: right;
+	padding-right: 5px;
+}
+
+.tdRight10 {
+	text-align: right;
+	padding-right: 10px;
+}
+
+.trGreen {
+	color: #00BB00;
+}
+
+.trRed {
+	color: #D9006C;
+}
+
+.popTop {
+	width: 520px;
+	height: 30px;
+	line-height: 30px;
+	margin: 0px 10px 15px;
+	text-align: left;
+}
+
+.popTitle {
+	font-weight: bold;
+	font-size: 15px;
+	letter-spacing: 1px;
+}
+
+.popClose {
+	display: inline-block;
+	float: right;
+	width: 22px;
+	height: 22px;
+	margin: 4px 0px;
+	background: url('../img/mod_close.png') no-repeat scroll transparent;
+	cursor: pointer;
+}
+
+.popBox {
+	width: 550px;
+	text-align: left;
+	padding: 5px 10px;
+	height: auto;
+	overflow: hidden;
+}
+
+.popContent p {
+	height: auto;
+	display: block;
+	line-height: 30px;
+	margin-bottom: 2px;
+	width: 100%;
+}
+
+.popContent p label {
+	display: inline-block;
+	width: 100px;
+	height: 30px;
+	text-align: right;
+	padding-right: 10px;
+	font-weight: bold;
+}
+
+a:link {
+}
+
+a:visited {
+	text-decoration: none;
+	color: #4B0091;
+}
+
+a:hover {
+	text-decoration: none;
+	color: #4B0091;
+}
+
+a:active {
+	text-decoration: none;
+	color: #6F00D2;
+}
+
+.tabNoData {
+	display: table;
+	width: 100%;
+	height: 600px;
+	line-height: 600px;
+}

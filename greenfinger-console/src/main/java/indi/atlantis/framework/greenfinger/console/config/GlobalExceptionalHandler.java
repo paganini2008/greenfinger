@@ -26,7 +26,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import indi.atlantis.framework.greenfinger.console.utils.Response;
+import com.github.paganini2008.devtools.ExceptionUtils;
+
+import indi.atlantis.framework.greenfinger.console.utils.Result;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -43,15 +45,19 @@ public class GlobalExceptionalHandler {
 
 	@ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
 	@ExceptionHandler(value = Exception.class)
-	public ResponseEntity<Response> handleException(HttpServletRequest request, Exception e) throws Exception {
+	public ResponseEntity<Result<?>> handleException(HttpServletRequest request, Exception e) throws Exception {
 		log.error(e.getMessage(), e);
-		Response response = Response.failure("INTERNAL_SERVER_ERROR");
-		response.setRequestPath(request.getServletPath()).setError(e).setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
+		Result<?> result = Result.failure(HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase());
+		result.setRequestPath(request.getServletPath());
+		result.setCode("INTERNAL_SERVER_ERROR");
+		result.setErrorMsg(e.getMessage());
+		result.setErrorDetail(ExceptionUtils.toArray(e));
+		result.setResponseStatus(500);
 		if (request.getAttribute(REQUEST_ATTRIBUTE_START_TIME) != null) {
 			long startTime = (Long) request.getAttribute(REQUEST_ATTRIBUTE_START_TIME);
-			response.setElapsed(System.currentTimeMillis() - startTime);
+			result.setElapsed(System.currentTimeMillis() - startTime);
 		}
-		return new ResponseEntity<Response>(response, HttpStatus.OK);
+		return new ResponseEntity<Result<?>>(result, HttpStatus.OK);
 	}
 
 }

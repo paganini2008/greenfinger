@@ -30,6 +30,7 @@ import com.github.paganini2008.springdesert.fastjdbc.annotations.Select;
 import com.github.paganini2008.springdesert.fastjdbc.annotations.Update;
 
 import indi.atlantis.framework.greenfinger.model.Catalog;
+import indi.atlantis.framework.greenfinger.model.CatalogInfo;
 
 /**
  * 
@@ -55,6 +56,6 @@ public interface CatalogDao {
 	Catalog getCatalog(@Arg("id") long id);
 
 	@Select(SQL_CATALOG_SELECT_ALL)
-	ResultSetSlice<Catalog> queryForCatalog();
+	ResultSetSlice<CatalogInfo> queryForCatalog();
 
 }

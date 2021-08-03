@@ -31,7 +31,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import indi.atlantis.framework.greenfinger.console.utils.Response;
+import com.github.paganini2008.devtools.StringUtils;
+
+import indi.atlantis.framework.greenfinger.console.utils.Result;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -59,17 +61,23 @@ public class ErrorPageController extends AbstractErrorController {
 	}
 
 	@RequestMapping(value = ERROR_PATH, produces = { MediaType.APPLICATION_JSON_VALUE })
-	public ResponseEntity<Response> error(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+	public ResponseEntity<Result<?>> error(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
 		final Map<String, Object> body = getErrorAttributes(httpRequest, true);
 		log.error("ErrorAttributes: " + body.toString());
 		HttpStatus httpStatus = HttpStatus.valueOf(httpResponse.getStatus());
-		Response response = Response.failure(httpStatus.getReasonPhrase());
-		response.setRequestPath(httpRequest.getServletPath()).setStatusCode(httpStatus);
+		Result<?> result = Result.failure(httpStatus.getReasonPhrase());
+		result.setCode(httpStatus.name());
+		String path = (String) body.get("path");
+		if (StringUtils.isBlank(path)) {
+			path = httpRequest.getServletPath();
+		}
+		result.setRequestPath(path);
+		result.setResponseStatus(httpStatus.value());
 		if (httpRequest.getAttribute(REQUEST_ATTRIBUTE_START_TIME) != null) {
 			long startTime = (Long) httpRequest.getAttribute(REQUEST_ATTRIBUTE_START_TIME);
-			response.setElapsed(System.currentTimeMillis() - startTime);
+			result.setElapsed(System.currentTimeMillis() - startTime);
 		}
-		return new ResponseEntity<Response>(response, HttpStatus.OK);
+		return new ResponseEntity<Result<?>>(result, HttpStatus.OK);
 	}
 
 }

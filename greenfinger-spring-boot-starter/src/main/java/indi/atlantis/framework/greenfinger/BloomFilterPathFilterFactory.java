@@ -45,13 +45,15 @@ public class BloomFilterPathFilterFactory implements PathFilterFactory {
 
 	@Override
 	public void clean(long catalogId) {
-		String key = String.format(defaultRedisKeyPrefix, crawlerName, catalogId);
-		redisOperations.delete(key);
+		final String key = String.format(defaultRedisKeyPrefix, crawlerName, catalogId);
+		if (redisOperations.hasKey(key)) {
+			redisOperations.delete(key);
+		}
 	}
 
 	@Override
 	public PathFilter getPathFilter(long catalogId) {
-		String key = String.format(defaultRedisKeyPrefix, crawlerName, catalogId);
+		final String key = String.format(defaultRedisKeyPrefix, crawlerName, catalogId);
 		RedisBloomFilter bloomFilter = new RedisBloomFilter(key, maxExpectedInsertions, 0.03d, redisConnectionFactory);
 		return new BloomFilterPathFilter(bloomFilter);
 	}

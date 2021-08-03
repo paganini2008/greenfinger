@@ -16,14 +16,13 @@
 package indi.atlantis.framework.greenfinger.console.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.CookieValue;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.github.paganini2008.devtools.jdbc.PageResponse;
 
@@ -34,20 +33,20 @@ import indi.atlantis.framework.greenfinger.CrawlerStatistics.Summary;
 import indi.atlantis.framework.greenfinger.ResourceManager;
 import indi.atlantis.framework.greenfinger.console.utils.CatalogSummary;
 import indi.atlantis.framework.greenfinger.console.utils.PageBean;
+import indi.atlantis.framework.greenfinger.console.utils.Result;
 import indi.atlantis.framework.greenfinger.model.Catalog;
 import indi.atlantis.framework.greenfinger.model.CatalogInfo;
 
 /**
  * 
- * CatalogController
+ * CatalogApiController
  *
  * @author Fred Feng
- *
- * @since 2.0.2
+ * @since 2.0.1
  */
-@RequestMapping("/catalog")
-@Controller
-public class CatalogController {
+@RequestMapping("/api/catalog")
+@RestController
+public class CatalogApiController {
 
 	@Autowired
 	private CrawlerLauncher crawlerLauncher;
@@ -56,67 +55,65 @@ public class CatalogController {
 	private ResourceManager resourceManager;
 
 	@Autowired
-	private CatalogAdminService catalogAdminService;
-
-	@Autowired
 	private CrawlerStatistics crawlerStatistics;
 
-	@GetMapping("/")
-	public String index(Model ui) {
-		return "catalog";
-	}
-
-	@PostMapping("/list")
-	public String queryForCatalog(@RequestParam(value = "page", defaultValue = "1", required = false) int page,
-			@CookieValue(value = "DATA_LIST_SIZE", required = false, defaultValue = "10") int size, Model ui) {
-		PageResponse<CatalogInfo> pageResponse = resourceManager.queryForCatalog(page, size);
-		PageBean<CatalogInfo> pageBean = PageBean.wrap(pageResponse);
-		ui.addAttribute("page", pageBean);
-		return "catalog_list";
-	}
+	@Autowired
+	private CatalogAdminService catalogAdminService;
 
 	@PostMapping("/{id}/delete")
-	public String deleteCatalog(@PathVariable("id") Long catalogId) {
+	public Result<String> deleteCatalog(@PathVariable("id") Long catalogId) {
 		catalogAdminService.deleteCatalog(catalogId, false);
-		return "redirect:/catalog/";
+		return Result.success("Waiting for delete operation completion.");
 	}
 
 	@PostMapping("/{id}/clean")
-	public String cleanCatalog(@PathVariable("id") Long catalogId) {
+	public Result<String> cleanCatalog(@PathVariable("id") Long catalogId) {
 		catalogAdminService.cleanCatalog(catalogId, false);
-		return "redirect:/catalog/";
+		return Result.success("Waiting for clean operation completion.");
 	}
 
 	@PostMapping("/{id}/rebuild")
-	public String rebuild(@PathVariable("id") Long catalogId) {
+	public Result<String> rebuild(@PathVariable("id") Long catalogId) {
 		crawlerLauncher.rebuild(catalogId, null);
-		return "redirect:/catalog/";
+		return Result.success("Crawling Job will be triggered soon.");
 	}
 
 	@PostMapping("/{id}/crawl")
-	public String crawl(@PathVariable("id") Long catalogId) {
+	public Result<String> crawl(@PathVariable("id") Long catalogId) {
 		crawlerLauncher.submit(catalogId, null);
-		return "redirect:/catalog/";
+		return Result.success("Crawling Job will be triggered soon.");
 	}
 
 	@PostMapping("/{id}/update")
-	public String update(@PathVariable("id") Long catalogId) {
+	public Result<String> update(@PathVariable("id") Long catalogId) {
 		crawlerLauncher.update(catalogId, null);
-		return "redirect:/catalog/";
+		return Result.success("Crawling Job will be triggered soon.");
 	}
 
-	@GetMapping("/{id}/summary")
-	public String summary(@PathVariable("id") Long catalogId, Model ui) {
-		ui.addAttribute("catalogId", catalogId);
-		return "catalog_index";
+	@PostMapping("/save")
+	public Result<String> saveCatalog(@RequestBody Catalog catalog) {
+		resourceManager.saveCatalog(catalog);
+		return Result.success("Save OK.");
 	}
 
-	@PostMapping("/{id}/summary/content")
-	public String summaryContent(@PathVariable("id") Long catalogId, Model ui) {
+	@PostMapping("/{id}/summary")
+	public Result<CatalogSummary> summary(@PathVariable("id") Long catalogId) {
 		Catalog catalog = resourceManager.getCatalog(catalogId);
 		Summary summary = crawlerStatistics.getSummary(catalogId);
-		ui.addAttribute("summary", new CatalogSummary(catalog, summary));
-		return "catalog_index_summary";
+		return Result.success(new CatalogSummary(catalog, summary));
+	}
+
+	@PostMapping("/{id}/run")
+	public Result<Boolean> isRunning(@PathVariable("id") Long catalogId) {
+		Summary summary = crawlerStatistics.getSummary(catalogId);
+		return Result.success(!summary.isCompleted());
+	}
+
+	@PostMapping("/list")
+	public Result<PageBean<CatalogInfo>> queryForCatalog(@RequestParam(value = "page", defaultValue = "1", required = false) int page,
+			@CookieValue(value = "DATA_LIST_SIZE", required = false, defaultValue = "10") int size) {
+		PageResponse<CatalogInfo> pageResponse = resourceManager.queryForCatalog(page, size);
+		return Result.success(PageBean.wrap(pageResponse));
 	}
 
 }

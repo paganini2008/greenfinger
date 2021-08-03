@@ -43,7 +43,7 @@ public class WebServerConfig {
 		serverFactory.setIoThreads(Runtime.getRuntime().availableProcessors() * 2);
 		serverFactory.setWorkerThreads(200);
 		serverFactory.setUseDirectBuffers(true);
-		serverFactory.setBufferSize(1024);
+		serverFactory.setBufferSize(8192);
 		serverFactory.addBuilderCustomizers((builder) -> {
 			builder.setServerOption(UndertowOptions.MAX_ENTITY_SIZE, 100L * 1024 * 1024);
 		});

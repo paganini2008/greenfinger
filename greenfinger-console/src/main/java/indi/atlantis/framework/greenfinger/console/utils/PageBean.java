@@ -24,6 +24,15 @@ import com.github.paganini2008.devtools.jdbc.PageResponse;
 /**
  * 
  * PageBean
+ * <ul>
+ * <li>-1: total records</li> 
+ * <li> 0: current page</li>  
+ * <li> 1: first page</li> 
+ * <li> 2: previous page</li> 
+ * <li> 3: page number</li> 
+ * <li> 4: last page</li> 
+ * <li> 5: next page</li> 
+ * </ul>
  * @author Fred Feng
  * 
  * @since 2.0.1
@@ -124,7 +133,7 @@ public class PageBean<T> implements Serializable {
 		}
 		showArray = new int[len][2];
 		int arrayindex = 0;
-		// -1记录总数 0当前页 1 首页 2上一页 3普通页 4末页 5下一页
+
 		if (this.rows > 0) {
 			showArray[arrayindex][0] = this.rows;
 			showArray[arrayindex][1] = -1;

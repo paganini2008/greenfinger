@@ -20,7 +20,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import com.github.paganini2008.devtools.enums.EnumConstant;
 import com.github.paganini2008.devtools.enums.EnumUtils;
 
-import indi.atlantis.framework.greenfinger.CrawlerSummary.Summary;
+import indi.atlantis.framework.greenfinger.CrawlerStatistics.Summary;
 
 /**
  * 

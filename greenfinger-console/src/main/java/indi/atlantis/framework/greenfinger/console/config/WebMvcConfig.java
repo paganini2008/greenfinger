@@ -20,11 +20,14 @@ import static indi.atlantis.framework.greenfinger.console.WebConstants.REQUEST_A
 import javax.servlet.MultipartConfigElement;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 
 import org.springframework.boot.web.servlet.MultipartConfigFactory;
+import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.MethodParameter;
+import org.springframework.core.env.Environment;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.server.ServerHttpRequest;
@@ -39,7 +42,10 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 
-import indi.atlantis.framework.greenfinger.console.utils.Response;
+import com.github.paganini2008.devtools.StringUtils;
+
+import indi.atlantis.framework.greenfinger.console.utils.Result;
+import indi.atlantis.framework.greenfinger.console.utils.WebUtils;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -57,6 +63,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
 	public void addResourceHandlers(ResourceHandlerRegistry registry) {
 		registry.addResourceHandler("/swagger-ui.html").addResourceLocations("classpath:/META-INF/resources/");
 		registry.addResourceHandler("/webjars/**").addResourceLocations("classpath:/META-INF/resources/webjars/");
+		registry.addResourceHandler("/static/**").addResourceLocations("classpath:/META-INF/static/");
 	}
 
 	@Override
@@ -73,12 +80,43 @@ public class WebMvcConfig implements WebMvcConfigurer {
 	}
 
 	public void addInterceptors(InterceptorRegistry registry) {
-		registry.addInterceptor(signHandlerInterceptor()).addPathPatterns("/**");
+		registry.addInterceptor(signHandlerInterceptor()).addPathPatterns("/**").order(1);
+		registry.addInterceptor(basicHandlerInterceptor()).addPathPatterns("/**").order(2);
+	}
+
+	@Bean
+	public HandlerInterceptor basicHandlerInterceptor() {
+		return new BasicHandlerInterceptor();
 	}
 
 	@Bean
 	public HandlerInterceptor signHandlerInterceptor() {
 		return new SignHandlerInterceptor();
+	}
+
+	public static class BasicHandlerInterceptor implements HandlerInterceptor, EnvironmentAware {
+
+		private static final String ATTR_WEB_CONTEXT_PATH = "contextPath";
+
+		private Environment environment;
+
+		@Override
+		public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+			HttpSession session = request.getSession();
+			if (session.getAttribute(ATTR_WEB_CONTEXT_PATH) == null) {
+				String webContextPath = environment.getProperty("atlantis.framework.greenginger.console.contextPath");
+				if (StringUtils.isBlank(webContextPath)) {
+					webContextPath = WebUtils.getContextPath(request);
+				}
+				session.setAttribute(ATTR_WEB_CONTEXT_PATH, webContextPath);
+			}
+			return true;
+		}
+
+		public void setEnvironment(Environment environment) {
+			this.environment = environment;
+		}
+
 	}
 
 	@Slf4j
@@ -119,16 +157,14 @@ public class WebMvcConfig implements WebMvcConfigurer {
 			ServletServerHttpRequest request = (ServletServerHttpRequest) req;
 			HttpServletRequest servletRequest = request.getServletRequest();
 			long startTime = 0;
-			if (servletRequest.getAttribute(REQUEST_ATTRIBUTE_START_TIME) != null) {
-				startTime = (Long) servletRequest.getAttribute(REQUEST_ATTRIBUTE_START_TIME);
-				if (log.isTraceEnabled()) {
-					log.trace(request.toString() + " take(ms): " + (System.currentTimeMillis() - startTime));
-				}
+			if (log.isTraceEnabled()) {
+				startTime = (Long) servletRequest.getAttribute("sign");
+				log.trace("Path: " + servletRequest.getServletPath() + " take(ms): " + (System.currentTimeMillis() - startTime));
 			}
-			if (body instanceof Response) {
-				Response response = (Response) body;
-				response.setElapsed(startTime > 0 ? System.currentTimeMillis() - startTime : 0);
-				response.setRequestPath(servletRequest.getServletPath());
+			if (body instanceof Result) {
+				Result<?> result = (Result<?>) body;
+				result.setElapsed(startTime > 0 ? System.currentTimeMillis() - startTime : 0);
+				result.setRequestPath(servletRequest.getServletPath());
 			}
 			return body;
 		}

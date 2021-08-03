@@ -16,6 +16,7 @@
 package indi.atlantis.framework.greenfinger.es;
 
 import java.io.Serializable;
+import java.util.Date;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -47,5 +48,5 @@ public class SearchResult implements Serializable {
 	private String cat;
 	private String catalog;
 	private Integer version;
-	private Long createTime;
+	private Date createTime;
 }

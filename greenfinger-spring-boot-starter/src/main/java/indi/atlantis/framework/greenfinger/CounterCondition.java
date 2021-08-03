@@ -19,16 +19,20 @@ import indi.atlantis.framework.vortex.common.Tuple;
 
 /**
  * 
- * CountingCondition
+ * CounterCondition
  *
  * @author Fred Feng
  * 
  * @since 2.0.1
  */
-public class CountingCondition extends DurationCondition {
+public class CounterCondition extends DurationCondition {
 
-	public CountingCondition(CrawlerSummary crawlerSummary, long defaultDuration, int defaultMaxFetchSize) {
-		super(crawlerSummary, defaultDuration);
+	public CounterCondition(CrawlerStatistics crawlerStatistics, int defaultMaxFetchSize) {
+		this(crawlerStatistics, 24 * 60 * 60 * 1000L, defaultMaxFetchSize);
+	}
+
+	public CounterCondition(CrawlerStatistics crawlerStatistics, long defaultDuration, int defaultMaxFetchSize) {
+		super(crawlerStatistics, defaultDuration);
 		this.defaultMaxFetchSize = defaultMaxFetchSize;
 	}
 
@@ -42,8 +46,8 @@ public class CountingCondition extends DurationCondition {
 
 	@Override
 	protected boolean evaluate(long catalogId, Tuple tuple) {
-		long maxFetchSize = (Integer) tuple.getField("maxFetchSize", defaultMaxFetchSize);
-		return countingType.evaluate(getCrawlerSummary().getSummary(catalogId), maxFetchSize);
+		int maxFetchSize = (Integer) tuple.getField("maxFetchSize", defaultMaxFetchSize);
+		return countingType.evaluate(getCrawlerStatistics().getSummary(catalogId), maxFetchSize);
 	}
 
 }

@@ -17,6 +17,7 @@ package indi.atlantis.framework.greenfinger;
 
 import java.util.Date;
 
+import indi.atlantis.framework.greenfinger.CrawlerStatistics.Summary;
 import indi.atlantis.framework.vortex.common.Tuple;
 import lombok.extern.slf4j.Slf4j;
 
@@ -31,8 +32,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class DurationCondition extends AbstractCondition {
 
-	public DurationCondition(CrawlerSummary crawlerSummary, long defaultDuration) {
-		super(crawlerSummary);
+	public DurationCondition(CrawlerStatistics crawlerStatistics, long defaultDuration) {
+		super(crawlerStatistics);
 		this.defaultDuration = defaultDuration;
 	}
 
@@ -44,10 +45,10 @@ public class DurationCondition extends AbstractCondition {
 			return true;
 		}
 		long duration = (Long) tuple.getField("duration", defaultDuration);
-		long elapsed = getCrawlerSummary().getSummary(catalogId).getElapsedTime();
-		boolean completed = elapsed > duration || evaluate(catalogId, tuple);
-		set(catalogId, completed);
-		if (completed) {
+		Summary summary = getCrawlerStatistics().getSummary(catalogId);
+		long elapsed = summary.getElapsedTime();
+		set(catalogId, elapsed > duration || evaluate(catalogId, tuple));
+		if (summary.isCompleted()) {
 			log.info("Finish crawling work on deadline: {}", new Date());
 			afterCompletion(catalogId, tuple);
 		}

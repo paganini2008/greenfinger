@@ -35,14 +35,14 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * 
- * CrawlerSummary
+ * CrawlerStatistics
  *
  * @author Fred Feng
  * 
  * @since 2.0.1
  */
 @Slf4j
-public class CrawlerSummary implements BeanLifeCycle, Executable {
+public class CrawlerStatistics implements BeanLifeCycle, Executable {
 
 	private static final String defaultRedisKeyPattern = "spring:webcrawler:cluster:%s:catalog:summary:%s";
 	private static final long DEFAULT_CRAWLER_IDLE_TIMEOUT = DateUtils.convertToMillis(5, TimeUnit.MINUTES);
@@ -50,7 +50,7 @@ public class CrawlerSummary implements BeanLifeCycle, Executable {
 	private final String crawlerName;
 	private final RedisConnectionFactory redisConnectionFactory;
 
-	public CrawlerSummary(String crawlerName, RedisConnectionFactory redisConnectionFactory) {
+	public CrawlerStatistics(String crawlerName, RedisConnectionFactory redisConnectionFactory) {
 		this.crawlerName = crawlerName;
 		this.redisConnectionFactory = redisConnectionFactory;
 	}
@@ -87,7 +87,6 @@ public class CrawlerSummary implements BeanLifeCycle, Executable {
 		if (timer != null) {
 			timer.cancel();
 		}
-
 		cache.values().forEach(summary -> {
 			summary.reset();
 		});
@@ -138,7 +137,7 @@ public class CrawlerSummary implements BeanLifeCycle, Executable {
 			filteredUrls = new RedisAtomicLong(keyPrefix + ":filteredUrlCount", redisConnectionFactory);
 			saved = new RedisAtomicLong(keyPrefix + ":savedCount", redisConnectionFactory);
 			indexed = new RedisAtomicLong(keyPrefix + ":indexedCount", redisConnectionFactory);
-			completed = new GenericRedisTemplate<Boolean>(keyPrefix + ":completed", Boolean.class, redisConnectionFactory, false);
+			completed = new GenericRedisTemplate<Boolean>(keyPrefix + ":completed", Boolean.class, redisConnectionFactory, true);
 		}
 
 		public void reset() {
@@ -163,23 +162,43 @@ public class CrawlerSummary implements BeanLifeCycle, Executable {
 		}
 
 		public long incrementUrlCount() {
-			return urls.incrementAndGet();
+			try {
+				return urls.incrementAndGet();
+			} finally {
+				this.timestamp = System.currentTimeMillis();
+			}
 		}
 
 		public long incrementInvalidUrlCount() {
-			return invalidUrls.incrementAndGet();
+			try {
+				return invalidUrls.incrementAndGet();
+			} finally {
+				this.timestamp = System.currentTimeMillis();
+			}
 		}
 
 		public long incrementExistedUrlCount() {
-			return existedUrls.incrementAndGet();
+			try {
+				return existedUrls.incrementAndGet();
+			} finally {
+				this.timestamp = System.currentTimeMillis();
+			}
 		}
 
 		public long incrementFilteredUrlCount() {
-			return filteredUrls.incrementAndGet();
+			try {
+				return filteredUrls.incrementAndGet();
+			} finally {
+				this.timestamp = System.currentTimeMillis();
+			}
 		}
 
 		public long incrementSavedCount() {
-			return saved.incrementAndGet();
+			try {
+				return saved.incrementAndGet();
+			} finally {
+				this.timestamp = System.currentTimeMillis();
+			}
 		}
 
 		public long incrementIndexedCount() {
@@ -187,27 +206,51 @@ public class CrawlerSummary implements BeanLifeCycle, Executable {
 		}
 
 		public long incrementUrlCount(int delta) {
-			return urls.addAndGet(delta);
+			try {
+				return urls.addAndGet(delta);
+			} finally {
+				this.timestamp = System.currentTimeMillis();
+			}
 		}
 
 		public long incrementInvalidUrlCount(int delta) {
-			return invalidUrls.addAndGet(delta);
+			try {
+				return invalidUrls.addAndGet(delta);
+			} finally {
+				this.timestamp = System.currentTimeMillis();
+			}
 		}
 
 		public long incrementExistedUrlCount(int delta) {
-			return existedUrls.addAndGet(delta);
+			try {
+				return existedUrls.addAndGet(delta);
+			} finally {
+				this.timestamp = System.currentTimeMillis();
+			}
 		}
 
 		public long incrementFilteredUrlCount(int delta) {
-			return filteredUrls.addAndGet(delta);
+			try {
+				return filteredUrls.addAndGet(delta);
+			} finally {
+				this.timestamp = System.currentTimeMillis();
+			}
 		}
 
 		public long incrementSavedCount(int delta) {
-			return saved.addAndGet(delta);
+			try {
+				return saved.addAndGet(delta);
+			} finally {
+				this.timestamp = System.currentTimeMillis();
+			}
 		}
 
 		public long incrementIndexedCount(int delta) {
-			return indexed.addAndGet(delta);
+			try {
+				return indexed.addAndGet(delta);
+			} finally {
+				this.timestamp = System.currentTimeMillis();
+			}
 		}
 
 		public long getUrlCount() {

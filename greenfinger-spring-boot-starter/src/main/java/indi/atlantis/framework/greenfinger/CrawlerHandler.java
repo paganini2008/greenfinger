@@ -80,12 +80,12 @@ public class CrawlerHandler implements Handler {
 	private IndexedResourceService indexService;
 
 	@Autowired
-	private CrawlerSummary crawlerSummary;
+	private CrawlerStatistics crawlerStatistics;
 
-	@Value("${webcrawler.crawler.fetch.depth:-1}")
-	private int depth;
+	@Value("${atlantis.framework.greenfinger.crawler.fetchDepth:-1}")
+	private int fetchDepth;
 
-	@Value("${webcrawler.indexer.enabled:true}")
+	@Value("${atlantis.framework.greenfinger.indexer.enabled:true}")
 	private boolean indexEnabled;
 
 	private final Map<Long, Catalog> catalogCache = new ConcurrentHashMap<Long, Catalog>();
@@ -127,12 +127,12 @@ public class CrawlerHandler implements Handler {
 		final String pageEncoding = (String) tuple.getField("pageEncoding");
 		final int version = (Integer) tuple.getField("version");
 
-		crawlerSummary.getSummary(catalogId).incrementUrlCount();
+		crawlerStatistics.getSummary(catalogId).incrementUrlCount();
 
 		PathFilter pathFilter = getPathFilter(catalogId);
 		String pathIdentifier = String.format(UNIQUE_PATH_IDENTIFIER, catalogId, refer, path, version);
 		if (pathFilter.mightExist(pathIdentifier)) {
-			crawlerSummary.getSummary(catalogId).incrementExistedUrlCount();
+			crawlerStatistics.getSummary(catalogId).incrementExistedUrlCount();
 			return;
 		}
 		pathFilter.update(pathIdentifier);
@@ -146,7 +146,7 @@ public class CrawlerHandler implements Handler {
 			html = pageExtractor.extractHtml(refer, path, charset);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			crawlerSummary.getSummary(catalogId).incrementInvalidUrlCount();
+			crawlerStatistics.getSummary(catalogId).incrementInvalidUrlCount();
 			html = pageExtractor.defaultPage(refer, path, charset, e);
 		}
 		if (StringUtils.isBlank(html)) {
@@ -168,7 +168,7 @@ public class CrawlerHandler implements Handler {
 		resource.setCatalogId(catalogId);
 		resource.setCreateTime(new Date());
 		resourceManager.saveResource(resource);
-		crawlerSummary.getSummary(catalogId).incrementSavedCount();
+		crawlerStatistics.getSummary(catalogId).incrementSavedCount();
 		if (log.isTraceEnabled()) {
 			log.trace("Save resource: " + resource);
 		}
@@ -205,7 +205,7 @@ public class CrawlerHandler implements Handler {
 		final String cat = (String) tuple.getField("cat");
 		final String pageEncoding = (String) tuple.getField("pageEncoding");
 		final int version = (Integer) tuple.getField("version");
-		crawlerSummary.getSummary(catalogId).incrementUrlCount();
+		crawlerStatistics.getSummary(catalogId).incrementUrlCount();
 
 		Charset charset = CharsetUtils.toCharset(pageEncoding);
 		String html = null;
@@ -213,7 +213,7 @@ public class CrawlerHandler implements Handler {
 			html = pageExtractor.extractHtml(refer, path, charset);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			crawlerSummary.getSummary(catalogId).incrementInvalidUrlCount();
+			crawlerStatistics.getSummary(catalogId).incrementInvalidUrlCount();
 			html = pageExtractor.defaultPage(refer, path, charset, e);
 		}
 		if (StringUtils.isBlank(html)) {
@@ -233,7 +233,7 @@ public class CrawlerHandler implements Handler {
 		PathFilter pathFilter = getPathFilter(catalogId);
 		String pathIdentifier = String.format(UNIQUE_PATH_IDENTIFIER, catalogId, refer, path, version);
 		if (pathFilter.mightExist(pathIdentifier)) {
-			crawlerSummary.getSummary(catalogId).incrementExistedUrlCount();
+			crawlerStatistics.getSummary(catalogId).incrementExistedUrlCount();
 		} else {
 			pathFilter.update(pathIdentifier);
 
@@ -246,7 +246,7 @@ public class CrawlerHandler implements Handler {
 			resource.setCatalogId(catalogId);
 			resource.setCreateTime(new Date());
 			resourceManager.saveResource(resource);
-			crawlerSummary.getSummary(catalogId).incrementSavedCount();
+			crawlerStatistics.getSummary(catalogId).incrementSavedCount();
 			if (log.isTraceEnabled()) {
 				log.trace("Save resource: " + resource);
 			}
@@ -280,8 +280,8 @@ public class CrawlerHandler implements Handler {
 		long resourceId = (Long) tuple.getField("resourceId");
 		int version = (Integer) tuple.getField("version");
 		Resource resource = resourceManager.getResource(resourceId);
-		indexService.index(catalog, resource, false, version);
-		crawlerSummary.getSummary(catalogId).incrementIndexedCount();
+		indexService.indexResource(catalog, resource, false, version);
+		crawlerStatistics.getSummary(catalogId).incrementIndexedCount();
 	}
 
 	private boolean acceptedPath(long catalogId, String refer, String path, Tuple tuple) {
@@ -289,17 +289,17 @@ public class CrawlerHandler implements Handler {
 		if (!pathAcceptor.accept(catalogId, refer, path, tuple)) {
 			accepted = false;
 		}
-		if (!testDepth(refer, path)) {
+		if (!testFetchDepth(refer, path)) {
 			accepted = false;
 		}
 		if (!accepted) {
-			crawlerSummary.getSummary(catalogId).incrementFilteredUrlCount();
+			crawlerStatistics.getSummary(catalogId).incrementFilteredUrlCount();
 		}
 		return accepted;
 	}
 
-	private boolean testDepth(String refer, String path) {
-		if (depth < 0) {
+	private boolean testFetchDepth(String refer, String path) {
+		if (fetchDepth < 0) {
 			return true;
 		}
 		String part = path.replace(refer, "");
@@ -312,7 +312,7 @@ public class CrawlerHandler implements Handler {
 				n++;
 			}
 		}
-		return n <= depth;
+		return n <= fetchDepth;
 	}
 
 	private void updateRecursively(String action, long catalogId, String refer, String path, int version, Tuple current) {
@@ -334,7 +334,7 @@ public class CrawlerHandler implements Handler {
 			PathFilter pathFilter) {
 		String pathIdentifier = String.format(UNIQUE_PATH_IDENTIFIER, catalogId, refer, path, version);
 		if (pathFilter.mightExist(pathIdentifier)) {
-			crawlerSummary.getSummary(catalogId).incrementExistedUrlCount();
+			crawlerStatistics.getSummary(catalogId).incrementExistedUrlCount();
 			return;
 		}
 		Tuple tuple = Tuple.newOne();

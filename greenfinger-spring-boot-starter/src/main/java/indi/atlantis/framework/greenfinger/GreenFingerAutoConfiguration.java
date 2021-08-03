@@ -95,8 +95,8 @@ public class GreenFingerAutoConfiguration {
 
 	@ConditionalOnMissingBean
 	@Bean
-	public Condition conditionalTermination(CrawlerSummary crawlerSummary) {
-		return new CountingCondition(crawlerSummary, DateUtils.convertToMillis(20, TimeUnit.MINUTES), 100000);
+	public Condition defaultCondition(CrawlerStatistics crawlerStatistics) {
+		return new CounterCondition(crawlerStatistics, DateUtils.convertToMillis(30, TimeUnit.MINUTES), 100000);
 	}
 
 	@ConditionalOnMissingBean
@@ -111,8 +111,13 @@ public class GreenFingerAutoConfiguration {
 	}
 
 	@Bean
-	public CrawlerSummary crawlerSummary(RedisConnectionFactory redisConnectionFactory) {
-		return new CrawlerSummary(clusterName, redisConnectionFactory);
+	public CrawlerStatistics crawlerStatistics(RedisConnectionFactory redisConnectionFactory) {
+		return new CrawlerStatistics(clusterName, redisConnectionFactory);
+	}
+	
+	@Bean
+	public CatalogAdminService catalogAdminService() {
+		return new CatalogAdminService();
 	}
 
 }

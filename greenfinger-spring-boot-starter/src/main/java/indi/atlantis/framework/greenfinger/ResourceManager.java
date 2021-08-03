@@ -19,6 +19,7 @@ import com.github.paganini2008.devtools.jdbc.PageResponse;
 
 import indi.atlantis.framework.greenfinger.model.Catalog;
 import indi.atlantis.framework.greenfinger.model.CatalogIndex;
+import indi.atlantis.framework.greenfinger.model.CatalogInfo;
 import indi.atlantis.framework.greenfinger.model.Resource;
 
 /**
@@ -37,7 +38,7 @@ public interface ResourceManager {
 
 	Catalog getCatalog(long id);
 
-	PageResponse<Catalog> queryForCatalog(int page, int size);
+	PageResponse<CatalogInfo> queryForCatalog(int page, int size);
 
 	int updateCatalogIndex(CatalogIndex catalogIndex);
 

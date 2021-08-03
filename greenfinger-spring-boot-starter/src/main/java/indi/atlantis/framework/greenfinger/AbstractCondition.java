@@ -27,28 +27,28 @@ import indi.atlantis.framework.vortex.common.Tuple;
  */
 public abstract class AbstractCondition implements Condition {
 
-	private final CrawlerSummary crawlerSummary;
+	private final CrawlerStatistics crawlerStatistics;
 
-	protected AbstractCondition(CrawlerSummary crawlerSummary) {
-		this.crawlerSummary = crawlerSummary;
+	protected AbstractCondition(CrawlerStatistics crawlerStatistics) {
+		this.crawlerStatistics = crawlerStatistics;
 	}
 
 	@Override
 	public void reset(long catalogId) {
-		crawlerSummary.reset(catalogId);
+		crawlerStatistics.reset(catalogId);
 	}
 
 	protected void set(long catalogId, boolean completed) {
-		crawlerSummary.getSummary(catalogId).setCompleted(completed);
+		crawlerStatistics.getSummary(catalogId).setCompleted(completed);
 	}
 
 	@Override
 	public boolean isCompleted(long catalogId, Tuple tuple) {
-		return crawlerSummary.getSummary(catalogId).isCompleted();
+		return crawlerStatistics.getSummary(catalogId).isCompleted();
 	}
 
-	public CrawlerSummary getCrawlerSummary() {
-		return crawlerSummary;
+	public CrawlerStatistics getCrawlerStatistics() {
+		return crawlerStatistics;
 	}
 
 }

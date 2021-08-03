@@ -50,21 +50,22 @@ public final class CrawlerLauncher {
 	private ResourceManager resourceManager;
 
 	@Autowired
-	private PathFilterFactory pathFilterFactory;
+	private CatalogAdminService catalogAdminService;
 
 	@Autowired
-	private Condition condition;
+	private Condition defaultCondition;
 
-	@Value("${webcrawler.indexer.enabled:true}")
+	@Value("${atlantis.framework.greenfinger.indexer.enabled:true}")
 	private boolean indexEnabled;
 
-	public void rebuild(long catalogId) {
-		pathFilterFactory.clean(catalogId);
-		submit(catalogId);
+	public void rebuild(long catalogId, Condition extraCondition) {
+		catalogAdminService.cleanCatalog(catalogId, true);
+		resourceManager.incrementCatalogIndexVersion(catalogId);
+		submit(catalogId, extraCondition);
 	}
 
-	public void submit(long catalogId) {
-
+	public void submit(long catalogId, Condition extraCondition) {
+		Condition condition = extraCondition != null ? extraCondition : defaultCondition;
 		condition.reset(catalogId);
 
 		Catalog catalog = resourceManager.getCatalog(catalogId);
@@ -84,8 +85,8 @@ public final class CrawlerLauncher {
 		nioClient.send(Tuple.wrap(data), partitioner);
 	}
 
-	public void update(long catalogId) {
-
+	public void update(long catalogId, Condition extraCondition) {
+		Condition condition = extraCondition != null ? extraCondition : defaultCondition;
 		condition.reset(catalogId);
 
 		Catalog catalog = resourceManager.getCatalog(catalogId);

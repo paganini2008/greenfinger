@@ -37,6 +37,7 @@ import indi.atlantis.framework.greenfinger.PageExtractor;
 import indi.atlantis.framework.greenfinger.ResourceManager;
 import indi.atlantis.framework.greenfinger.model.Catalog;
 import indi.atlantis.framework.greenfinger.model.CatalogIndex;
+import indi.atlantis.framework.greenfinger.model.CatalogInfo;
 import indi.atlantis.framework.greenfinger.model.Resource;
 import lombok.extern.slf4j.Slf4j;
 
@@ -96,34 +97,50 @@ public class IndexedResourceService {
 		return indexedResourceRepository.count();
 	}
 
-	public void indexAll(boolean upgrade) {
-		StopWatch stopWatch = new StopWatch();
+	public void upgradeAllCatalogs() {
+		final StopWatch stopWatch = new StopWatch();
 		int page = 1;
-		PageResponse<Catalog> pageResponse = resourceManager.queryForCatalog(page, 10);
-		for (PageResponse<Catalog> current : pageResponse) {
-			for (Catalog catalog : current.getContent()) {
+		PageResponse<CatalogInfo> pageResponse = resourceManager.queryForCatalog(page, 10);
+		for (PageResponse<CatalogInfo> current : pageResponse) {
+			for (CatalogInfo catalog : current.getContent()) {
 				stopWatch.start(String.format("[%s<%s>]", catalog.getName(), catalog.getUrl()));
-				indexAll(catalog.getId(), upgrade);
+				upgradeCatalog(catalog.getId());
 				stopWatch.stop();
 			}
 		}
 		log.info(stopWatch.prettyPrint());
 	}
 
-	public void indexAll(long catalogId, boolean upgrade) {
+	public void indexAllCatalogs() {
+		final StopWatch stopWatch = new StopWatch();
+		int page = 1;
+		PageResponse<CatalogInfo> pageResponse = resourceManager.queryForCatalog(page, 10);
+		for (PageResponse<CatalogInfo> current : pageResponse) {
+			for (CatalogInfo catalog : current.getContent()) {
+				stopWatch.start(String.format("[%s<%s>]", catalog.getName(), catalog.getUrl()));
+				indexCatalog(catalog.getId());
+				stopWatch.stop();
+			}
+		}
+		log.info(stopWatch.prettyPrint());
+	}
+
+	public void upgradeCatalog(long catalogId) {
+		resourceManager.incrementCatalogIndexVersion(catalogId);
+		indexCatalog(catalogId);
+	}
+
+	public void indexCatalog(long catalogId) {
 		long startTime = System.currentTimeMillis();
 		Catalog catalog = resourceManager.getCatalog(catalogId);
 		log.info("Start to index catalog '{}' ...", catalog.getName());
-		if (upgrade) {
-			resourceManager.incrementCatalogIndexVersion(catalogId);
-		}
 		CatalogIndex catalogIndex = resourceManager.getCatalogIndex(catalogId);
 		int page = 1;
 		PageResponse<Resource> pageResponse = resourceManager.queryForResourceForIndex(catalogId, page, 100);
 		for (PageResponse<Resource> current : pageResponse) {
 			for (Resource resource : current.getContent()) {
 				try {
-					index(catalog, resource, true, catalogIndex.getVersion());
+					indexResource(catalog, resource, true, catalogIndex.getVersion());
 				} catch (Exception e) {
 					log.error(e.getMessage(), e);
 				}
@@ -134,7 +151,7 @@ public class IndexedResourceService {
 				Duration.HOUR.format(System.currentTimeMillis() - startTime));
 	}
 
-	public void index(Catalog catalog, Resource resource, boolean refresh, int version) {
+	public void indexResource(Catalog catalog, Resource resource, boolean refresh, int version) {
 		IndexedResource indexedResource = new IndexedResource();
 		String html = resource.getHtml();
 		if (refresh) {

@@ -28,6 +28,7 @@ import com.github.paganini2008.springdessert.reditools.common.IdGenerator;
 import indi.atlantis.framework.greenfinger.ResourceManager;
 import indi.atlantis.framework.greenfinger.model.Catalog;
 import indi.atlantis.framework.greenfinger.model.CatalogIndex;
+import indi.atlantis.framework.greenfinger.model.CatalogInfo;
 import indi.atlantis.framework.greenfinger.model.Resource;
 
 /**
@@ -44,12 +45,14 @@ public class JdbcResourceManger implements ResourceManager {
 	public static final String SQL_CATALOG_INSERT = "insert into crawler_catalog (id,name,url,path_pattern,excluded_path_pattern,cat,page_encoding,max_fetch_size,duration,last_modified) values (:id,:name,:url,:pathPattern,:excludedPathPattern,:cat,:pageEncoding,:maxFetchSize,:duration,:lastModified)";
 	public static final String SQL_CATALOG_UPDATE = "update crawler_catalog set name=:name,url=:url,path_pattern=:pathPattern,excluded_path_pattern=:excludedPathPattern,cat=:cat,last_modified=:lastModified where id=:id";
 	public static final String SQL_CATALOG_INDEX_INSERT = "insert into crawler_catalog_index (id,catalog_id,version,last_modified) values (:id,:catalogId,:version,:lastModified)";
-	public static final String SQL_CATALOG_INDEX_UPDATE = "update crawler_catalog_index set version=:version,last_modified=:lastModified where id=:id";
-	public static final String SQL_CATALOG_INDEX_VERSION_INCREMENT = "update crawler_catalog_index set version=version+1 where catalog_id=:catalogId";
+	public static final String SQL_CATALOG_INDEX_UPDATE = "update crawler_catalog_index set version=:version,last_modified=:lastModified where catalog_id=:catalogId";
+	public static final String SQL_CATALOG_INDEX_VERSION_INCREMENT = "update crawler_catalog_index set version=version+1, last_modified=:lastModified where catalog_id=:catalogId";
+	public static final String SQL_CATALOG_INDEX_VERSION_SELECT = "select version from crawler_catalog_index where catalog_id=:catalogId";
 	public static final String SQL_CATALOG_SELECT_ONE = "select * from crawler_catalog where id=:id limit 1";
 	public static final String SQL_CATALOG_INDEX_SELECT_ONE = "select * from crawler_catalog_index where catalog_id=:catalogId";
 	public static final String SQL_CATALOG_DELETE = "delete from crawler_catalog where id=:id";
-	public static final String SQL_CATALOG_SELECT_ALL = "select * from crawler_catalog order by last_modified desc";
+	public static final String SQL_CATALOG_INDEX_DELETE = "delete from crawler_catalog_index where catalog_id=:catalogId";
+	public static final String SQL_CATALOG_SELECT_ALL = "select a.*,b.version,b.last_modified as lastIndexed from crawler_catalog a join crawler_catalog_index b on a.id=b.catalog_id order by a.last_modified desc,b.last_modified desc";
 	public static final String SQL_CATALOG_INDEX_MAX_VERSION = "select max(version) from crawler_catalog_index";
 	public static final String SQL_RESOURCE_INSERT = "insert into crawler_resource (id,title,html,url,cat,create_time,version,catalog_id) values (:id,:title,:html,:url,:cat,:createTime,:version,:catalogId)";
 	public static final String SQL_RESOURCE_SELECT_FOR_INDEX = "select * from crawler_resource where catalog_id=:catalogId and version<(select version from crawler_catalog_index where catalog_id=:catalogId)";
@@ -81,14 +84,19 @@ public class JdbcResourceManger implements ResourceManager {
 		catalogIndex.setId(idGenerator.generateId());
 		catalogIndex.setCatalogId(catalog.getId());
 		catalogIndex.setLastModified(now);
-		catalogIndex.setVersion(1);
+		catalogIndex.setVersion(0);
 		catalogIndexDao.saveCatalogIndex(catalogIndex);
 		return catalog.getId();
 	}
 
 	@Override
 	public int deleteCatalog(long id) {
-		return catalogDao.deleteCatalog(id);
+		int row = 0;
+		if ((row += catalogDao.deleteCatalog(id)) > 0) {
+			row += catalogIndexDao.deleteCatalogIndex(id);
+			return row;
+		}
+		return row;
 	}
 
 	@Override
@@ -97,14 +105,16 @@ public class JdbcResourceManger implements ResourceManager {
 	}
 
 	@Override
-	public PageResponse<Catalog> queryForCatalog(int page, int size) {
-		ResultSetSlice<Catalog> resultSetSlice = catalogDao.queryForCatalog();
+	public PageResponse<CatalogInfo> queryForCatalog(int page, int size) {
+		ResultSetSlice<CatalogInfo> resultSetSlice = catalogDao.queryForCatalog();
 		return resultSetSlice.list(PageRequest.of(page, size));
 	}
 
 	@Override
 	public int updateCatalogIndex(CatalogIndex catalogIndex) {
-		catalogIndex.setLastModified(new Date());
+		if (catalogIndex.getLastModified() == null) {
+			catalogIndex.setLastModified(new Date());
+		}
 		return catalogIndexDao.updateCatalogIndex(catalogIndex);
 	}
 
@@ -147,7 +157,8 @@ public class JdbcResourceManger implements ResourceManager {
 
 	@Override
 	public int incrementCatalogIndexVersion(long catalogId) {
-		return catalogIndexDao.incrementCatalogIndexVersion(catalogId);
+		catalogIndexDao.incrementCatalogIndexVersion(new Date(), catalogId);
+		return catalogIndexDao.getCatalogIndexVersion(catalogId);
 	}
 
 	@Override
