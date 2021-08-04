@@ -31,12 +31,15 @@
 				case 'Rebuild':
 					location += '/api/catalog/' + catalogId + '/rebuild';
 					break;
+				case 'Stop':
+					location += '/api/catalog/' + catalogId + '/stop';
+					break;
 			}
 			if(location.length > 0){
 				console.log(location);
 				$.post('${contextPath}/api/catalog/' + catalogId + '/run',null,function(data){
-					if(data.data == true){
-						alert('Running!!!');
+					if(data.data == true && txt != 'Stop'){
+						alert('Catalog is running now!');
 						return;
 					}else{
 						$.ajax({
@@ -103,44 +106,50 @@
 			<tbody>
 				<#if page ?? && page.results?? && page.results? size gt 0>
 					<#list page.results as bean>
-						<tr catalogId="${(bean.id)!}">
+						<tr catalogId="${(bean.catalog.id)!}">
 							<td width="3%">
-							    <a href="${contextPath}/catalog/${(bean.id)!}/summary">${(page.page - 1) * (page.size) + (bean_index + 1)}</a>
+							    ${(page.page - 1) * (page.size) + (bean_index + 1)}
 							</td>
 							<td width="8%" class="tdLeft5">
-								${(bean.name)!}
+								${(bean.catalog.name)!}
 							</td>
 							<td width="5%" class="tdLeft5">
-								${(bean.cat)!}
+								${(bean.catalog.cat)!}
 							</td>
 							<td class="tdLeft5" title="${(bean.url)!}">
-								${(bean.url)!}
+								${(bean.catalog.url)!}
 							</td>
 							<td width="5%" class="tdLeft5">
-								${(bean.pageEncoding)!}
+								${(bean.catalog.pageEncoding)!}
 							</td>
 							<td width="12%" class="tdLeft5" title="${(bean.pathPattern)!}">
-								${(bean.pathPattern)!}
+								${(bean.catalog.pathPattern)!}
 							</td>
 							<td width="12%" class="tdLeft5" title="${(bean.excludedPathPattern)!}">
-								${(bean.excludedPathPattern)!}
+								${(bean.catalog.excludedPathPattern)!}
 							</td>
 							<td width="8%">
-								${(bean.maxFetchSize)!}
+								${(bean.catalog.maxFetchSize)!}
 							</td>
 							<td width="6%">
-								${(bean.duration)!}
+								${(bean.catalog.duration)!}
 							</td>
 							<td width="10%">
-								${(bean.lastModified? string('yyyy-MM-dd HH:mm:ss'))!}
+								${(bean.catalog.lastModified? string('yyyy-MM-dd HH:mm:ss'))!}
 							</td>
 							<td width="12%" class="tdLeft5">
-								<a class="deleteCatalog opCatalog" href="javascript:void(0);">Delete</a>
-								<a class="cleanCatalog opCatalog" href="javascript:void(0);">Clean</a>
-								<#if bean?? && bean.version gt 0>
-									<a class="updateCatalog opCatalog" href="javascript:void(0);">Update</a>
+								<#if bean?? && bean.completed?string == 'false'>
+									<a class="stopCatalog opCatalog" href="javascript:void(0);">Stop</a>
+									<a href="${contextPath}/catalog/${(bean.catalog.id)!}/summary">Realtime</a>
 								<#else>
-									<a class="rebuildCatalog opCatalog" href="javascript:void(0);">Rebuild</a>
+									<a class="editCatalog" href="${contextPath}/catalog/${(bean.catalog.id)!}/edit">Edit</a>
+									<a class="deleteCatalog opCatalog" href="javascript:void(0);">Delete</a>
+									<a class="cleanCatalog opCatalog" href="javascript:void(0);">Clean</a>
+									<#if bean?? && bean.catalog?? && bean.catalog.version gt 0>
+										<a class="updateCatalog opCatalog" href="javascript:void(0);">Update</a>
+									<#else>
+										<a class="rebuildCatalog opCatalog" href="javascript:void(0);">Rebuild</a>
+									</#if>
 								</#if>
 							</td>
 						</tr>

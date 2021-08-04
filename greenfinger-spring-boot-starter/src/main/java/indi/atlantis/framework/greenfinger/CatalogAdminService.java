@@ -19,7 +19,7 @@ import java.util.Date;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
-import indi.atlantis.framework.greenfinger.es.IndexedResourceService;
+import indi.atlantis.framework.greenfinger.es.ResourceIndexService;
 import indi.atlantis.framework.greenfinger.model.CatalogIndex;
 
 /**
@@ -36,7 +36,7 @@ public class CatalogAdminService {
 	private ResourceManager resourceManager;
 
 	@Autowired
-	private IndexedResourceService indexedResourceService;
+	private ResourceIndexService resourceIndexService;
 
 	@Autowired
 	private PathFilterFactory pathFilterFactory;
@@ -45,7 +45,7 @@ public class CatalogAdminService {
 		resourceManager.deleteResourceByCatalogId(catalogId);
 		pathFilterFactory.clean(catalogId);
 		if (!retainIndex) {
-			indexedResourceService.deleteResource(catalogId, 0);
+			resourceIndexService.deleteResource(catalogId, 0);
 			resourceManager.updateCatalogIndex(new CatalogIndex(catalogId, 0, new Date()));
 		}
 	}
@@ -55,7 +55,7 @@ public class CatalogAdminService {
 		pathFilterFactory.clean(catalogId);
 		resourceManager.deleteCatalog(catalogId);
 		if (!retainIndex) {
-			indexedResourceService.deleteResource(catalogId, 0);
+			resourceIndexService.deleteResource(catalogId, 0);
 		}
 	}
 

@@ -19,25 +19,27 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.github.paganini2008.devtools.collection.ListUtils;
 import com.github.paganini2008.devtools.jdbc.PageResponse;
 
 /**
  * 
  * PageBean
  * <ul>
- * <li>-1: total records</li> 
- * <li> 0: current page</li>  
- * <li> 1: first page</li> 
- * <li> 2: previous page</li> 
- * <li> 3: page number</li> 
- * <li> 4: last page</li> 
- * <li> 5: next page</li> 
+ * <li>-1: total records</li>
+ * <li>0: current page</li>
+ * <li>1: first page</li>
+ * <li>2: previous page</li>
+ * <li>3: page number</li>
+ * <li>4: last page</li>
+ * <li>5: next page</li>
  * </ul>
+ * 
  * @author Fred Feng
  * 
  * @since 2.0.1
  */
-public class PageBean<T> implements Serializable {
+public class PageBean<T> implements Serializable, Cloneable {
 
 	private static final long serialVersionUID = 8934378634483462296L;
 	private static final int PAGE_SIZE = 20;
@@ -330,7 +332,18 @@ public class PageBean<T> implements Serializable {
 	public boolean hasPreviousPage() {
 		return (page - 1 >= 1);
 	}
-	
+
+	@Override
+	public Object clone() {
+		try {
+			PageBean<?> pageBean = (PageBean<?>) super.clone();
+			pageBean.setResults(ListUtils.emptyList());
+			return pageBean;
+		} catch (CloneNotSupportedException e) {
+			throw new IllegalStateException(e);
+		}
+	}
+
 	public static <T> PageBean<T> wrap(PageResponse<T> pageResponse) {
 		PageBean<T> pageBean = new PageBean<T>();
 		pageBean.setPage(pageResponse.getPageNumber());

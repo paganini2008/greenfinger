@@ -15,42 +15,30 @@
 <script type="text/javascript" src="${contextPath}/static/js/common.js"></script>
 </head>
 <style type="text/css">
-
-    #searchBox{
-    	height: 60px;
-    	width: 100%;
-    	clear: both;
-    }
-
-	#tabBox {
-		height: auto;
-		width: 100%;
-		position: relative;
-		bottom: 5px;
+	#selectCat{
+		width: 120px;
+		height: 28px;
+		line-height: 28px;
+		padding-left: 5px;
+		float: right;
 	}
-	    
-	
-	#tabContent{
-		height: auto;
-	}
-	
-	#saveBtn{
-		width: calc(100% - 10px);
-		height: 36px;
-		line-height: 36px;
-		padding: 5px auto;
-		cursor: pointer;
-		text-align: center;
-		font-weight: 800;
+
+	#createBtn{
 		float: left;
-		display: inline-block;
-		margin: 10px auto;
-		background-color: #97CBFF;
 	}
-	    
 </style>
 <script type="text/javascript">
 	$(function(){
+		
+		$('#createBtn').click(function(){
+			window.location.href='${contextPath}/catalog/edit';
+		});
+		
+		$('#selectCat').change(function(){
+			$('#pageNo').val(1);
+			$('#searchForm').attr('action','${contextPath}/catalog/list');
+			$('#searchForm').submit();
+		});
 	
 		$('#searchForm').submit(function(){
 			var obj = $(this);
@@ -71,7 +59,32 @@
 		onLoad();
 	});
 	
+	function initializeSelectCats(){
+		var url = '${contextPath}/api/catalog/all/cats';
+			$.ajax({
+			    url: url,
+				type:'get',
+				dataType:'json',
+				success: function(data){
+				    if(data.success == true){
+				    	var html = '';
+				    	$.each(data.data,function(i,item){
+				    		html += '<option>' + item;
+				    		html += '</option>';
+				    	});
+				    	if(html.length >0){
+				    		$(html).appendTo($('#selectCat'));
+				    	}
+				    }
+
+				}
+			});
+	}
+	
 	function onLoad(){
+	
+		initializeSelectCats();
+	
 		$('#searchForm').attr('action','${contextPath}/catalog/list');
 		$('#searchForm').submit();
 	}
@@ -82,7 +95,15 @@
 		<div id="container">
 			<div id="searchBox">
 				<form class="pageForm" id="searchForm">
-					<input type="hidden" value="${(page.page)!}" name="page" id="pageNo"/>
+					<input type="hidden" value="${(page.page)!1}" name="page" id="pageNo"/>
+					<div class="searchCondition">
+					</div>
+					<div class="searchCondition">
+						<select id="selectCat" name="cat">
+							<option value="">All</option>
+						</select>
+						<input type="button" value="Create" class="cBtn" id="createBtn"/>
+					</div>
 				</form>
 			</div>
 			<div id="tabBox">

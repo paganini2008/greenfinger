@@ -15,6 +15,8 @@
 */
 package indi.atlantis.framework.greenfinger;
 
+import java.util.List;
+
 import com.github.paganini2008.devtools.jdbc.PageResponse;
 
 import indi.atlantis.framework.greenfinger.model.Catalog;
@@ -38,13 +40,17 @@ public interface ResourceManager {
 
 	Catalog getCatalog(long id);
 
-	PageResponse<CatalogInfo> queryForCatalog(int page, int size);
+	PageResponse<CatalogInfo> selectForCatalog(Catalog example, int page, int size);
+
+	List<String> selectAllCats();
 
 	int updateCatalogIndex(CatalogIndex catalogIndex);
 
-	int maximumVersionOfCatalogIndex();
+	int maximumVersionOfCatalogIndex(String cat);
 
 	CatalogIndex getCatalogIndex(long catalogId);
+
+	int getCatalogIndexVersion(long catalogId);
 
 	int saveResource(Resource resource);
 
@@ -52,7 +58,7 @@ public interface ResourceManager {
 
 	int deleteResourceByCatalogId(long catalogId);
 
-	PageResponse<Resource> queryForResourceForIndex(long catalogId, int page, int size);
+	PageResponse<Resource> selectForResourceForIndex(long catalogId, int page, int size);
 
 	int updateResourceVersion(long catalogId, int version);
 

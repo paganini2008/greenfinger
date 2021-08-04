@@ -36,21 +36,20 @@ import com.github.paganini2008.devtools.jdbc.ResultSetSlice;
 import indi.atlantis.framework.greenfinger.PageExtractor;
 import indi.atlantis.framework.greenfinger.ResourceManager;
 import indi.atlantis.framework.greenfinger.model.Catalog;
-import indi.atlantis.framework.greenfinger.model.CatalogIndex;
 import indi.atlantis.framework.greenfinger.model.CatalogInfo;
 import indi.atlantis.framework.greenfinger.model.Resource;
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * 
- * IndexedResourceService
+ * ResourceIndexService
  *
  * @author Fred Feng
  * 
  * @since 2.0.1
  */
 @Slf4j
-public class IndexedResourceService {
+public class ResourceIndexService {
 
 	@Autowired
 	private IndexedResourceRepository indexedResourceRepository;
@@ -97,56 +96,56 @@ public class IndexedResourceService {
 		return indexedResourceRepository.count();
 	}
 
-	public void upgradeAllCatalogs() {
+	public void upgradeCatalogIndex() {
 		final StopWatch stopWatch = new StopWatch();
 		int page = 1;
-		PageResponse<CatalogInfo> pageResponse = resourceManager.queryForCatalog(page, 10);
+		PageResponse<CatalogInfo> pageResponse = resourceManager.selectForCatalog(null, page, 10);
 		for (PageResponse<CatalogInfo> current : pageResponse) {
 			for (CatalogInfo catalog : current.getContent()) {
 				stopWatch.start(String.format("[%s<%s>]", catalog.getName(), catalog.getUrl()));
-				upgradeCatalog(catalog.getId());
+				upgradeCatalogIndex(catalog.getId());
 				stopWatch.stop();
 			}
 		}
 		log.info(stopWatch.prettyPrint());
 	}
 
-	public void indexAllCatalogs() {
+	public void indexCatalogIndex() {
 		final StopWatch stopWatch = new StopWatch();
 		int page = 1;
-		PageResponse<CatalogInfo> pageResponse = resourceManager.queryForCatalog(page, 10);
+		PageResponse<CatalogInfo> pageResponse = resourceManager.selectForCatalog(null, page, 10);
 		for (PageResponse<CatalogInfo> current : pageResponse) {
 			for (CatalogInfo catalog : current.getContent()) {
 				stopWatch.start(String.format("[%s<%s>]", catalog.getName(), catalog.getUrl()));
-				indexCatalog(catalog.getId());
+				indexCatalogIndex(catalog.getId());
 				stopWatch.stop();
 			}
 		}
 		log.info(stopWatch.prettyPrint());
 	}
 
-	public void upgradeCatalog(long catalogId) {
+	public void upgradeCatalogIndex(long catalogId) {
 		resourceManager.incrementCatalogIndexVersion(catalogId);
-		indexCatalog(catalogId);
+		indexCatalogIndex(catalogId);
 	}
 
-	public void indexCatalog(long catalogId) {
+	public void indexCatalogIndex(long catalogId) {
 		long startTime = System.currentTimeMillis();
 		Catalog catalog = resourceManager.getCatalog(catalogId);
 		log.info("Start to index catalog '{}' ...", catalog.getName());
-		CatalogIndex catalogIndex = resourceManager.getCatalogIndex(catalogId);
+		int version = resourceManager.getCatalogIndexVersion(catalogId);
 		int page = 1;
-		PageResponse<Resource> pageResponse = resourceManager.queryForResourceForIndex(catalogId, page, 100);
+		PageResponse<Resource> pageResponse = resourceManager.selectForResourceForIndex(catalogId, page, 100);
 		for (PageResponse<Resource> current : pageResponse) {
 			for (Resource resource : current.getContent()) {
 				try {
-					indexResource(catalog, resource, true, catalogIndex.getVersion());
+					indexResource(catalog, resource, true, version);
 				} catch (Exception e) {
 					log.error(e.getMessage(), e);
 				}
 			}
 		}
-		int effectedRows = resourceManager.updateResourceVersion(catalogId, catalogIndex.getVersion());
+		int effectedRows = resourceManager.updateResourceVersion(catalogId, version);
 		log.info("Index catalog '{}' completedly. Effected rows: {}, Total time: {}", catalog.getName(), effectedRows,
 				Duration.HOUR.format(System.currentTimeMillis() - startTime));
 	}
@@ -178,15 +177,15 @@ public class IndexedResourceService {
 		}
 	}
 
-	public PageResponse<SearchResult> search(String keyword, int version, int page, int size) {
-		return search(keyword, version).list(PageRequest.of(page, size));
+	public PageResponse<SearchResult> search(String cat, String keyword, Integer version, int page, int size) {
+		return search(cat, keyword, version).list(PageRequest.of(page, size));
 	}
 
-	public ResultSetSlice<SearchResult> search(String keyword, int version) {
-		if (version < 1) {
-			version = resourceManager.maximumVersionOfCatalogIndex();
+	public ResultSetSlice<SearchResult> search(String cat, String keyword, Integer version) {
+		if (version == null || version < 1) {
+			version = resourceManager.maximumVersionOfCatalogIndex(cat);
 		}
-		return new ElasticsearchTemplateResultSlice(keyword, version, elasticsearchTemplate);
+		return new ElasticsearchTemplateResultSlice(cat, keyword, version, elasticsearchTemplate);
 	}
 
 }

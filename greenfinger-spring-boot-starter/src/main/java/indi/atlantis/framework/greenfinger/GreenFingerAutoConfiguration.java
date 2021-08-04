@@ -30,7 +30,7 @@ import com.github.paganini2008.devtools.date.DateUtils;
 import com.github.paganini2008.springdessert.reditools.common.IdGenerator;
 import com.github.paganini2008.springdessert.reditools.common.TimeBasedIdGenerator;
 
-import indi.atlantis.framework.greenfinger.es.IndexedResourceService;
+import indi.atlantis.framework.greenfinger.es.ResourceIndexService;
 import indi.atlantis.framework.greenfinger.jdbc.JdbcResourceManger;
 import indi.atlantis.framework.vortex.common.HashPartitioner;
 import indi.atlantis.framework.vortex.common.NamedSelectionPartitioner;
@@ -106,8 +106,8 @@ public class GreenFingerAutoConfiguration {
 	}
 
 	@Bean
-	public IndexedResourceService indexedResourceService() {
-		return new IndexedResourceService();
+	public ResourceIndexService resourceIndexService() {
+		return new ResourceIndexService();
 	}
 
 	@Bean

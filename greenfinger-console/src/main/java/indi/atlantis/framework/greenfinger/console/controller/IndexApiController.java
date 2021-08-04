@@ -16,7 +16,6 @@
 package indi.atlantis.framework.greenfinger.console.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.github.paganini2008.devtools.multithreads.ThreadUtils;
 
 import indi.atlantis.framework.greenfinger.console.utils.Result;
-import indi.atlantis.framework.greenfinger.es.IndexedResourceService;
+import indi.atlantis.framework.greenfinger.es.ResourceIndexService;
 
 /**
  * 
@@ -41,45 +40,45 @@ import indi.atlantis.framework.greenfinger.es.IndexedResourceService;
 public class IndexApiController {
 
 	@Autowired
-	private IndexedResourceService indexedResourceService;
+	private ResourceIndexService resourceIndexService;
 
 	@PostMapping("/all")
 	public Result<String> indexAllCatalogs() {
 		ThreadUtils.runAsThread(() -> {
-			indexedResourceService.indexAllCatalogs();
+			resourceIndexService.indexCatalogIndex();
 		});
-		return Result.success("Submit OK.");
+		return Result.success("Submit Successfully.");
 	}
 
 	@PostMapping("/{id}")
 	public Result<String> indexCatalog(@PathVariable("id") Long catalogId) {
 		ThreadUtils.runAsThread(() -> {
-			indexedResourceService.indexCatalog(catalogId);
+			resourceIndexService.indexCatalogIndex(catalogId);
 		});
-		return Result.success("Submit OK.");
+		return Result.success("Submit Successfully.");
 	}
 
 	@PostMapping("/upgrade/all")
 	public Result<String> upgradeAllCatalogs() {
 		ThreadUtils.runAsThread(() -> {
-			indexedResourceService.upgradeAllCatalogs();
+			resourceIndexService.upgradeCatalogIndex();
 		});
-		return Result.success("Submit OK.");
+		return Result.success("Submit Successfully.");
 	}
 
 	@PostMapping("/upgrade/{id}")
 	public Result<String> upgradeCatalog(@PathVariable("id") Long catalogId) {
 		ThreadUtils.runAsThread(() -> {
-			indexedResourceService.upgradeCatalog(catalogId);
+			resourceIndexService.upgradeCatalogIndex(catalogId);
 		});
-		return Result.success("Submit OK.");
+		return Result.success("Submit Successfully.");
 	}
 
-	@GetMapping("/{id}/delete")
+	@PostMapping("/{id}/delete")
 	public Result<String> deleteResource(@PathVariable("id") Long catalogId,
 			@RequestParam(name = "version", defaultValue = "0", required = false) int version) {
-		indexedResourceService.deleteResource(catalogId, version);
-		return Result.success("Submit OK.");
+		resourceIndexService.deleteResource(catalogId, version);
+		return Result.success("Submit Successfully.");
 	}
 
 }

@@ -31,7 +31,7 @@ import io.undertow.UndertowOptions;
  * @author Fred Feng
  * @since 2.0.1
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 public class WebServerConfig {
 
 	@Primary

@@ -63,6 +63,6 @@ public interface CatalogIndexDao {
 	int incrementCatalogIndexVersion(@Arg("lastModified") Date lastModified, @Arg("catalogId") long catalogId);
 
 	@Get(value = SQL_CATALOG_INDEX_MAX_VERSION, javaType = true)
-	int maximunVersionOfCatalogIndex();
+	int maximunVersionOfCatalogIndex(@Arg("cat") String cat);
 
 }

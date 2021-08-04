@@ -91,7 +91,7 @@ body {
 
 #searchBox {
 	width: 100%;
-	height: 36px;
+	height: 80px;
 	overflow: hidden;
 	clear: both;
 	margin: 10px auto;
@@ -99,7 +99,7 @@ body {
 
 #tabBox {
 	width: 100%;
-	height: calc(100% - 60px);
+	height: calc(100% - 80px);
 	overflow: hidden; 
 	clear : both;
 	margin: 10px auto;
@@ -108,7 +108,7 @@ body {
 
 #searchResult {
 	width: 100%;
-	height: calc(100% - 60px);
+	height: calc(100% - 100px);
 	overflow-y: scroll;
 	overflow-x: hidden; 
 	clear : both;
@@ -150,8 +150,8 @@ body {
 
 .searchCondition {
 	width: 100%;
-	height: 30px;
-	line-height: 30px;
+	height: 32px;
+	line-height: 32px;
 	clear: both;
 	margin: 5px auto;
 }
@@ -210,39 +210,12 @@ body {
 	text-align: left;
 }
 
-#searchBtn {
-	width: 120px;
-	height: 32px;
-	font-size: 13px;
-	font-weight: 800;
-	padding: 5px 20px;
-	text-align: center;
-	float: right;
-	margin: auto 10px;
-	cursor: pointer;
-}
-
 .searchKeyword {
 	color: #FF0000;
 	font-weight: bold;
 }
 
-#chartBox {
-	width: 100%;
-	height: calc(100% - 10px);
-	overflow-y: scroll;
-	overflow-x: hidden;
-}
-
-#infoBox {
-	width: 90%;
-	height: 360px;
-	clear: both;
-	margin: 5px auto;
-	overflow: hidden;
-}
-
-.opCatalog{
+.opCatalog .stopCatalog{
 	float: left;
 	display: inline-block;
 	margin: auto 2px;
@@ -428,9 +401,13 @@ img {
 }
 
 .cBtn {
-	width: 80px;
+	width: 120px;
+	height: 32px;
 	padding: 5px 20px;
 	cursor: pointer;
+	font-weight: 800;
+	background-color: #97CBFF;
+	display: inline-block;
 }
 
 .tblCom {

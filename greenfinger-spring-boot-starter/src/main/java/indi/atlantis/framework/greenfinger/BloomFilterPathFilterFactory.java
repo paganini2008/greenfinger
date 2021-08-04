@@ -31,7 +31,7 @@ import com.github.paganini2008.springdessert.reditools.common.RedisBloomFilter;
  */
 public class BloomFilterPathFilterFactory implements PathFilterFactory {
 
-	private static final String defaultRedisKeyPrefix = "spring:webcrawler:cluster:%s:catalog:bloomFiter:%s";
+	private static final String defaultRedisKeyPrefix = "atlantis:framework:greenfinger:%s:catalog:bloomFiter:%s";
 	private static final int maxExpectedInsertions = 100000000;
 	private final RedisConnectionFactory redisConnectionFactory;
 	private final RedisOperations<String, String> redisOperations;

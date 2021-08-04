@@ -15,18 +15,23 @@
 */
 package indi.atlantis.framework.greenfinger.jdbc;
 
+import static indi.atlantis.framework.greenfinger.jdbc.JdbcResourceManger.SQL_CATALOG_CAT_SELECT;
 import static indi.atlantis.framework.greenfinger.jdbc.JdbcResourceManger.SQL_CATALOG_DELETE;
 import static indi.atlantis.framework.greenfinger.jdbc.JdbcResourceManger.SQL_CATALOG_INSERT;
 import static indi.atlantis.framework.greenfinger.jdbc.JdbcResourceManger.SQL_CATALOG_SELECT_ALL;
 import static indi.atlantis.framework.greenfinger.jdbc.JdbcResourceManger.SQL_CATALOG_SELECT_ONE;
 import static indi.atlantis.framework.greenfinger.jdbc.JdbcResourceManger.SQL_CATALOG_UPDATE;
 
+import java.util.List;
+
 import com.github.paganini2008.devtools.jdbc.ResultSetSlice;
 import com.github.paganini2008.springdesert.fastjdbc.annotations.Arg;
 import com.github.paganini2008.springdesert.fastjdbc.annotations.Dao;
 import com.github.paganini2008.springdesert.fastjdbc.annotations.Example;
 import com.github.paganini2008.springdesert.fastjdbc.annotations.Get;
+import com.github.paganini2008.springdesert.fastjdbc.annotations.Query;
 import com.github.paganini2008.springdesert.fastjdbc.annotations.Select;
+import com.github.paganini2008.springdesert.fastjdbc.annotations.Sql;
 import com.github.paganini2008.springdesert.fastjdbc.annotations.Update;
 
 import indi.atlantis.framework.greenfinger.model.Catalog;
@@ -56,6 +61,9 @@ public interface CatalogDao {
 	Catalog getCatalog(@Arg("id") long id);
 
 	@Select(SQL_CATALOG_SELECT_ALL)
-	ResultSetSlice<CatalogInfo> queryForCatalog();
+	ResultSetSlice<CatalogInfo> selectForCatalog(@Sql String whereClause, @Example Catalog example);
+
+	@Query(value = SQL_CATALOG_CAT_SELECT, singleColumn = true)
+	List<String> selectAllCats();
 
 }

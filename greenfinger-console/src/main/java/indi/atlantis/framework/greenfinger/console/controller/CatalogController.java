@@ -15,11 +15,15 @@
 */
 package indi.atlantis.framework.greenfinger.console.controller;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -66,12 +70,35 @@ public class CatalogController {
 		return "catalog";
 	}
 
+	@GetMapping(value = { "/{id}/edit", "/edit" })
+	public String edit(@PathVariable(name = "id", required = false) Long catalogId, Model ui) {
+		if (catalogId != null) {
+			Catalog catalog = resourceManager.getCatalog(catalogId);
+			ui.addAttribute("catalog", catalog);
+		}
+		return "catalog_edit";
+	}
+
+	@PostMapping("/save")
+	public String stop(@ModelAttribute Catalog catalog) {
+		resourceManager.saveCatalog(catalog);
+		return "redirect:/catalog/";
+	}
+
+	@SuppressWarnings("unchecked")
 	@PostMapping("/list")
-	public String queryForCatalog(@RequestParam(value = "page", defaultValue = "1", required = false) int page,
+	public String queryForCatalog(@ModelAttribute Catalog example,
+			@RequestParam(value = "page", defaultValue = "1", required = false) int page,
 			@CookieValue(value = "DATA_LIST_SIZE", required = false, defaultValue = "10") int size, Model ui) {
-		PageResponse<CatalogInfo> pageResponse = resourceManager.queryForCatalog(page, size);
+		PageResponse<CatalogInfo> pageResponse = resourceManager.selectForCatalog(example, page, size);
 		PageBean<CatalogInfo> pageBean = PageBean.wrap(pageResponse);
-		ui.addAttribute("page", pageBean);
+		List<CatalogSummary> dataList = new ArrayList<CatalogSummary>(size);
+		for (CatalogInfo catalogInfo : pageBean.getResults()) {
+			dataList.add(new CatalogSummary(catalogInfo, crawlerStatistics.getSummary(catalogInfo.getId())));
+		}
+		PageBean<CatalogSummary> newPageBean = (PageBean<CatalogSummary>) pageBean.clone();
+		newPageBean.setResults(dataList);
+		ui.addAttribute("page", newPageBean);
 		return "catalog_list";
 	}
 
@@ -117,6 +144,13 @@ public class CatalogController {
 		Summary summary = crawlerStatistics.getSummary(catalogId);
 		ui.addAttribute("summary", new CatalogSummary(catalog, summary));
 		return "catalog_index_summary";
+	}
+
+	@PostMapping("/{id}/stop")
+	public String stop(@PathVariable("id") Long catalogId, Model ui) {
+		Summary summary = crawlerStatistics.getSummary(catalogId);
+		summary.setCompleted(true);
+		return "redirect:/catalog/";
 	}
 
 }

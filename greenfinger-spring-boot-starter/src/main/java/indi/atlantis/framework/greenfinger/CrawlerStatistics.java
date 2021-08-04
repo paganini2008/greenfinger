@@ -44,7 +44,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class CrawlerStatistics implements BeanLifeCycle, Executable {
 
-	private static final String defaultRedisKeyPattern = "spring:webcrawler:cluster:%s:catalog:summary:%s";
+	private static final String defaultRedisKeyPattern = "atlantis:framework:greenfinger:%s:catalog:summary:%s";
 	private static final long DEFAULT_CRAWLER_IDLE_TIMEOUT = DateUtils.convertToMillis(5, TimeUnit.MINUTES);
 
 	private final String crawlerName;

@@ -1,3 +1,4 @@
+drop table if exists crawler_catalog;
 create table crawler_catalog(
 	id bigint not null,
 	name character varying(255) not null,
@@ -9,15 +10,17 @@ create table crawler_catalog(
 	max_fetch_size integer,
 	duration bigint,
 	last_modified timestamp without time zone
-)
+);
 
+drop table if exists crawler_catalog_index;
 create table crawler_catalog_index(
 	id bigint not null,
 	catalog_id bigint not null,
 	last_modified timestamp without time zone,
 	version integer not null
-)
+);
 
+drop table if exists crawler_resource;
 create table crawler_resource(
 	id bigint not null,
 	title character varying(600) not null,
@@ -27,5 +30,5 @@ create table crawler_resource(
 	last_modified timestamp without time zone,
 	version integer not null,
 	catalog_id bigint not null
-)
+);
 

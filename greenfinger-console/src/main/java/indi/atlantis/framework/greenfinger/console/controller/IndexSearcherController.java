@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import com.github.paganini2008.devtools.jdbc.PageResponse;
 
 import indi.atlantis.framework.greenfinger.console.utils.PageBean;
-import indi.atlantis.framework.greenfinger.es.IndexedResourceService;
+import indi.atlantis.framework.greenfinger.es.ResourceIndexService;
 import indi.atlantis.framework.greenfinger.es.SearchResult;
 
 /**
@@ -42,7 +42,7 @@ import indi.atlantis.framework.greenfinger.es.SearchResult;
 public class IndexSearcherController {
 
 	@Autowired
-	private IndexedResourceService indexedResourceService;
+	private ResourceIndexService resourceIndexService;
 
 	@GetMapping("/")
 	public String index(Model ui) {
@@ -50,11 +50,11 @@ public class IndexSearcherController {
 	}
 
 	@PostMapping("/search")
-	public String search(@RequestParam("q") String keyword,
-			@RequestParam(name = "version", required = false, defaultValue = "1") int version,
+	public String search(@RequestParam("q") String keyword, @RequestParam(name = "cat", required = false) String cat,
+			@RequestParam(name = "version", required = false) Integer version,
 			@RequestParam(value = "page", defaultValue = "1", required = false) int page,
 			@CookieValue(value = "DATA_LIST_SIZE", required = false, defaultValue = "10") int size, Model ui) {
-		PageResponse<SearchResult> pageResponse = indexedResourceService.search(keyword, version, page, size);
+		PageResponse<SearchResult> pageResponse = resourceIndexService.search(cat, keyword, version, page, size);
 		PageBean<SearchResult> pageBean = PageBean.wrap(pageResponse);
 		ui.addAttribute("page", pageBean);
 		return "searcher/search_result";

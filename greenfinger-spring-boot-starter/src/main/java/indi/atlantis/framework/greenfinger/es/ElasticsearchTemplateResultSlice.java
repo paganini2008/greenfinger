@@ -15,6 +15,7 @@
 */
 package indi.atlantis.framework.greenfinger.es;
 
+import static indi.atlantis.framework.greenfinger.es.SearchResult.SEARCH_FIELD_CAT;
 import static indi.atlantis.framework.greenfinger.es.SearchResult.SEARCH_FIELD_CONTENT;
 import static indi.atlantis.framework.greenfinger.es.SearchResult.SEARCH_FIELD_TITLE;
 import static indi.atlantis.framework.greenfinger.es.SearchResult.SEARCH_FIELD_VERSION;
@@ -31,6 +32,7 @@ import org.springframework.data.elasticsearch.core.aggregation.AggregatedPage;
 import org.springframework.data.elasticsearch.core.query.NativeSearchQuery;
 import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
 
+import com.github.paganini2008.devtools.StringUtils;
 import com.github.paganini2008.devtools.beans.BeanUtils;
 import com.github.paganini2008.devtools.jdbc.PageableResultSetSlice;
 
@@ -44,11 +46,13 @@ import com.github.paganini2008.devtools.jdbc.PageableResultSetSlice;
  */
 public class ElasticsearchTemplateResultSlice extends PageableResultSetSlice<SearchResult> {
 
+	private final String cat;
 	private final String keyword;
 	private final int version;
 	private final ElasticsearchTemplate elasticsearchTemplate;
 
-	public ElasticsearchTemplateResultSlice(String keyword, int version, ElasticsearchTemplate elasticsearchTemplate) {
+	public ElasticsearchTemplateResultSlice(String cat, String keyword, int version, ElasticsearchTemplate elasticsearchTemplate) {
+		this.cat = cat;
 		this.keyword = keyword;
 		this.version = version;
 		this.elasticsearchTemplate = elasticsearchTemplate;
@@ -56,16 +60,28 @@ public class ElasticsearchTemplateResultSlice extends PageableResultSetSlice<Sea
 
 	@Override
 	public int rowCount() {
-		BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(QueryBuilders.termQuery(SEARCH_FIELD_VERSION, version))
-				.must(QueryBuilders.matchQuery(SEARCH_FIELD_TITLE, keyword)).must(QueryBuilders.matchQuery(SEARCH_FIELD_CONTENT, keyword));
+		BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(QueryBuilders.termQuery(SEARCH_FIELD_VERSION, version));
+		if (StringUtils.isNotBlank(cat)) {
+			boolQueryBuilder = boolQueryBuilder.must(QueryBuilders.termQuery(SEARCH_FIELD_CAT, cat));
+		}
+		if (StringUtils.isNotBlank(keyword)) {
+			boolQueryBuilder = boolQueryBuilder.must(QueryBuilders.matchQuery(SEARCH_FIELD_TITLE, keyword))
+					.should(QueryBuilders.matchQuery(SEARCH_FIELD_CONTENT, keyword));
+		}
 		NativeSearchQuery searchQuery = new NativeSearchQueryBuilder().withQuery(boolQueryBuilder).build();
 		return (int) elasticsearchTemplate.count(searchQuery, IndexedResource.class);
 	}
 
 	@Override
 	public List<SearchResult> list(int maxResults, int firstResult) {
-		BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(QueryBuilders.termQuery(SEARCH_FIELD_VERSION, version))
-				.must(QueryBuilders.matchQuery(SEARCH_FIELD_TITLE, keyword)).must(QueryBuilders.matchQuery(SEARCH_FIELD_CONTENT, keyword));
+		BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(QueryBuilders.termQuery(SEARCH_FIELD_VERSION, version));
+		if (StringUtils.isNotBlank(cat)) {
+			boolQueryBuilder = boolQueryBuilder.must(QueryBuilders.termQuery(SEARCH_FIELD_CAT, cat));
+		}
+		if (StringUtils.isNotBlank(keyword)) {
+			boolQueryBuilder = boolQueryBuilder.must(QueryBuilders.matchQuery(SEARCH_FIELD_TITLE, keyword))
+					.should(QueryBuilders.matchQuery(SEARCH_FIELD_CONTENT, keyword));
+		}
 		NativeSearchQueryBuilder searchQueryBuilder = new NativeSearchQueryBuilder().withQuery(boolQueryBuilder)
 				.withHighlightFields(new HighlightBuilder.Field(SEARCH_FIELD_TITLE), new HighlightBuilder.Field(SEARCH_FIELD_CONTENT))
 				.withHighlightBuilder(new HighlightBuilder().preTags("<font class=\"search-keyword\" color=\"#FF0000\">")

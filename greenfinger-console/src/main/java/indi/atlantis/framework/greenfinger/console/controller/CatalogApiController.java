@@ -15,8 +15,12 @@
 */
 package indi.atlantis.framework.greenfinger.console.controller;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -31,6 +35,8 @@ import indi.atlantis.framework.greenfinger.CrawlerLauncher;
 import indi.atlantis.framework.greenfinger.CrawlerStatistics;
 import indi.atlantis.framework.greenfinger.CrawlerStatistics.Summary;
 import indi.atlantis.framework.greenfinger.ResourceManager;
+import indi.atlantis.framework.greenfinger.console.job.CatalogIndexJobInfo;
+import indi.atlantis.framework.greenfinger.console.job.CatalogIndexJobService;
 import indi.atlantis.framework.greenfinger.console.utils.CatalogSummary;
 import indi.atlantis.framework.greenfinger.console.utils.PageBean;
 import indi.atlantis.framework.greenfinger.console.utils.Result;
@@ -60,6 +66,14 @@ public class CatalogApiController {
 	@Autowired
 	private CatalogAdminService catalogAdminService;
 
+	@Autowired
+	private CatalogIndexJobService catalogIndexJobService;
+
+	@GetMapping("/all/cats")
+	public Result<List<String>> getCatList() {
+		return Result.success(resourceManager.selectAllCats());
+	}
+
 	@PostMapping("/{id}/delete")
 	public Result<String> deleteCatalog(@PathVariable("id") Long catalogId) {
 		catalogAdminService.deleteCatalog(catalogId, false);
@@ -75,25 +89,25 @@ public class CatalogApiController {
 	@PostMapping("/{id}/rebuild")
 	public Result<String> rebuild(@PathVariable("id") Long catalogId) {
 		crawlerLauncher.rebuild(catalogId, null);
-		return Result.success("Crawling Job will be triggered soon.");
+		return Result.success("Crawling Task will be triggered soon.");
 	}
 
 	@PostMapping("/{id}/crawl")
 	public Result<String> crawl(@PathVariable("id") Long catalogId) {
 		crawlerLauncher.submit(catalogId, null);
-		return Result.success("Crawling Job will be triggered soon.");
+		return Result.success("Crawling Task will be triggered soon.");
 	}
 
 	@PostMapping("/{id}/update")
 	public Result<String> update(@PathVariable("id") Long catalogId) {
 		crawlerLauncher.update(catalogId, null);
-		return Result.success("Crawling Job will be triggered soon.");
+		return Result.success("Crawling Task will be triggered soon.");
 	}
 
 	@PostMapping("/save")
 	public Result<String> saveCatalog(@RequestBody Catalog catalog) {
 		resourceManager.saveCatalog(catalog);
-		return Result.success("Save OK.");
+		return Result.success("Save Successfully.");
 	}
 
 	@PostMapping("/{id}/summary")
@@ -109,11 +123,29 @@ public class CatalogApiController {
 		return Result.success(!summary.isCompleted());
 	}
 
+	@PostMapping("/{id}/stop")
+	public Result<String> stop(@PathVariable("id") Long catalogId, Model ui) {
+		Summary summary = crawlerStatistics.getSummary(catalogId);
+		summary.setCompleted(true);
+		return Result.success("Stop Successfully");
+	}
+
 	@PostMapping("/list")
-	public Result<PageBean<CatalogInfo>> queryForCatalog(@RequestParam(value = "page", defaultValue = "1", required = false) int page,
+	public Result<PageBean<CatalogInfo>> selectForCatalog(@RequestBody Catalog example,
+			@RequestParam(value = "page", defaultValue = "1", required = false) int page,
 			@CookieValue(value = "DATA_LIST_SIZE", required = false, defaultValue = "10") int size) {
-		PageResponse<CatalogInfo> pageResponse = resourceManager.queryForCatalog(page, size);
+		PageResponse<CatalogInfo> pageResponse = resourceManager.selectForCatalog(example, page, size);
 		return Result.success(PageBean.wrap(pageResponse));
+	}
+
+	@PostMapping("/createIndexJob")
+	public Result<Integer> createIndexJob(CatalogIndexJobInfo jobInfo) throws Exception {
+		return Result.success(catalogIndexJobService.createIndexJob(jobInfo));
+	}
+
+	@PostMapping("/createIndexUpgradeJob")
+	public Result<Integer> createIndexUpgradeJob(CatalogIndexJobInfo jobInfo) throws Exception {
+		return Result.success(catalogIndexJobService.createIndexUpgradeJob(jobInfo));
 	}
 
 }

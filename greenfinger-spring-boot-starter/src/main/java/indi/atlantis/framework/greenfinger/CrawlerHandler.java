@@ -32,7 +32,7 @@ import com.github.paganini2008.devtools.StringUtils;
 import com.github.paganini2008.devtools.collection.CollectionUtils;
 import com.github.paganini2008.devtools.collection.MapUtils;
 
-import indi.atlantis.framework.greenfinger.es.IndexedResourceService;
+import indi.atlantis.framework.greenfinger.es.ResourceIndexService;
 import indi.atlantis.framework.greenfinger.model.Catalog;
 import indi.atlantis.framework.greenfinger.model.Resource;
 import indi.atlantis.framework.vortex.Handler;
@@ -77,7 +77,7 @@ public class CrawlerHandler implements Handler {
 	private PathFilterFactory pathFilterFactory;
 
 	@Autowired
-	private IndexedResourceService indexService;
+	private ResourceIndexService indexService;
 
 	@Autowired
 	private CrawlerStatistics crawlerStatistics;
