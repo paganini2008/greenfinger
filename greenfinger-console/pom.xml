@@ -72,8 +72,6 @@
 			<version>1.0-RC2</version>
 		</dependency>
 
-
-
 	</dependencies>
 
 	<build>
