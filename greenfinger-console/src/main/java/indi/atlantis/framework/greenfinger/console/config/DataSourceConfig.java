@@ -22,6 +22,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
+import com.github.paganini2008.springdessert.reditools.common.EnableRedisClient;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
@@ -39,6 +40,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Setter
 @Getter
+@EnableRedisClient
 @Configuration(proxyBeanMethods = false)
 @ConfigurationProperties(prefix = "spring.datasource")
 public class DataSourceConfig {

@@ -24,6 +24,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.data.elasticsearch.repository.config.EnableElasticsearchRepositories;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.http.client.ClientHttpRequestFactory;
@@ -52,7 +54,8 @@ import indi.atlantis.framework.vortex.common.Partitioner;
  */
 @EnableElasticsearchRepositories("indi.atlantis.framework.greenfinger.es")
 @Import({ CatalogApiController.class, IndexApiController.class })
-@Configuration
+@Order(Ordered.LOWEST_PRECEDENCE - 200)
+@Configuration(proxyBeanMethods = false)
 public class GreenFingerAutoConfiguration {
 
 	@Value("${spring.application.cluster.name}")
@@ -126,7 +129,7 @@ public class GreenFingerAutoConfiguration {
 	public CatalogAdminService catalogAdminService() {
 		return new CatalogAdminService();
 	}
-	
+
 	@ConditionalOnBean(JobManager.class)
 	@Bean
 	public CatalogIndexJobService catalogIndexJobService() {
