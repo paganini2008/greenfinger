@@ -85,7 +85,7 @@
 				<filtering>true</filtering>
 			</resource>
 		</resources>
-		
+
 		<plugins>
 
 			<plugin>
@@ -99,6 +99,10 @@
 							<mainClass>indi.atlantis.framework.greenfinger.console.GreenFingerServerConsoleMain</mainClass>
 						</manifest>
 					</archive>
+					<excludes>
+						<exclude>config/*</exclude>
+						<exclude>db/*</exclude>
+					</excludes>
 				</configuration>
 			</plugin>
 
