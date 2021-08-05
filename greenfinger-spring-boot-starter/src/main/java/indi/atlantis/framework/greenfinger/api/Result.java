@@ -13,7 +13,7 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
-package indi.atlantis.framework.greenfinger.console.utils;
+package indi.atlantis.framework.greenfinger.api;
 
 import lombok.Getter;
 import lombok.Setter;

@@ -44,7 +44,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 
 import com.github.paganini2008.devtools.StringUtils;
 
-import indi.atlantis.framework.greenfinger.console.utils.Result;
+import indi.atlantis.framework.greenfinger.api.Result;
 import indi.atlantis.framework.greenfinger.console.utils.WebUtils;
 import lombok.extern.slf4j.Slf4j;
 

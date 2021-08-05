@@ -13,7 +13,7 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
-package indi.atlantis.framework.greenfinger.console.controller;
+package indi.atlantis.framework.greenfinger.api;
 
 import java.util.List;
 
@@ -34,14 +34,10 @@ import indi.atlantis.framework.greenfinger.CatalogAdminService;
 import indi.atlantis.framework.greenfinger.CrawlerLauncher;
 import indi.atlantis.framework.greenfinger.CrawlerStatistics;
 import indi.atlantis.framework.greenfinger.CrawlerStatistics.Summary;
+import indi.atlantis.framework.greenfinger.job.CatalogIndexJobInfo;
+import indi.atlantis.framework.greenfinger.job.CatalogIndexJobService;
 import indi.atlantis.framework.greenfinger.ResourceManager;
-import indi.atlantis.framework.greenfinger.console.job.CatalogIndexJobInfo;
-import indi.atlantis.framework.greenfinger.console.job.CatalogIndexJobService;
-import indi.atlantis.framework.greenfinger.console.utils.CatalogSummary;
-import indi.atlantis.framework.greenfinger.console.utils.PageBean;
-import indi.atlantis.framework.greenfinger.console.utils.Result;
 import indi.atlantis.framework.greenfinger.model.Catalog;
-import indi.atlantis.framework.greenfinger.model.CatalogInfo;
 
 /**
  * 
@@ -66,7 +62,7 @@ public class CatalogApiController {
 	@Autowired
 	private CatalogAdminService catalogAdminService;
 
-	@Autowired
+	@Autowired(required = false)
 	private CatalogIndexJobService catalogIndexJobService;
 
 	@GetMapping("/all/cats")
@@ -140,11 +136,17 @@ public class CatalogApiController {
 
 	@PostMapping("/createIndexJob")
 	public Result<Integer> createIndexJob(CatalogIndexJobInfo jobInfo) throws Exception {
+		if (catalogIndexJobService == null) {
+			throw new UnsupportedOperationException("createIndexJob");
+		}
 		return Result.success(catalogIndexJobService.createIndexJob(jobInfo));
 	}
 
 	@PostMapping("/createIndexUpgradeJob")
 	public Result<Integer> createIndexUpgradeJob(CatalogIndexJobInfo jobInfo) throws Exception {
+		if (catalogIndexJobService == null) {
+			throw new UnsupportedOperationException("createIndexUpgradeJob");
+		}
 		return Result.success(catalogIndexJobService.createIndexUpgradeJob(jobInfo));
 	}
 

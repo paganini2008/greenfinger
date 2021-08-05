@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import com.github.paganini2008.devtools.jdbc.PageResponse;
 
-import indi.atlantis.framework.greenfinger.console.utils.PageBean;
+import indi.atlantis.framework.greenfinger.api.PageBean;
 import indi.atlantis.framework.greenfinger.es.ResourceIndexService;
 import indi.atlantis.framework.greenfinger.es.SearchResult;
 

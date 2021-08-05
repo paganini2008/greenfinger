@@ -72,11 +72,7 @@
 			<version>1.0-RC2</version>
 		</dependency>
 
-		<dependency>
-			<groupId>com.github.paganini2008.atlantis</groupId>
-			<artifactId>chaconne-spring-boot-starter</artifactId>
-			<version>1.0-RC2</version>
-		</dependency>
+
 
 	</dependencies>
 

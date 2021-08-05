@@ -13,11 +13,10 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
-package indi.atlantis.framework.greenfinger.console.job;
+package indi.atlantis.framework.greenfinger.job;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 
 import indi.atlantis.framework.chaconne.JobKey;
 import indi.atlantis.framework.chaconne.JobManager;
@@ -32,7 +31,6 @@ import indi.atlantis.framework.chaconne.utils.GenericTrigger;
  *
  * @since 2.0.2
  */
-@Component
 public class CatalogIndexJobService {
 
 	@Value("${spring.application.cluster.name}")

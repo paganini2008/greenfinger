@@ -35,8 +35,8 @@ import com.github.paganini2008.devtools.jdbc.ResultSetSlice;
 
 import indi.atlantis.framework.greenfinger.PageExtractor;
 import indi.atlantis.framework.greenfinger.ResourceManager;
+import indi.atlantis.framework.greenfinger.api.CatalogInfo;
 import indi.atlantis.framework.greenfinger.model.Catalog;
-import indi.atlantis.framework.greenfinger.model.CatalogInfo;
 import indi.atlantis.framework.greenfinger.model.Resource;
 import lombok.extern.slf4j.Slf4j;
 

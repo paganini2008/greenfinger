@@ -126,6 +126,9 @@ body {
 	height: 36px;
 	line-height: 36px;
 	font-size: 16pt;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
 }
 
 .search-result-content {

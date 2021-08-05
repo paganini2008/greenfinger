@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.github.paganini2008.devtools.ExceptionUtils;
 
-import indi.atlantis.framework.greenfinger.console.utils.Result;
+import indi.atlantis.framework.greenfinger.api.Result;
 import lombok.extern.slf4j.Slf4j;
 
 /**

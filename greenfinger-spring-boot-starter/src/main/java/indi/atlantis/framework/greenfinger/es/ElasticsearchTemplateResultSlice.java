@@ -87,7 +87,7 @@ public class ElasticsearchTemplateResultSlice extends PageableResultSetSlice<Sea
 				.withHighlightBuilder(new HighlightBuilder().preTags("<font class=\"search-keyword\" color=\"#FF0000\">")
 						.postTags("</font>").fragmentSize(120).numOfFragments(3).noMatchSize(100));
 		if (maxResults > 0) {
-			searchQueryBuilder = searchQueryBuilder.withPageable(PageRequest.of(getPageNumber(), maxResults));
+			searchQueryBuilder = searchQueryBuilder.withPageable(PageRequest.of(getPageNumber() - 1, maxResults));
 		}
 		AggregatedPage<IndexedResource> page = elasticsearchTemplate.queryForPage(searchQueryBuilder.build(), IndexedResource.class,
 				new HighlightResultMapper(elasticsearchTemplate.getElasticsearchConverter().getMappingContext()));

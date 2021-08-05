@@ -13,19 +13,22 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
-package indi.atlantis.framework.greenfinger.console.controller;
+package indi.atlantis.framework.greenfinger.api;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.github.paganini2008.devtools.jdbc.PageResponse;
 import com.github.paganini2008.devtools.multithreads.ThreadUtils;
 
-import indi.atlantis.framework.greenfinger.console.utils.Result;
 import indi.atlantis.framework.greenfinger.es.ResourceIndexService;
+import indi.atlantis.framework.greenfinger.es.SearchResult;
 
 /**
  * 
@@ -79,6 +82,16 @@ public class IndexApiController {
 			@RequestParam(name = "version", defaultValue = "0", required = false) int version) {
 		resourceIndexService.deleteResource(catalogId, version);
 		return Result.success("Submit Successfully.");
+	}
+
+	@PostMapping("/search")
+	public Result<PageBean<SearchResult>> search(@RequestParam("q") String keyword,
+			@RequestParam(name = "cat", required = false) String cat, @RequestParam(name = "version", required = false) Integer version,
+			@RequestParam(value = "page", defaultValue = "1", required = false) int page,
+			@CookieValue(value = "DATA_LIST_SIZE", required = false, defaultValue = "10") int size, Model ui) {
+		PageResponse<SearchResult> pageResponse = resourceIndexService.search(cat, keyword, version, page, size);
+		PageBean<SearchResult> pageBean = PageBean.wrap(pageResponse);
+		return Result.success(pageBean);
 	}
 
 }

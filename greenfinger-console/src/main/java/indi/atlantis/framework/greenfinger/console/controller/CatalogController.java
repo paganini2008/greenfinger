@@ -35,11 +35,11 @@ import indi.atlantis.framework.greenfinger.CatalogAdminService;
 import indi.atlantis.framework.greenfinger.CrawlerLauncher;
 import indi.atlantis.framework.greenfinger.CrawlerStatistics;
 import indi.atlantis.framework.greenfinger.CrawlerStatistics.Summary;
+import indi.atlantis.framework.greenfinger.api.CatalogInfo;
+import indi.atlantis.framework.greenfinger.api.CatalogSummary;
+import indi.atlantis.framework.greenfinger.api.PageBean;
 import indi.atlantis.framework.greenfinger.ResourceManager;
-import indi.atlantis.framework.greenfinger.console.utils.CatalogSummary;
-import indi.atlantis.framework.greenfinger.console.utils.PageBean;
 import indi.atlantis.framework.greenfinger.model.Catalog;
-import indi.atlantis.framework.greenfinger.model.CatalogInfo;
 
 /**
  * 

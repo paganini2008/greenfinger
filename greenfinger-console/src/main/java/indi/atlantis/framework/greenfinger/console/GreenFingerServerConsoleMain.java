@@ -24,7 +24,6 @@ import com.github.paganini2008.devtools.Env;
 import com.github.paganini2008.devtools.io.FileUtils;
 import com.github.paganini2008.springdessert.reditools.common.EnableRedisClient;
 
-import indi.atlantis.framework.chaconne.cluster.EnableChaconneDetachedMode;
 import indi.atlantis.framework.greenfinger.EnableGreenFingerServer;
 
 /**
@@ -36,7 +35,7 @@ import indi.atlantis.framework.greenfinger.EnableGreenFingerServer;
  * @since 2.0.1
  */
 @EnableRedisClient
-@EnableChaconneDetachedMode
+//@EnableChaconneDetachedMode
 @EnableGreenFingerServer
 @SpringBootApplication
 public class GreenFingerServerConsoleMain {

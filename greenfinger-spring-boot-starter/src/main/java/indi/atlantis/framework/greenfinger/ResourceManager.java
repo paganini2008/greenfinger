@@ -19,9 +19,9 @@ import java.util.List;
 
 import com.github.paganini2008.devtools.jdbc.PageResponse;
 
+import indi.atlantis.framework.greenfinger.api.CatalogInfo;
 import indi.atlantis.framework.greenfinger.model.Catalog;
 import indi.atlantis.framework.greenfinger.model.CatalogIndex;
-import indi.atlantis.framework.greenfinger.model.CatalogInfo;
 import indi.atlantis.framework.greenfinger.model.Resource;
 
 /**

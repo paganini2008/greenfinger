@@ -47,6 +47,7 @@
 		});
 		
 		$('#selectCat').change(function(){
+			$('#keyword').val('');
 			$('#pageNo').val(1);
 			$('#searchForm').submit();
 		});

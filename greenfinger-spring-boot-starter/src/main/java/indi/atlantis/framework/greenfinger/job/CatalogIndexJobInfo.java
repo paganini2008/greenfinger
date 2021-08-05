@@ -13,17 +13,17 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
-package indi.atlantis.framework.greenfinger.model;
+package indi.atlantis.framework.greenfinger.job;
 
-import java.util.Date;
-
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
 /**
  * 
- * CatalogInfo
+ * CatalogIndexJobInfo
  *
  * @author Fred Feng
  *
@@ -32,10 +32,13 @@ import lombok.ToString;
 @Getter
 @Setter
 @ToString
-public class CatalogInfo extends Catalog {
+@NoArgsConstructor
+@AllArgsConstructor
+public class CatalogIndexJobInfo {
 
-	private static final long serialVersionUID = -4801844866936776180L;
+	private long catalogId;
+	private String cronExpression;
+	private String description;
+	private String email;
 
-	private Integer version;
-	private Date lastIndexed;
 }

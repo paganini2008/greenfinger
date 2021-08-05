@@ -34,8 +34,8 @@ import com.github.paganini2008.springdesert.fastjdbc.annotations.Select;
 import com.github.paganini2008.springdesert.fastjdbc.annotations.Sql;
 import com.github.paganini2008.springdesert.fastjdbc.annotations.Update;
 
+import indi.atlantis.framework.greenfinger.api.CatalogInfo;
 import indi.atlantis.framework.greenfinger.model.Catalog;
-import indi.atlantis.framework.greenfinger.model.CatalogInfo;
 
 /**
  * 

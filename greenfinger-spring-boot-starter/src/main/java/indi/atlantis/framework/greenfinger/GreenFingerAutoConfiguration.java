@@ -19,9 +19,11 @@ import java.util.concurrent.TimeUnit;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.elasticsearch.repository.config.EnableElasticsearchRepositories;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.http.client.ClientHttpRequestFactory;
@@ -30,8 +32,12 @@ import com.github.paganini2008.devtools.date.DateUtils;
 import com.github.paganini2008.springdessert.reditools.common.IdGenerator;
 import com.github.paganini2008.springdessert.reditools.common.TimeBasedIdGenerator;
 
+import indi.atlantis.framework.chaconne.JobManager;
+import indi.atlantis.framework.greenfinger.api.CatalogApiController;
+import indi.atlantis.framework.greenfinger.api.IndexApiController;
 import indi.atlantis.framework.greenfinger.es.ResourceIndexService;
 import indi.atlantis.framework.greenfinger.jdbc.JdbcResourceManger;
+import indi.atlantis.framework.greenfinger.job.CatalogIndexJobService;
 import indi.atlantis.framework.vortex.common.HashPartitioner;
 import indi.atlantis.framework.vortex.common.NamedSelectionPartitioner;
 import indi.atlantis.framework.vortex.common.Partitioner;
@@ -45,6 +51,7 @@ import indi.atlantis.framework.vortex.common.Partitioner;
  * @since 2.0.1
  */
 @EnableElasticsearchRepositories("indi.atlantis.framework.greenfinger.es")
+@Import({ CatalogApiController.class, IndexApiController.class })
 @Configuration
 public class GreenFingerAutoConfiguration {
 
@@ -114,10 +121,16 @@ public class GreenFingerAutoConfiguration {
 	public CrawlerStatistics crawlerStatistics(RedisConnectionFactory redisConnectionFactory) {
 		return new CrawlerStatistics(clusterName, redisConnectionFactory);
 	}
-	
+
 	@Bean
 	public CatalogAdminService catalogAdminService() {
 		return new CatalogAdminService();
+	}
+	
+	@ConditionalOnBean(JobManager.class)
+	@Bean
+	public CatalogIndexJobService catalogIndexJobService() {
+		return new CatalogIndexJobService();
 	}
 
 }
