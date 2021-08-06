@@ -28,6 +28,7 @@ import org.springframework.data.elasticsearch.core.query.DeleteQuery;
 import org.springframework.util.StopWatch;
 
 import com.github.paganini2008.devtools.CharsetUtils;
+import com.github.paganini2008.devtools.beans.PropertyUtils;
 import com.github.paganini2008.devtools.date.Duration;
 import com.github.paganini2008.devtools.jdbc.PageRequest;
 import com.github.paganini2008.devtools.jdbc.PageResponse;
@@ -38,6 +39,7 @@ import indi.atlantis.framework.greenfinger.ResourceManager;
 import indi.atlantis.framework.greenfinger.api.CatalogInfo;
 import indi.atlantis.framework.greenfinger.model.Catalog;
 import indi.atlantis.framework.greenfinger.model.Resource;
+import indi.atlantis.framework.vortex.common.Tuple;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -154,11 +156,14 @@ public class ResourceIndexService {
 		IndexedResource indexedResource = new IndexedResource();
 		String html = resource.getHtml();
 		if (refresh) {
+			Tuple tuple = Tuple.wrap(PropertyUtils.convertToMap(catalog));
 			try {
-				html = pageExtractor.extractHtml(catalog.getUrl(), resource.getUrl(), CharsetUtils.toCharset(catalog.getPageEncoding()));
+				html = pageExtractor.extractHtml(catalog.getUrl(), resource.getUrl(), CharsetUtils.toCharset(catalog.getPageEncoding()),
+						tuple);
 			} catch (Exception e) {
 				log.error(e.getMessage(), e);
-				html = pageExtractor.defaultPage(catalog.getUrl(), resource.getUrl(), CharsetUtils.toCharset(catalog.getPageEncoding()), e);
+				html = pageExtractor.defaultPage(catalog.getUrl(), resource.getUrl(), CharsetUtils.toCharset(catalog.getPageEncoding()),
+						tuple, e);
 			}
 		}
 		Document document = Jsoup.parse(html);

@@ -45,8 +45,8 @@ import indi.atlantis.framework.greenfinger.model.Resource;
 @Transactional(rollbackFor = Exception.class, readOnly = false)
 public class JdbcResourceManger implements ResourceManager {
 
-	public static final String SQL_CATALOG_INSERT = "insert into crawler_catalog (id,name,url,path_pattern,excluded_path_pattern,cat,page_encoding,max_fetch_size,duration,last_modified) values (:id,:name,:url,:pathPattern,:excludedPathPattern,:cat,:pageEncoding,:maxFetchSize,:duration,:lastModified)";
-	public static final String SQL_CATALOG_UPDATE = "update crawler_catalog set name=:name,cat=:cat,url=:url,path_pattern=:pathPattern,excluded_path_pattern=:excludedPathPattern,max_fetch_size=:maxFetchSize,duration=:duration,last_modified=:lastModified where id=:id";
+	public static final String SQL_CATALOG_INSERT = "insert into crawler_catalog (id,name,url,path_pattern,excluded_path_pattern,cat,page_encoding,max_fetch_size,duration,interval,depth,last_modified) values (:id,:name,:url,:pathPattern,:excludedPathPattern,:cat,:pageEncoding,:maxFetchSize,:duration,:interval,:depth,:lastModified)";
+	public static final String SQL_CATALOG_UPDATE = "update crawler_catalog set name=:name,cat=:cat,url=:url,path_pattern=:pathPattern,excluded_path_pattern=:excludedPathPattern,max_fetch_size=:maxFetchSize,duration=:duration,interval=:interval,depth=:depth,last_modified=:lastModified where id=:id";
 	public static final String SQL_CATALOG_INDEX_INSERT = "insert into crawler_catalog_index (id,catalog_id,version,last_modified) values (:id,:catalogId,:version,:lastModified)";
 	public static final String SQL_CATALOG_INDEX_UPDATE = "update crawler_catalog_index set version=:version,last_modified=:lastModified where catalog_id=:catalogId";
 	public static final String SQL_CATALOG_INDEX_VERSION_INCREMENT = "update crawler_catalog_index set version=version+1, last_modified=:lastModified where catalog_id=:catalogId";

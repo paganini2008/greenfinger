@@ -126,7 +126,15 @@
 						<p><input type="text" name="maxFetchSize" value="${(catalog.maxFetchSize)!100000}"/></p>
 					</div>
 					<div class="catalogInfo">
-						<p><label>Duration: </label></p>
+						<p><label>Depth: </label></p>
+						<p><input type="text" name="depth" value="${(catalog.depth)!-1}"/></p>
+					</div>
+					<div class="catalogInfo">
+						<p><label>Interval(ms): </label></p>
+						<p><input type="text" name="interval" value="${(catalog.interval)!1000}"/></p>
+					</div>
+					<div class="catalogInfo">
+						<p><label>Duration(ms): </label></p>
 						<p><input type="text" name="duration" value="${(catalog.duration)!1200000}"/></p>
 					</div>
 					<div class="catalogInfo">
@@ -134,6 +142,8 @@
 						<p><input class="cBtn" id="saveBtn" type="button" value="Save"/></p>
 					</div>
 				</form>
+				<div style="width: 100%; height: 10px; clear: both;">
+				</div>
 			</div>
 		</div>
 		<#include "foot.ftl">

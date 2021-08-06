@@ -9,6 +9,8 @@ create table crawler_catalog(
 	page_encoding character varying(45),
 	max_fetch_size integer,
 	duration bigint,
+	interval bigint,
+	depth integer,
 	last_modified timestamp without time zone
 );
 

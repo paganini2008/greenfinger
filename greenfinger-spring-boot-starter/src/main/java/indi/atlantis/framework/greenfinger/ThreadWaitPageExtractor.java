@@ -17,8 +17,7 @@ package indi.atlantis.framework.greenfinger;
 
 import java.nio.charset.Charset;
 
-import com.github.paganini2008.devtools.RandomUtils;
-import com.github.paganini2008.devtools.multithreads.ThreadUtils;
+import indi.atlantis.framework.vortex.common.Tuple;
 
 /**
  * 
@@ -31,21 +30,24 @@ import com.github.paganini2008.devtools.multithreads.ThreadUtils;
 public class ThreadWaitPageExtractor implements PageExtractor {
 
 	private final PageExtractor pageExtractor;
-	private final long delay;
-	
+	private final ThreadWaitType threadWaitType;
+
 	public ThreadWaitPageExtractor(PageExtractor pageExtractor) {
-		this(pageExtractor, 3000);
+		this(pageExtractor, ThreadWaitType.NONE);
 	}
 
-	public ThreadWaitPageExtractor(PageExtractor pageExtractor, long delay) {
+	public ThreadWaitPageExtractor(PageExtractor pageExtractor, ThreadWaitType threadWaitType) {
 		this.pageExtractor = pageExtractor;
-		this.delay = delay;
+		this.threadWaitType = threadWaitType;
 	}
 
 	@Override
-	public String extractHtml(String refer, String url, Charset pageEncoding) throws Exception {
-		ThreadUtils.sleep(delay + RandomUtils.randomLong(100, 1000));
-		return pageExtractor.extractHtml(refer, url, pageEncoding);
+	public String extractHtml(String refer, String url, Charset pageEncoding, Tuple tuple) throws Exception {
+		long interval = (Long) tuple.getField("interval", 0L);
+		if (interval > 0) {
+			threadWaitType.doWait(interval);
+		}
+		return pageExtractor.extractHtml(refer, url, pageEncoding, tuple);
 	}
 
 }

@@ -44,6 +44,8 @@ public class Catalog implements Serializable {
 	private String pathPattern;
 	private String excludedPathPattern;
 	private Integer maxFetchSize;
+	private Integer depth;
+	private Long interval;
 	private Long duration;
 	private Date lastModified;
 

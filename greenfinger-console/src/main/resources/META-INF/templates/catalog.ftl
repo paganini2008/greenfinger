@@ -67,13 +67,13 @@
 				dataType:'json',
 				success: function(data){
 				    if(data.success == true){
-				    	var html = '';
+				    	var html = '<option value="">All</option>';
 				    	$.each(data.data,function(i,item){
-				    		html += '<option>' + item;
+				    		html += '<option value="' + item +'">' + item;
 				    		html += '</option>';
 				    	});
 				    	if(html.length >0){
-				    		$(html).appendTo($('#selectCat'));
+				    		$('#selectCat').html(html);
 				    	}
 				    }
 
@@ -100,7 +100,6 @@
 					</div>
 					<div class="searchCondition">
 						<select id="selectCat" name="cat">
-							<option value="">All</option>
 						</select>
 						<input type="button" value="Create" class="cBtn" id="createBtn"/>
 					</div>

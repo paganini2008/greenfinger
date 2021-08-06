@@ -23,6 +23,8 @@ import org.springframework.http.client.ClientHttpRequestFactory;
 
 import com.github.paganini2008.devtools.collection.MapUtils;
 
+import indi.atlantis.framework.vortex.common.Tuple;
+
 /**
  * 
  * MultiCharsetHttpClientPageExtractor
@@ -42,10 +44,10 @@ public class MultiCharsetHttpClientPageExtractor implements PageExtractor {
 	private final Map<Charset, HttpClientPageExtractor> cache = new ConcurrentHashMap<Charset, HttpClientPageExtractor>();
 
 	@Override
-	public String extractHtml(String refer, String url, Charset pageEncoding) throws Exception {
+	public String extractHtml(String refer, String url, Charset pageEncoding, Tuple tuple) throws Exception {
 		return MapUtils.get(cache, pageEncoding, () -> {
 			return new HttpClientPageExtractor(clientHttpRequestFactory, pageEncoding);
-		}).extractHtml(refer, url, pageEncoding);
+		}).extractHtml(refer, url, pageEncoding, tuple);
 	}
 
 }

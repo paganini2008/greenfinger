@@ -27,6 +27,7 @@ import org.springframework.retry.policy.NeverRetryPolicy;
 import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
 
+import indi.atlantis.framework.vortex.common.Tuple;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -53,9 +54,9 @@ public class RetryablePageExtractor implements PageExtractor, RetryListener {
 	}
 
 	@Override
-	public String extractHtml(final String refer, final String url, final Charset pageEncoding) throws Exception {
+	public String extractHtml(final String refer, final String url, final Charset pageEncoding,final Tuple tuple) throws Exception {
 		return retryTemplate.execute(context -> {
-			return pageExtractor.extractHtml(refer, url, pageEncoding);
+			return pageExtractor.extractHtml(refer, url, pageEncoding, tuple);
 		}, context -> {
 			Throwable e = context.getLastThrowable();
 			if (e instanceof PageExtractorException) {

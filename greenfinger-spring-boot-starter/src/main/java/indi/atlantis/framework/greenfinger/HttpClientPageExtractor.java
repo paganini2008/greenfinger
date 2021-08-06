@@ -31,6 +31,7 @@ import com.github.paganini2008.devtools.RandomUtils;
 import com.github.paganini2008.devtools.collection.MapUtils;
 
 import indi.atlantis.framework.tridenter.http.CharsetDefinedRestTemplate;
+import indi.atlantis.framework.vortex.common.Tuple;
 
 /**
  * 
@@ -56,7 +57,7 @@ public class HttpClientPageExtractor implements PageExtractor {
 		this.restTemplate = new CharsetDefinedRestTemplate(clientHttpRequestFactory, defaultPageEncoding);
 	}
 
-	public String extractHtml(String refer, String url, Charset pageEncoding) throws Exception {
+	public String extractHtml(String refer, String url, Charset pageEncoding, Tuple tuple) throws Exception {
 		HttpHeaders headers = new HttpHeaders();
 		MultiValueMap<String, String> defaultHeaders = getDefaultHeaders();
 		if (MapUtils.isNotEmpty(defaultHeaders)) {
@@ -83,7 +84,7 @@ public class HttpClientPageExtractor implements PageExtractor {
 		HttpClientPageExtractor pageSource = new HttpClientPageExtractor();
 		// System.out.println(pageSource.getHtml("https://blog.csdn.net/u010814849/article/details/52526705"));
 		System.out.println(pageSource.extractHtml("https://www.tuniu.com",
-				"http://caipu.haochi123.com/Recipe/2015/9612659687.html?#Flag_Photo", null));
+				"http://caipu.haochi123.com/Recipe/2015/9612659687.html?#Flag_Photo", null, null));
 		System.in.read();
 		System.out.println("HttpClientPageExtractor.main()");
 	}

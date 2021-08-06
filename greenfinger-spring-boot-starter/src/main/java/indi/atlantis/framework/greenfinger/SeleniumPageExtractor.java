@@ -30,6 +30,8 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import com.github.paganini2008.devtools.RandomUtils;
 import com.github.paganini2008.devtools.collection.MapUtils;
 
+import indi.atlantis.framework.vortex.common.Tuple;
+
 /**
  * 
  * SeleniumPageExtractor
@@ -46,7 +48,7 @@ public class SeleniumPageExtractor extends PageExtractorSupport<WebDriver> imple
 		System.setProperty("webdriver.chrome.silentOutput", "true");
 	}
 
-	public String extractHtml(String refer, String url, Charset pageEncoding) throws Exception {
+	public String extractHtml(String refer, String url, Charset pageEncoding, Tuple tuple) throws Exception {
 		WebDriver webdriver = objectPool.borrowObject();
 		try {
 			webdriver.get(url);
@@ -96,7 +98,8 @@ public class SeleniumPageExtractor extends PageExtractorSupport<WebDriver> imple
 		SeleniumPageExtractor pageExtractor = new SeleniumPageExtractor(webdriverExecutionPath);
 		pageExtractor.configure();
 		RetryablePageExtractor retryablePageExtractor = new RetryablePageExtractor(pageExtractor);
-		System.out.println(retryablePageExtractor.extractHtml("http://www.ttmeishi.com", "http://www.ttmeishi.com/CaiXi/tese/", null));
+		System.out
+				.println(retryablePageExtractor.extractHtml("http://www.ttmeishi.com", "http://www.ttmeishi.com/CaiXi/tese/", null, null));
 		System.in.read();
 		pageExtractor.destroy();
 	}

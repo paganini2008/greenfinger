@@ -28,6 +28,7 @@ import com.github.paganini2008.devtools.CharsetUtils;
 import indi.atlantis.framework.greenfinger.PageExtractor;
 import indi.atlantis.framework.greenfinger.PathFilter;
 import indi.atlantis.framework.greenfinger.PathFilterFactory;
+import indi.atlantis.framework.vortex.common.Tuple;
 
 /**
  * 
@@ -48,7 +49,7 @@ public class ToolsController {
 
 	@GetMapping("/echo")
 	public String echo(@RequestParam("url") String url) throws Exception {
-		return pageExtractor.extractHtml("", url, CharsetUtils.UTF_8);
+		return pageExtractor.extractHtml("", url, CharsetUtils.UTF_8, Tuple.newOne());
 	}
 
 	@GetMapping("/testExists")

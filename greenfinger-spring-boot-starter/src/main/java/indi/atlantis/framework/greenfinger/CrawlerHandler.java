@@ -83,7 +83,7 @@ public class CrawlerHandler implements Handler {
 	private CrawlerStatistics crawlerStatistics;
 
 	@Value("${atlantis.framework.greenfinger.crawler.fetchDepth:-1}")
-	private int fetchDepth;
+	private int defaultFetchDepth;
 
 	@Value("${atlantis.framework.greenfinger.indexer.enabled:true}")
 	private boolean indexEnabled;
@@ -143,11 +143,11 @@ public class CrawlerHandler implements Handler {
 		Charset charset = CharsetUtils.toCharset(pageEncoding);
 		String html = null;
 		try {
-			html = pageExtractor.extractHtml(refer, path, charset);
+			html = pageExtractor.extractHtml(refer, path, charset, tuple);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			crawlerStatistics.getSummary(catalogId).incrementInvalidUrlCount();
-			html = pageExtractor.defaultPage(refer, path, charset, e);
+			html = pageExtractor.defaultPage(refer, path, charset, tuple, e);
 		}
 		if (StringUtils.isBlank(html)) {
 			return;
@@ -205,16 +205,17 @@ public class CrawlerHandler implements Handler {
 		final String cat = (String) tuple.getField("cat");
 		final String pageEncoding = (String) tuple.getField("pageEncoding");
 		final int version = (Integer) tuple.getField("version");
+
 		crawlerStatistics.getSummary(catalogId).incrementUrlCount();
 
 		Charset charset = CharsetUtils.toCharset(pageEncoding);
 		String html = null;
 		try {
-			html = pageExtractor.extractHtml(refer, path, charset);
+			html = pageExtractor.extractHtml(refer, path, charset, tuple);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			crawlerStatistics.getSummary(catalogId).incrementInvalidUrlCount();
-			html = pageExtractor.defaultPage(refer, path, charset, e);
+			html = pageExtractor.defaultPage(refer, path, charset, tuple, e);
 		}
 		if (StringUtils.isBlank(html)) {
 			return;
@@ -289,7 +290,7 @@ public class CrawlerHandler implements Handler {
 		if (!pathAcceptor.accept(catalogId, refer, path, tuple)) {
 			accepted = false;
 		}
-		if (!testFetchDepth(refer, path)) {
+		if (!testFetchDepth(refer, path, tuple)) {
 			accepted = false;
 		}
 		if (!accepted) {
@@ -298,8 +299,9 @@ public class CrawlerHandler implements Handler {
 		return accepted;
 	}
 
-	private boolean testFetchDepth(String refer, String path) {
-		if (fetchDepth < 0) {
+	private boolean testFetchDepth(String refer, String path, Tuple tuple) {
+		int depth = (Integer) tuple.getField("depth", defaultFetchDepth);
+		if (depth < 0) {
 			return true;
 		}
 		String part = path.replace(refer, "");
@@ -312,7 +314,7 @@ public class CrawlerHandler implements Handler {
 				n++;
 			}
 		}
-		return n <= fetchDepth;
+		return n <= depth;
 	}
 
 	private void updateRecursively(String action, long catalogId, String refer, String path, int version, Tuple current) {

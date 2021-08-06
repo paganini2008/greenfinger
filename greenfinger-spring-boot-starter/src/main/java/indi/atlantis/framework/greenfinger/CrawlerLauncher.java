@@ -79,6 +79,8 @@ public final class CrawlerLauncher {
 		data.put("pageEncoding", catalog.getPageEncoding());
 		data.put("maxFetchSize", catalog.getMaxFetchSize());
 		data.put("duration", catalog.getDuration());
+		data.put("depth", catalog.getDepth());
+		data.put("interval", catalog.getInterval());
 		data.put("version", indexEnabled ? getIndexVersion(catalogId) : 0);
 		log.info("Catalog Config: {}", data);
 
@@ -100,6 +102,8 @@ public final class CrawlerLauncher {
 		data.put("pageEncoding", catalog.getPageEncoding());
 		data.put("maxFetchSize", catalog.getMaxFetchSize());
 		data.put("duration", catalog.getDuration());
+		data.put("depth", catalog.getDepth());
+		data.put("interval", catalog.getInterval());
 		data.put("version", indexEnabled ? getIndexVersion(catalogId) : 0);
 		log.info("Catalog Config: {}", data);
 
