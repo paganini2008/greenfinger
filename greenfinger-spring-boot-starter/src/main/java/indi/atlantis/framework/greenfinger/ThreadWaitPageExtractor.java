@@ -33,7 +33,7 @@ public class ThreadWaitPageExtractor implements PageExtractor {
 	private final ThreadWaitType threadWaitType;
 
 	public ThreadWaitPageExtractor(PageExtractor pageExtractor) {
-		this(pageExtractor, ThreadWaitType.NONE);
+		this(pageExtractor, ThreadWaitType.RANDOM_SLEEP);
 	}
 
 	public ThreadWaitPageExtractor(PageExtractor pageExtractor, ThreadWaitType threadWaitType) {

@@ -27,7 +27,7 @@ import indi.atlantis.framework.vortex.common.Tuple;
  */
 public interface Condition {
 
-	void reset(long catalogId);
+	void reset(long catalogId, long duration);
 
 	boolean mightComplete(long catalogId, Tuple tuple);
 

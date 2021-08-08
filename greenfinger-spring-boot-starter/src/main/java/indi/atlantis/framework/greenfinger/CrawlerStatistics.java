@@ -25,7 +25,6 @@ import org.springframework.data.redis.support.atomic.RedisAtomicLong;
 
 import com.github.paganini2008.devtools.beans.ToStringBuilder;
 import com.github.paganini2008.devtools.collection.MapUtils;
-import com.github.paganini2008.devtools.date.DateUtils;
 import com.github.paganini2008.devtools.multithreads.Executable;
 import com.github.paganini2008.devtools.multithreads.ThreadUtils;
 import com.github.paganini2008.springdessert.reditools.common.GenericRedisTemplate;
@@ -45,7 +44,6 @@ import lombok.extern.slf4j.Slf4j;
 public class CrawlerStatistics implements BeanLifeCycle, Executable {
 
 	private static final String defaultRedisKeyPattern = "atlantis:framework:greenfinger:%s:catalog:summary:%s";
-	private static final long DEFAULT_CRAWLER_IDLE_TIMEOUT = DateUtils.convertToMillis(5, TimeUnit.MINUTES);
 
 	private final String crawlerName;
 	private final RedisConnectionFactory redisConnectionFactory;
@@ -58,8 +56,9 @@ public class CrawlerStatistics implements BeanLifeCycle, Executable {
 	private final Map<Long, Summary> cache = new ConcurrentHashMap<Long, Summary>();
 	private Timer timer;
 
-	public void reset(long catalogId) {
-		getSummary(catalogId).reset();
+	public void reset(long catalogId, long duration) {
+		Summary summary = getSummary(catalogId);
+		summary.reset(duration);
 	}
 
 	public void completeNow(long catalogId) {
@@ -88,7 +87,7 @@ public class CrawlerStatistics implements BeanLifeCycle, Executable {
 			timer.cancel();
 		}
 		cache.values().forEach(summary -> {
-			summary.reset();
+			summary.reset(0L);
 		});
 		cache.clear();
 	}
@@ -99,7 +98,7 @@ public class CrawlerStatistics implements BeanLifeCycle, Executable {
 		for (Map.Entry<Long, Summary> entry : cache.entrySet()) {
 			summary = entry.getValue();
 			if (!summary.isCompleted()) {
-				if (System.currentTimeMillis() - summary.getTimestamp() > DEFAULT_CRAWLER_IDLE_TIMEOUT) {
+				if (System.currentTimeMillis() - summary.getTimestamp() > summary.getEndTime()) {
 					summary.setCompleted(true);
 					log.info("Complete crawling due to idle timeout is too long. CatalogId: {}", entry.getKey());
 				}
@@ -119,6 +118,7 @@ public class CrawlerStatistics implements BeanLifeCycle, Executable {
 	public static class Summary {
 
 		private final GenericRedisTemplate<Long> startTime;
+		private final GenericRedisTemplate<Long> endTime;
 		private final RedisAtomicLong urls;
 		private final RedisAtomicLong invalidUrls;
 		private final RedisAtomicLong existedUrls;
@@ -131,6 +131,7 @@ public class CrawlerStatistics implements BeanLifeCycle, Executable {
 		Summary(String keyPrefix, RedisConnectionFactory redisConnectionFactory) {
 			startTime = new GenericRedisTemplate<Long>(keyPrefix + ":startTime", Long.class, redisConnectionFactory,
 					System.currentTimeMillis());
+			endTime = new GenericRedisTemplate<Long>(keyPrefix + ":endTime", Long.class, redisConnectionFactory);
 			urls = new RedisAtomicLong(keyPrefix + ":urlCount", redisConnectionFactory);
 			invalidUrls = new RedisAtomicLong(keyPrefix + ":invalidUrlCount", redisConnectionFactory);
 			existedUrls = new RedisAtomicLong(keyPrefix + ":existedUrlCount", redisConnectionFactory);
@@ -140,8 +141,9 @@ public class CrawlerStatistics implements BeanLifeCycle, Executable {
 			completed = new GenericRedisTemplate<Boolean>(keyPrefix + ":completed", Boolean.class, redisConnectionFactory, true);
 		}
 
-		public void reset() {
+		public void reset(long duration) {
 			startTime.set(System.currentTimeMillis());
+			endTime.set(startTime.get() + duration);
 			urls.set(0);
 			invalidUrls.set(0);
 			existedUrls.set(0);
@@ -279,6 +281,10 @@ public class CrawlerStatistics implements BeanLifeCycle, Executable {
 
 		public long getStartTime() {
 			return startTime.get();
+		}
+
+		public long getEndTime() {
+			return endTime.get();
 		}
 
 		public long getElapsedTime() {

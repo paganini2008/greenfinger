@@ -17,9 +17,12 @@ package indi.atlantis.framework.greenfinger;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+
+import com.github.paganini2008.devtools.date.DateUtils;
 
 import indi.atlantis.framework.greenfinger.model.Catalog;
 import indi.atlantis.framework.greenfinger.model.CatalogIndex;
@@ -39,6 +42,8 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public final class CrawlerLauncher {
+
+	static final long DEFAULT_CRAWLER_IDLE_TIMEOUT = DateUtils.convertToMillis(5, TimeUnit.MINUTES);
 
 	@Autowired
 	private NioClient nioClient;
@@ -65,10 +70,10 @@ public final class CrawlerLauncher {
 	}
 
 	public void submit(long catalogId, Condition extraCondition) {
-		Condition condition = extraCondition != null ? extraCondition : defaultCondition;
-		condition.reset(catalogId);
-
 		Catalog catalog = resourceManager.getCatalog(catalogId);
+		Condition condition = extraCondition != null ? extraCondition : defaultCondition;
+		condition.reset(catalogId, catalog.getDuration() != null ? catalog.getDuration().longValue() : DEFAULT_CRAWLER_IDLE_TIMEOUT);
+
 		Map<String, Object> data = new HashMap<String, Object>();
 		data.put(Tuple.PARTITIONER_NAME, HashPartitioner.class.getName());
 		data.put("action", "crawl");
@@ -88,10 +93,10 @@ public final class CrawlerLauncher {
 	}
 
 	public void update(long catalogId, Condition extraCondition) {
-		Condition condition = extraCondition != null ? extraCondition : defaultCondition;
-		condition.reset(catalogId);
-
 		Catalog catalog = resourceManager.getCatalog(catalogId);
+		Condition condition = extraCondition != null ? extraCondition : defaultCondition;
+		condition.reset(catalogId, catalog.getDuration() != null ? catalog.getDuration().longValue() : DEFAULT_CRAWLER_IDLE_TIMEOUT);
+
 		Map<String, Object> data = new HashMap<String, Object>();
 		data.put(Tuple.PARTITIONER_NAME, HashPartitioner.class.getName());
 		data.put("action", "update");

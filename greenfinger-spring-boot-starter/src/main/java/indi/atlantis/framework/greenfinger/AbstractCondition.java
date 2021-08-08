@@ -34,8 +34,8 @@ public abstract class AbstractCondition implements Condition {
 	}
 
 	@Override
-	public void reset(long catalogId) {
-		crawlerStatistics.reset(catalogId);
+	public void reset(long catalogId, long duration) {
+		crawlerStatistics.reset(catalogId, duration);
 	}
 
 	protected void set(long catalogId, boolean completed) {

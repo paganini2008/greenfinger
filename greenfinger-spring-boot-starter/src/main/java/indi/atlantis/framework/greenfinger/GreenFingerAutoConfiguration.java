@@ -90,7 +90,7 @@ public class GreenFingerAutoConfiguration {
 	@ConditionalOnMissingBean
 	@Bean
 	public PageExtractor pageExtractor(ClientHttpRequestFactory clientHttpRequestFactory) {
-		return new MultiCharsetHttpClientPageExtractor(clientHttpRequestFactory);
+		return new ThreadWaitPageExtractor(new MultiCharsetHttpClientPageExtractor(clientHttpRequestFactory));
 	}
 
 	@ConditionalOnMissingBean

@@ -84,7 +84,7 @@ public class HttpClientPageExtractor implements PageExtractor {
 		HttpClientPageExtractor pageSource = new HttpClientPageExtractor();
 		// System.out.println(pageSource.getHtml("https://blog.csdn.net/u010814849/article/details/52526705"));
 		System.out.println(pageSource.extractHtml("https://www.tuniu.com",
-				"http://caipu.haochi123.com/Recipe/2015/9612659687.html?#Flag_Photo", null, null));
+				"https://www.tuniu.com/?p=1400&cmpid=mkt_06002401&utm_source=baidu&utm_medium=brand&utm_campaign=brand", CharsetUtils.UTF_8, null));
 		System.in.read();
 		System.out.println("HttpClientPageExtractor.main()");
 	}

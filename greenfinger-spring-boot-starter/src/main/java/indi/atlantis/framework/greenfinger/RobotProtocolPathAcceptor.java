@@ -32,6 +32,7 @@ import com.github.paganini2008.devtools.collection.CollectionUtils;
 import com.github.paganini2008.devtools.collection.MapUtils;
 import com.github.paganini2008.devtools.io.LineIterator;
 import com.github.paganini2008.devtools.io.PathUtils;
+import com.github.paganini2008.devtools.net.Urls;
 
 import indi.atlantis.framework.vortex.common.Tuple;
 import lombok.Getter;
@@ -65,8 +66,13 @@ public class RobotProtocolPathAcceptor implements PathAcceptor {
 		if (robotFile == null) {
 			return true;
 		}
-		final String thePath = path.replace(refer, "");
-		final String theExt = PathUtils.getExtension(path);
+		String thePath;
+		try {
+			thePath = Urls.toURL(path).getPath();
+		} catch (RuntimeException ignored) {
+			thePath = "";
+		}
+		String theExt = PathUtils.getExtension(path);
 		if (CollectionUtils.isNotEmpty(robotFile.getAllow())) {
 			for (String allowPath : robotFile.getAllow()) {
 				if (allowPath.endsWith("$")) {
@@ -105,7 +111,7 @@ public class RobotProtocolPathAcceptor implements PathAcceptor {
 			content = "";
 		}
 		if (StringUtils.isBlank(content)) {
-			return null;
+			return new RobotFile();
 		}
 		RobotFile robot = new RobotFile();
 		LineIterator iterator = new LineIterator(new StringReader(content));
@@ -128,6 +134,7 @@ public class RobotProtocolPathAcceptor implements PathAcceptor {
 	@Getter
 	@Setter
 	static class RobotFile {
+
 		private String userAgent;
 		private List<String> allow = new ArrayList<String>();
 		private List<String> disallow = new ArrayList<String>();
