@@ -106,9 +106,13 @@ public class GreenFingerAutoConfiguration {
 		return new CounterCondition(crawlerStatistics, DateUtils.convertToMillis(30, TimeUnit.MINUTES), 100000);
 	}
 
-	@ConditionalOnMissingBean
 	@Bean
-	public PathAcceptor pathAcceptor() {
+	public PathAcceptorContainer pathAcceptorContainer() {
+		return new PathAcceptorContainer();
+	}
+
+	@Bean
+	public PathAcceptor defaultPathAcceptor() {
 		return new DefaultPathAcceptor();
 	}
 

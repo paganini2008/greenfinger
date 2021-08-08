@@ -68,7 +68,7 @@ public class CrawlerHandler implements Handler {
 	private Partitioner partitioner;
 
 	@Autowired
-	private PathAcceptor pathAcceptor;
+	private PathAcceptorContainer pathAcceptorContainer;
 
 	@Autowired
 	private Condition condition;
@@ -287,7 +287,7 @@ public class CrawlerHandler implements Handler {
 
 	private boolean acceptedPath(long catalogId, String refer, String path, Tuple tuple) {
 		boolean accepted = true;
-		if (!pathAcceptor.accept(catalogId, refer, path, tuple)) {
+		if (!pathAcceptorContainer.acceptAll(catalogId, refer, path, tuple)) {
 			accepted = false;
 		}
 		if (!testFetchDepth(refer, path, tuple)) {
