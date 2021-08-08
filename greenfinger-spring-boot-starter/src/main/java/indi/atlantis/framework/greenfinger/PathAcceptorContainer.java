@@ -26,6 +26,7 @@ import com.github.paganini2008.devtools.collection.CollectionUtils;
 import com.github.paganini2008.devtools.collection.MultiListMap;
 
 import indi.atlantis.framework.vortex.common.Tuple;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 
@@ -35,6 +36,7 @@ import indi.atlantis.framework.vortex.common.Tuple;
  *
  * @since 2.0.2
  */
+@Slf4j
 public class PathAcceptorContainer implements BeanPostProcessor {
 
 	private final List<PathAcceptor> pathAcceptors = new CopyOnWriteArrayList<PathAcceptor>();
@@ -70,10 +72,15 @@ public class PathAcceptorContainer implements BeanPostProcessor {
 		}
 		List<PathAcceptor> acceptors = catalogPathAcceptors.get(catalogId);
 		if (CollectionUtils.isNotEmpty(acceptors)) {
-			for (PathAcceptor pathAcceptor : acceptors) {
-				if (pathAcceptor.accept(catalogId, refer, path, tuple) == false) {
-					return false;
+			try {
+				for (PathAcceptor pathAcceptor : acceptors) {
+					if (pathAcceptor.accept(catalogId, refer, path, tuple) == false) {
+						return false;
+					}
 				}
+			} catch (Exception e) {
+				log.error(e.getMessage(), e);
+				return false;
 			}
 		}
 		return true;

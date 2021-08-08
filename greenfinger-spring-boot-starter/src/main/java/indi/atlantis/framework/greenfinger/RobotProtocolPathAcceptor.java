@@ -39,13 +39,13 @@ import lombok.Setter;
 
 /**
  * 
- * RobotPathAcceptor
+ * RobotProtocolPathAcceptor
  *
  * @author Fred Feng
  *
  * @since 2.0.2
  */
-public class RobotPathAcceptor implements PathAcceptor {
+public class RobotProtocolPathAcceptor implements PathAcceptor {
 
 	private static final String PATTERN_ALLOW = "Allow:|allow:";
 	private static final String PATTERN_DISALLOW = "Disallow:|disallow:";
@@ -121,6 +121,7 @@ public class RobotPathAcceptor implements PathAcceptor {
 				robot.getDisallow().add(line);
 			}
 		}
+		iterator.close();
 		return robot;
 	}
 

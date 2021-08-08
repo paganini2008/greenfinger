@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.Ordered;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.util.PathMatcher;
 
@@ -39,7 +40,7 @@ import indi.atlantis.framework.vortex.common.Tuple;
  * @author Fred Feng
  * @since 2.0.1
  */
-public class DefaultPathAcceptor implements PathAcceptor {
+public class DefaultPathAcceptor implements PathAcceptor, Ordered {
 
 	private final PathMatcher pathMather = new AntPathMatcher();
 
@@ -82,6 +83,11 @@ public class DefaultPathAcceptor implements PathAcceptor {
 			}
 		}
 		return false;
+	}
+
+	@Override
+	public int getOrder() {
+		return Ordered.LOWEST_PRECEDENCE - 100;
 	}
 
 	public static void main(String[] args) {
