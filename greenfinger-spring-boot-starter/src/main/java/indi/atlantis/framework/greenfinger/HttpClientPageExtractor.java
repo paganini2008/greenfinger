@@ -19,7 +19,6 @@ import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.nio.charset.Charset;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -62,8 +61,11 @@ public class HttpClientPageExtractor implements PageExtractor, BeanLifeCycle {
 		this.restTemplate = new CharsetDefinedRestTemplate(clientHttpRequestFactory, defaultPageEncoding);
 	}
 
-	@Value("atlantis.framework.greenfinger.http.proxyAddress:")
 	private String proxyAddress;
+
+	public void setProxyAddress(String proxyAddress) {
+		this.proxyAddress = proxyAddress;
+	}
 
 	@Override
 	public void configure() throws Exception {

@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.util.PathMatcher;
 
@@ -55,8 +54,11 @@ public class RobotProtocolPathAcceptor implements PathAcceptor {
 
 	private final PathMatcher pathMather = new AntPathMatcher();
 
-	@Autowired
-	private PageExtractor pageExtractor;
+	private final PageExtractor pageExtractor;
+
+	public RobotProtocolPathAcceptor(PageExtractor pageExtractor) {
+		this.pageExtractor = pageExtractor;
+	}
 
 	@Override
 	public boolean accept(long catalogId, String refer, String path, Tuple tuple) {

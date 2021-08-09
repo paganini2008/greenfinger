@@ -20,7 +20,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.commons.pool2.PooledObject;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
@@ -46,8 +45,11 @@ import indi.atlantis.framework.vortex.common.Tuple;
  */
 public class HtmlUnitPageExtractor extends PageExtractorSupport<WebClient> implements PageExtractor {
 
-	@Value("atlantis.framework.greenfinger.http.proxyAddress:")
 	private String proxyAddress;
+
+	public void setProxyAddress(String proxyAddress) {
+		this.proxyAddress = proxyAddress;
+	}
 
 	@Override
 	public WebClient createObject() throws Exception {

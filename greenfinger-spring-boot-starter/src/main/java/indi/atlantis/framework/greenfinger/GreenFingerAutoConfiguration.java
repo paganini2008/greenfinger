@@ -88,8 +88,12 @@ public class GreenFingerAutoConfiguration {
 
 	@ConditionalOnMissingBean
 	@Bean
-	public PageExtractor pageExtractor() {
-		return new ThreadWaitPageExtractor(new HtmlUnitPageExtractor());
+	public PageExtractor pageExtractor(@Value("${atlantis.framework.greenfinger.http.proxyAddress:}") String proxyAddress)
+			throws Exception {
+		HtmlUnitPageExtractor pageExtractor = new HtmlUnitPageExtractor();
+		pageExtractor.setProxyAddress(proxyAddress);
+		pageExtractor.configure();
+		return new ThreadWaitPageExtractor(pageExtractor);
 	}
 
 	@ConditionalOnMissingBean

@@ -27,7 +27,6 @@ import org.openqa.selenium.Proxy;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
-import org.springframework.beans.factory.annotation.Value;
 
 import com.github.paganini2008.devtools.RandomUtils;
 import com.github.paganini2008.devtools.StringUtils;
@@ -51,8 +50,11 @@ public class SeleniumPageExtractor extends PageExtractorSupport<WebDriver> imple
 		System.setProperty("webdriver.chrome.silentOutput", "true");
 	}
 
-	@Value("atlantis.framework.greenfinger.http.proxyAddress:")
 	private String proxyAddress;
+
+	public void setProxyAddress(String proxyAddress) {
+		this.proxyAddress = proxyAddress;
+	}
 
 	public String extractHtml(String refer, String url, Charset pageEncoding, Tuple tuple) throws Exception {
 		WebDriver webdriver = objectPool.borrowObject();
