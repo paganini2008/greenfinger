@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.commons.pool2.PooledObject;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 
 import com.gargoylesoftware.htmlunit.BrowserVersion;
@@ -30,6 +31,7 @@ import com.gargoylesoftware.htmlunit.TextPage;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.github.paganini2008.devtools.RandomUtils;
+import com.github.paganini2008.devtools.StringUtils;
 import com.github.paganini2008.devtools.collection.MapUtils;
 
 import indi.atlantis.framework.vortex.common.Tuple;
@@ -44,9 +46,18 @@ import indi.atlantis.framework.vortex.common.Tuple;
  */
 public class HtmlUnitPageExtractor extends PageExtractorSupport<WebClient> implements PageExtractor {
 
+	@Value("atlantis.framework.greenfinger.http.proxyAddress:")
+	private String proxyAddress;
+
 	@Override
 	public WebClient createObject() throws Exception {
-		WebClient webClient = new WebClient(BrowserVersion.BEST_SUPPORTED);
+		WebClient webClient;
+		if (StringUtils.isNotBlank(proxyAddress)) {
+			String[] args = proxyAddress.split(":");
+			webClient = new WebClient(BrowserVersion.BEST_SUPPORTED, args[0], Integer.parseInt(args[1]));
+		} else {
+			webClient = new WebClient(BrowserVersion.BEST_SUPPORTED);
+		}
 		Map<String, String> defaultHeaders = getDefaultHeaders();
 		if (MapUtils.isNotEmpty(defaultHeaders)) {
 			for (Map.Entry<String, String> entry : defaultHeaders.entrySet()) {

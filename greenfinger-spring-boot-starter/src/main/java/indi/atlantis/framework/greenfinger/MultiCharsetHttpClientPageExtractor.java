@@ -46,8 +46,13 @@ public class MultiCharsetHttpClientPageExtractor implements PageExtractor {
 	@Override
 	public String extractHtml(String refer, String url, Charset pageEncoding, Tuple tuple) throws Exception {
 		return MapUtils.get(cache, pageEncoding, () -> {
-			return new HttpClientPageExtractor(clientHttpRequestFactory, pageEncoding);
+			return createTargetPageExtractor(clientHttpRequestFactory, refer, pageEncoding);
 		}).extractHtml(refer, url, pageEncoding, tuple);
+	}
+
+	protected HttpClientPageExtractor createTargetPageExtractor(ClientHttpRequestFactory clientHttpRequestFactory, String refer,
+			Charset pageEncoding) {
+		return new HttpClientPageExtractor(clientHttpRequestFactory, pageEncoding);
 	}
 
 }

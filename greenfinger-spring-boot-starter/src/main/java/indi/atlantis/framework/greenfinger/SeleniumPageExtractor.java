@@ -23,11 +23,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 import org.apache.commons.pool2.PooledObject;
+import org.openqa.selenium.Proxy;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.springframework.beans.factory.annotation.Value;
 
 import com.github.paganini2008.devtools.RandomUtils;
+import com.github.paganini2008.devtools.StringUtils;
 import com.github.paganini2008.devtools.collection.MapUtils;
 
 import indi.atlantis.framework.vortex.common.Tuple;
@@ -48,6 +51,9 @@ public class SeleniumPageExtractor extends PageExtractorSupport<WebDriver> imple
 		System.setProperty("webdriver.chrome.silentOutput", "true");
 	}
 
+	@Value("atlantis.framework.greenfinger.http.proxyAddress:")
+	private String proxyAddress;
+
 	public String extractHtml(String refer, String url, Charset pageEncoding, Tuple tuple) throws Exception {
 		WebDriver webdriver = objectPool.borrowObject();
 		try {
@@ -62,7 +68,12 @@ public class SeleniumPageExtractor extends PageExtractorSupport<WebDriver> imple
 
 	public WebDriver createObject() throws Exception {
 		ChromeOptions options = new ChromeOptions();
-		options.addArguments("lang=zh_CN.UTF-8");
+		if (StringUtils.isNotBlank(proxyAddress)) {
+			Proxy proxy = new Proxy();
+			proxy.setHttpProxy(proxyAddress);
+			options.setProxy(proxy);
+		}
+		options.addArguments("lang=en_US.UTF-8");
 		options.addArguments("user-agent=" + RandomUtils.randomChoice(userAgents));
 		options.addArguments("--test-type", "--ignore-certificate-errors", "--start-maximized", "no-default-browser-check");
 		options.addArguments("--silent", "--headless", "--disable-gpu");

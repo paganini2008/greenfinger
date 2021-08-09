@@ -15,14 +15,18 @@
 */
 package indi.atlantis.framework.greenfinger;
 
+import java.net.InetSocketAddress;
+import java.net.Proxy;
 import java.nio.charset.Charset;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
@@ -31,6 +35,7 @@ import com.github.paganini2008.devtools.RandomUtils;
 import com.github.paganini2008.devtools.collection.MapUtils;
 
 import indi.atlantis.framework.tridenter.http.CharsetDefinedRestTemplate;
+import indi.atlantis.framework.tridenter.utils.BeanLifeCycle;
 import indi.atlantis.framework.vortex.common.Tuple;
 
 /**
@@ -41,7 +46,7 @@ import indi.atlantis.framework.vortex.common.Tuple;
  * 
  * @since 2.0.1
  */
-public class HttpClientPageExtractor implements PageExtractor {
+public class HttpClientPageExtractor implements PageExtractor, BeanLifeCycle {
 
 	private final RestTemplate restTemplate;
 
@@ -55,6 +60,21 @@ public class HttpClientPageExtractor implements PageExtractor {
 
 	public HttpClientPageExtractor(ClientHttpRequestFactory clientHttpRequestFactory, Charset defaultPageEncoding) {
 		this.restTemplate = new CharsetDefinedRestTemplate(clientHttpRequestFactory, defaultPageEncoding);
+	}
+
+	@Value("atlantis.framework.greenfinger.http.proxyAddress:")
+	private String proxyAddress;
+
+	@Override
+	public void configure() throws Exception {
+		ClientHttpRequestFactory factory = restTemplate.getRequestFactory();
+		if (factory instanceof SimpleClientHttpRequestFactory) {
+			SimpleClientHttpRequestFactory simpleFactory = (SimpleClientHttpRequestFactory) factory;
+			String[] args = proxyAddress.split(":");
+			InetSocketAddress address = new InetSocketAddress(args[0], Integer.parseInt(args[1]));
+			Proxy proxy = new Proxy(Proxy.Type.HTTP, address);
+			simpleFactory.setProxy(proxy);
+		}
 	}
 
 	public String extractHtml(String refer, String url, Charset pageEncoding, Tuple tuple) throws Exception {
@@ -80,11 +100,16 @@ public class HttpClientPageExtractor implements PageExtractor {
 		return headers;
 	}
 
+	public RestTemplate getRestTemplate() {
+		return restTemplate;
+	}
+
 	public static void main(String[] args) throws Exception {
 		HttpClientPageExtractor pageSource = new HttpClientPageExtractor();
 		// System.out.println(pageSource.getHtml("https://blog.csdn.net/u010814849/article/details/52526705"));
 		System.out.println(pageSource.extractHtml("https://www.tuniu.com",
-				"https://www.tuniu.com/?p=1400&cmpid=mkt_06002401&utm_source=baidu&utm_medium=brand&utm_campaign=brand", CharsetUtils.UTF_8, null));
+				"https://www.tuniu.com/?p=1400&cmpid=mkt_06002401&utm_source=baidu&utm_medium=brand&utm_campaign=brand", CharsetUtils.UTF_8,
+				null));
 		System.in.read();
 		System.out.println("HttpClientPageExtractor.main()");
 	}

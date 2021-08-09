@@ -26,7 +26,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.elasticsearch.repository.config.EnableElasticsearchRepositories;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.http.client.ClientHttpRequestFactory;
 
 import com.github.paganini2008.devtools.date.DateUtils;
 import com.github.paganini2008.springdessert.reditools.common.IdGenerator;
@@ -83,14 +82,14 @@ public class GreenFingerAutoConfiguration {
 
 	@ConditionalOnMissingBean
 	@Bean
-	public ResourceManager resourceService() {
+	public ResourceManager resourceManager() {
 		return new JdbcResourceManger();
 	}
 
 	@ConditionalOnMissingBean
 	@Bean
-	public PageExtractor pageExtractor(ClientHttpRequestFactory clientHttpRequestFactory) {
-		return new ThreadWaitPageExtractor(new MultiCharsetHttpClientPageExtractor(clientHttpRequestFactory));
+	public PageExtractor pageExtractor() {
+		return new ThreadWaitPageExtractor(new HtmlUnitPageExtractor());
 	}
 
 	@ConditionalOnMissingBean
@@ -103,7 +102,7 @@ public class GreenFingerAutoConfiguration {
 	@ConditionalOnMissingBean
 	@Bean
 	public Condition defaultCondition(CrawlerStatistics crawlerStatistics) {
-		return new CounterCondition(crawlerStatistics, DateUtils.convertToMillis(30, TimeUnit.MINUTES), 100000);
+		return new CounterCondition(crawlerStatistics, DateUtils.convertToMillis(20, TimeUnit.MINUTES), 100000);
 	}
 
 	@Bean
