@@ -98,7 +98,7 @@ public class CrawlerStatistics implements BeanLifeCycle, Executable {
 		for (Map.Entry<Long, Summary> entry : cache.entrySet()) {
 			summary = entry.getValue();
 			if (!summary.isCompleted()) {
-				if (System.currentTimeMillis() - summary.getTimestamp() > summary.getEndTime()) {
+				if (System.currentTimeMillis() > summary.getEndTime()) {
 					summary.setCompleted(true);
 					log.info("Complete crawling due to idle timeout is too long. CatalogId: {}", entry.getKey());
 				}
