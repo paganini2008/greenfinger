@@ -15,19 +15,24 @@
 */
 package indi.atlantis.framework.greenfinger.console.config;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import javax.sql.DataSource;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 
-import com.github.paganini2008.springdessert.reditools.common.EnableRedisClient;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -38,51 +43,61 @@ import lombok.extern.slf4j.Slf4j;
  * @since 2.0.1
  */
 @Slf4j
-@Setter
-@Getter
-@EnableRedisClient
 @Configuration(proxyBeanMethods = false)
-@ConfigurationProperties(prefix = "spring.datasource")
 public class DataSourceConfig {
 
-	private String jdbcUrl;
-	private String username;
-	private String password;
-	private String driverClassName;
+	@ConfigurationProperties(prefix = "atlantis.framework.greenfinger.datasource")
+	@Getter
+	@Setter
+	@ToString
+	public static class DataSourceSettings {
+		private String jdbcUrl;
+		private String username;
+		private String password;
+		private String driverClassName;
+		private int maxPoolSize = 16;
 
-	private HikariConfig getDbConfig() {
-		if (log.isTraceEnabled()) {
-			log.trace("DataSourceConfig JdbcUrl: " + jdbcUrl);
-			log.trace("DataSourceConfig Username: " + username);
-			log.trace("DataSourceConfig Password: " + password);
-			log.trace("DataSourceConfig DriverClassName: " + driverClassName);
-		}
-		final HikariConfig config = new HikariConfig();
-		config.setDriverClassName(driverClassName);
-		config.setJdbcUrl(jdbcUrl);
-		config.setUsername(username);
-		config.setPassword(password);
-		config.setMinimumIdle(5);
-		config.setMaximumPoolSize(50);
-		config.setMaxLifetime(60 * 1000);
-		config.setIdleTimeout(60 * 1000);
-		config.setValidationTimeout(3000);
-		config.setReadOnly(false);
-		config.setConnectionInitSql("SELECT 1");
-		config.setConnectionTestQuery("SELECT 1");
-		config.setConnectionTimeout(60 * 1000);
-		config.setTransactionIsolation("TRANSACTION_READ_COMMITTED");
-
-		config.addDataSourceProperty("cachePrepStmts", "true");
-		config.addDataSourceProperty("prepStmtCacheSize", "250");
-		config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
-		return config;
+		private Map<String, String> settings = new HashMap<String, String>();
 	}
 
-	@Primary
-	@Bean
-	public DataSource defaultDataSource() {
-		return new HikariDataSource(getDbConfig());
+	@Configuration(proxyBeanMethods = false)
+	@ConditionalOnClass(HikariDataSource.class)
+	@EnableConfigurationProperties(DataSourceConfig.DataSourceSettings.class)
+	@ConditionalOnMissingBean(DataSource.class)
+	public static class HikariDataSourceConfiguration {
+
+		private HikariConfig getDbConfig(DataSourceSettings dataSourceSettings) {
+
+			if (log.isTraceEnabled()) {
+				log.trace("HikariDataSource DataSourceSettings: " + dataSourceSettings);
+			}
+			final HikariConfig config = new HikariConfig();
+			config.setDriverClassName(dataSourceSettings.getDriverClassName());
+			config.setJdbcUrl(dataSourceSettings.getJdbcUrl());
+			config.setUsername(dataSourceSettings.getUsername());
+			config.setPassword(dataSourceSettings.getPassword());
+			config.setMinimumIdle(1);
+			config.setMaximumPoolSize(dataSourceSettings.getMaxPoolSize());
+			config.setMaxLifetime(3 * 60 * 1000);
+			config.setIdleTimeout(60 * 1000);
+			config.setValidationTimeout(3000);
+			config.setReadOnly(false);
+			config.setConnectionInitSql("SELECT 1");
+			config.setConnectionTestQuery("SELECT 1");
+			config.setConnectionTimeout(60 * 1000);
+			config.setTransactionIsolation("TRANSACTION_READ_COMMITTED");
+
+			config.addDataSourceProperty("cachePrepStmts", "true");
+			config.addDataSourceProperty("prepStmtCacheSize", "250");
+			config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
+			return config;
+		}
+
+		@Bean
+		public DataSource dataSource(DataSourceSettings dataSourceSettings) {
+			return new HikariDataSource(getDbConfig(dataSourceSettings));
+		}
+
 	}
 
 }
