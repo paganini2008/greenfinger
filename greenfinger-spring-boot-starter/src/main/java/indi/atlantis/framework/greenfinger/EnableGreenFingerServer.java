@@ -42,6 +42,6 @@ import indi.atlantis.framework.vortex.EnableNioTransport;
 @DaoScan(basePackages = "indi.atlantis.framework.greenfinger.jdbc")
 @EnableNioTransport
 @EnableApplicationCluster(enableLeaderElection = true, enableMonitor = true)
-@Import(GreenFingerAutoConfiguration.class)
+@Import({ GreenFingerAutoConfiguration.class, GreenFingerDataSourceConfiguration.class })
 public @interface EnableGreenFingerServer {
 }

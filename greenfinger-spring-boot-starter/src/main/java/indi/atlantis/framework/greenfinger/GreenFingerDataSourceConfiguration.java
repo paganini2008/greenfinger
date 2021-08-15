@@ -13,15 +13,17 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
-package indi.atlantis.framework.greenfinger.console.config;
+package indi.atlantis.framework.greenfinger;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import javax.sql.DataSource;
 
+import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -37,19 +39,21 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * 
- * DataSourceConfig
+ * GreenFingerDataSourceConfiguration
  *
  * @author Fred Feng
- * @since 2.0.1
+ *
+ * @since 2.0.4
  */
 @Slf4j
+@AutoConfigureAfter(DataSourceAutoConfiguration.class)
 @Configuration(proxyBeanMethods = false)
-public class DataSourceConfig {
+public class GreenFingerDataSourceConfiguration {
 
-	@ConfigurationProperties(prefix = "atlantis.framework.greenfinger.datasource")
 	@Getter
 	@Setter
 	@ToString
+	@ConfigurationProperties(prefix = "atlantis.framework.greenfinger.datasource")
 	public static class DataSourceSettings {
 		private String jdbcUrl;
 		private String username;
@@ -62,12 +66,12 @@ public class DataSourceConfig {
 
 	@Configuration(proxyBeanMethods = false)
 	@ConditionalOnClass(HikariDataSource.class)
-	@EnableConfigurationProperties(DataSourceConfig.DataSourceSettings.class)
+	@EnableConfigurationProperties(GreenFingerDataSourceConfiguration.DataSourceSettings.class)
 	@ConditionalOnMissingBean(DataSource.class)
-	public static class HikariDataSourceConfiguration {
+	public static class DefaultDataSourceConfiguration {
 
-		private HikariConfig getDbConfig(DataSourceSettings dataSourceSettings) {
-
+		@Bean
+		public HikariConfig hikariConfig(DataSourceSettings dataSourceSettings) {
 			if (log.isTraceEnabled()) {
 				log.trace("HikariDataSource DataSourceSettings: " + dataSourceSettings);
 			}
@@ -95,7 +99,7 @@ public class DataSourceConfig {
 
 		@Bean
 		public DataSource dataSource(DataSourceSettings dataSourceSettings) {
-			return new HikariDataSource(getDbConfig(dataSourceSettings));
+			return new HikariDataSource(hikariConfig(dataSourceSettings));
 		}
 
 	}
