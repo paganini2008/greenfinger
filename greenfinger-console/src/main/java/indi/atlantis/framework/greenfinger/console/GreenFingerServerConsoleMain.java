@@ -19,6 +19,7 @@ import java.io.File;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 
 import com.github.paganini2008.devtools.Env;
 import com.github.paganini2008.devtools.io.FileUtils;
@@ -34,7 +35,7 @@ import indi.atlantis.framework.greenfinger.EnableGreenFingerServer;
  * @since 2.0.1
  */
 @EnableGreenFingerServer
-@SpringBootApplication
+@SpringBootApplication(exclude = { DataSourceAutoConfiguration.class })
 public class GreenFingerServerConsoleMain {
 
 	static {
