@@ -49,7 +49,6 @@ import lombok.extern.slf4j.Slf4j;
  *
  * @since 2.0.4
  */
-@Slf4j
 @AutoConfigureAfter(DataSourceAutoConfiguration.class)
 @Configuration(proxyBeanMethods = false)
 public class GreenFingerDataSourceConfiguration {
@@ -68,6 +67,7 @@ public class GreenFingerDataSourceConfiguration {
 		private Map<String, String> settings = new HashMap<String, String>();
 	}
 
+	@Slf4j
 	@Configuration(proxyBeanMethods = false)
 	@ConditionalOnClass(HikariDataSource.class)
 	@EnableConfigurationProperties(GreenFingerDataSourceConfiguration.DataSourceSettings.class)
@@ -118,6 +118,7 @@ public class GreenFingerDataSourceConfiguration {
 	 *
 	 * @since 2.0.4
 	 */
+	@Slf4j
 	public static class GreenFingerDataSourceFactory extends SingletonDataSoruceFactory {
 
 		GreenFingerDataSourceFactory(HikariDataSource dataSource) {
@@ -127,7 +128,8 @@ public class GreenFingerDataSourceConfiguration {
 		public void close() {
 			try {
 				((HikariDataSource) getDataSource()).close();
-			} catch (SQLException ignored) {
+			} catch (SQLException e) {
+				log.error(e.getMessage(), e);
 			}
 		}
 
