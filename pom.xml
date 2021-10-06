@@ -4,7 +4,7 @@
 	
 	<groupId>com.github.paganini2008.atlantis</groupId>
     <artifactId>greenfinger</artifactId>
-	<version>1.0-RC3</version>
+	<version>1.0.1</version>
 		
     <modules>
 		<!-- <module>greenfinger-console</module> -->
