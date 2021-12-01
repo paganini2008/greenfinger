@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
-import com.github.paganini2008.devtools.date.DateUtils;
+import com.github.paganini2008.devtools.time.DateUtils;
 
 import io.atlantisframework.greenfinger.model.Catalog;
 import io.atlantisframework.greenfinger.model.CatalogIndex;

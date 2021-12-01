@@ -27,7 +27,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.elasticsearch.repository.config.EnableElasticsearchRepositories;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 
-import com.github.paganini2008.devtools.date.DateUtils;
+import com.github.paganini2008.devtools.time.DateUtils;
 import com.github.paganini2008.springdessert.reditools.common.IdGenerator;
 import com.github.paganini2008.springdessert.reditools.common.TimeBasedIdGenerator;
 

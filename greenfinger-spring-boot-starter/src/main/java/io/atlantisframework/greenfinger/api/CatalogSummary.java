@@ -17,7 +17,7 @@ package io.atlantisframework.greenfinger.api;
 
 import java.util.Date;
 
-import com.github.paganini2008.devtools.date.Duration;
+import com.github.paganini2008.devtools.time.Duration;
 
 import io.atlantisframework.greenfinger.CrawlerStatistics.Summary;
 import io.atlantisframework.greenfinger.model.Catalog;

@@ -29,10 +29,10 @@ import org.springframework.util.StopWatch;
 
 import com.github.paganini2008.devtools.CharsetUtils;
 import com.github.paganini2008.devtools.beans.PropertyUtils;
-import com.github.paganini2008.devtools.date.Duration;
 import com.github.paganini2008.devtools.jdbc.PageRequest;
 import com.github.paganini2008.devtools.jdbc.PageResponse;
 import com.github.paganini2008.devtools.jdbc.ResultSetSlice;
+import com.github.paganini2008.devtools.time.Duration;
 
 import io.atlantisframework.greenfinger.PageExtractor;
 import io.atlantisframework.greenfinger.ResourceManager;
