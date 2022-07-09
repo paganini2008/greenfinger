@@ -1,5 +1,5 @@
 /**
-* Copyright 2017-2021 Fred Feng (paganini.fy@gmail.com)
+* Copyright 2017-2022 Fred Feng (paganini.fy@gmail.com)
 
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ import io.atlantisframework.greenfinger.es.ResourceIndexService;
 import io.atlantisframework.greenfinger.jdbc.JdbcResourceManger;
 import io.atlantisframework.greenfinger.job.CatalogIndexJobService;
 import io.atlantisframework.vortex.common.HashPartitioner;
-import io.atlantisframework.vortex.common.NamedSelectionPartitioner;
+import io.atlantisframework.vortex.common.MultipleChoicePartitioner;
 import io.atlantisframework.vortex.common.Partitioner;
 
 /**
@@ -74,10 +74,10 @@ public class GreenFingerAutoConfiguration {
 
 	@Autowired
 	public void addPartitioner(Partitioner partitioner) {
-		NamedSelectionPartitioner namedSelectionPartitioner = (NamedSelectionPartitioner) partitioner;
+		MultipleChoicePartitioner multipleChoicePartitioner = (MultipleChoicePartitioner) partitioner;
 		final String[] fieldNames = "catalogId,refer,path,version".split(",", 4);
 		HashPartitioner hashPartitioner = new HashPartitioner(fieldNames);
-		namedSelectionPartitioner.addPartitioner(hashPartitioner);
+		multipleChoicePartitioner.addPartitioner(hashPartitioner);
 	}
 
 	@ConditionalOnMissingBean

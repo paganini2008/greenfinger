@@ -1,5 +1,5 @@
 /**
-* Copyright 2017-2021 Fred Feng (paganini.fy@gmail.com)
+* Copyright 2017-2022 Fred Feng (paganini.fy@gmail.com)
 
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -75,7 +75,7 @@ public final class CrawlerLauncher {
 		condition.reset(catalogId, catalog.getDuration() != null ? catalog.getDuration().longValue() : DEFAULT_CRAWLER_IDLE_TIMEOUT);
 
 		Map<String, Object> data = new HashMap<String, Object>();
-		data.put(Tuple.PARTITIONER_NAME, HashPartitioner.class.getName());
+		data.put(Partitioner.class.getName(), HashPartitioner.class.getName());
 		data.put("action", "crawl");
 		data.put("catalogId", catalog.getId());
 		data.put("refer", catalog.getUrl());
@@ -98,7 +98,7 @@ public final class CrawlerLauncher {
 		condition.reset(catalogId, catalog.getDuration() != null ? catalog.getDuration().longValue() : DEFAULT_CRAWLER_IDLE_TIMEOUT);
 
 		Map<String, Object> data = new HashMap<String, Object>();
-		data.put(Tuple.PARTITIONER_NAME, HashPartitioner.class.getName());
+		data.put(Partitioner.class.getName(), HashPartitioner.class.getName());
 		data.put("action", "update");
 		data.put("catalogId", catalog.getId());
 		data.put("refer", catalog.getUrl());

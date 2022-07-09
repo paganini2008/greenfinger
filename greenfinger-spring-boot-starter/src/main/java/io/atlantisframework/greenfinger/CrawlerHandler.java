@@ -1,5 +1,5 @@
 /**
-* Copyright 2017-2021 Fred Feng (paganini.fy@gmail.com)
+* Copyright 2017-2022 Fred Feng (paganini.fy@gmail.com)
 
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -319,7 +319,7 @@ public class CrawlerHandler implements Handler {
 
 	private void updateRecursively(String action, long catalogId, String refer, String path, int version, Tuple current) {
 		Tuple tuple = Tuple.newOne();
-		tuple.setField(Tuple.PARTITIONER_NAME, HashPartitioner.class.getName());
+		tuple.setField(Partitioner.class.getName(), HashPartitioner.class.getName());
 		tuple.setField("action", action);
 		tuple.setField("catalogId", catalogId);
 		tuple.setField("refer", refer);
@@ -340,7 +340,7 @@ public class CrawlerHandler implements Handler {
 			return;
 		}
 		Tuple tuple = Tuple.newOne();
-		tuple.setField(Tuple.PARTITIONER_NAME, HashPartitioner.class.getName());
+		tuple.setField(Partitioner.class.getName(), HashPartitioner.class.getName());
 		tuple.setField("action", action);
 		tuple.setField("catalogId", catalogId);
 		tuple.setField("refer", refer);

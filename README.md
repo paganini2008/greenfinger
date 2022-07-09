@@ -1,20 +1,24 @@
-# Greenfinger Project
-**Greenfinger** is a high-performance **distributed web crawler framework** based on <code>SpringBoot</code> framework. With a little configuration, you can easily build a distributed web crawler microservice cluster. In addition, the greenfinger framework provides rich interfaces to customize your system
+# Greenfinger Framework
+A high-performance distributed web crawler framework based on <code>SpringBoot</code> framework. It  provides rich APIs to customize business and easily embedded your system. 
 
-### Compatibility
-1. jdk8 (or later)
-2. SpringBoot Framework 2.2.x (or later)
-3. Redis 3.x (or later)
-4. MySQL 5.x (or later)
-5. ElasticSearch 6.x (or later)
+## Compatibility
 
-### Install
+* Jdk8 (or later)
+* <code>SpringBoot</code> Framework 2.2.x (or later)
+* Redis 3.x (or later)
+* MySQL 5.x (or later)
+* ElasticSearch 6.x (or later)
+
+## Install
+
 ``` xml
+
 <dependency>
     <groupId>com.github.paganini2008.atlantis</groupId>
     <artifactId>greenfinger-spring-boot-starter</artifactId
     <version>1.0-RC1</version>
 </dependency>
+
 ```
 
 ### Features
