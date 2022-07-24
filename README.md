@@ -36,6 +36,26 @@ A high-performance distributed web crawling framework based on <code>SpringBoot<
 * Support index query with multiple version 
 
 
+
+## Core API
+
+<code>CrawlerLauncher</code>
+
+<code>PathFilterFactory</code>
+
+<code>CrawlerHandler</code>
+
+<code>ResourceManager</code>
+
+<code>PageExtractor</code>
+
+<code>Condition</code>
+
+<code>PathAcceptor</code>
+
+
+
+
 ## Run
 ``` java
 @EnableGreenFingerServer
