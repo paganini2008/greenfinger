@@ -7,7 +7,7 @@
 	<version>1.0.1</version>
 		
     <modules>
-		<!-- <module>greenfinger-console</module> -->
+		<module>greenfinger-console</module>
 		<module>greenfinger-spring-boot-starter</module>
     </modules>
 	
