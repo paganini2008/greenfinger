@@ -1,7 +1,6 @@
 
 #maven
 /target/
-/run/
 # Eclipse
 .classpath
 .project
