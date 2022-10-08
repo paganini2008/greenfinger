@@ -29,7 +29,7 @@ create table crawler_resource(
 	html text,
 	url character varying(600),
 	cat character varying(45) not null,
-	last_modified timestamp without time zone,
+	create_time timestamp without time zone,
 	version integer not null,
 	catalog_id bigint not null
 );
