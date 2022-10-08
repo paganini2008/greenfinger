@@ -96,4 +96,4 @@ Step 5:
 
 Open your browser:
 
-http://localhost:21213/atlantis/greenfinger/catalog/
+http://localhost:21212/atlantis/greenfinger/catalog/
