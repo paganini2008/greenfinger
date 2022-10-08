@@ -56,14 +56,44 @@ A high-performance distributed web crawling framework based on <code>SpringBoot<
 
 
 
-## Run
-``` java
-@EnableGreenFingerServer
-@SpringBootApplication
-public class GreenFingerServerConsoleMain {
+## Quick Start
 
-	public static void main(String[] args) {
-		SpringApplication.run(GreenFingerServerConsoleMain.class, args);
-	}
-}
+Step 1:
+You need to get the latest code of GreenFinger project.  
+git clone https://github.com/paganini2008/greenfinger.git
+
+Step 2:
+cd greenfinger/greenfinger-console/run
+
+You can see:
+
 ```
+run
+├── config
+│   ├── application-dev.properties
+│   └── application.properties
+├── db
+│   └── crawler.sql
+├── images
+├── lib
+├── greenfinger-console-1.0.1.jar
+└── logs
+
+```
+
+
+Step 3:
+open application-dev.properties then to modify the Jdbc Configuration, Redis Configuration and Elasticsearch Configuration
+Other configuration has better keep default settings when you start the application on first time.
+
+Step4:
+execute 'java -jar greenfinger-console-1.0.1.jar --server-port=21212' and start the Greenfinger Console application.
+Default http port is 21212. You can also  start multiple applications of Greenfinger-Console to form a cluster and then work together.
+
+
+
+Step 5:
+
+Open your browser:
+
+http://localhost:21213/atlantis/greenfinger/catalog/
