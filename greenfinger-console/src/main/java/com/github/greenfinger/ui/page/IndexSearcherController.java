@@ -8,8 +8,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import com.github.doodler.common.jdbc.page.PageBean;
-import com.github.doodler.common.jdbc.page.PageResponse;
+import com.github.doodler.common.page.PageBean;
+import com.github.doodler.common.page.PageResponse;
 import com.github.greenfinger.es.ResourceIndexService;
 import com.github.greenfinger.es.SearchResult;
 

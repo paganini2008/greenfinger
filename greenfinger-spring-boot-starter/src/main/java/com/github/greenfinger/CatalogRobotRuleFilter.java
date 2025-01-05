@@ -50,7 +50,7 @@ public class CatalogRobotRuleFilter implements RobotRuleFilter, ManagedBeanLifeC
 
     @Override
     public boolean isAllowed(String url) {
-        return rules.isAllowed(url);
+        return rules != null && rules.isAllowed(url);
     }
 
     public static void main(String[] args) throws Exception {

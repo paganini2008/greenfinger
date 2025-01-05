@@ -12,7 +12,7 @@ import com.github.doodler.common.jdbc.annotations.Example;
 import com.github.doodler.common.jdbc.annotations.Get;
 import com.github.doodler.common.jdbc.annotations.PageQuery;
 import com.github.doodler.common.jdbc.annotations.Update;
-import com.github.doodler.common.jdbc.page.PageReader;
+import com.github.doodler.common.page.PageReader;
 import com.github.greenfinger.model.Resource;
 
 /**

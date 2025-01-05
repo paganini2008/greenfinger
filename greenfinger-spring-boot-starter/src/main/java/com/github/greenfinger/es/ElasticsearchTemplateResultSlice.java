@@ -29,9 +29,9 @@ import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.data.elasticsearch.core.query.NativeSearchQuery;
 import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
-import com.github.doodler.common.jdbc.page.DefaultPageContent;
-import com.github.doodler.common.jdbc.page.PageContent;
-import com.github.doodler.common.jdbc.page.PageReader;
+import com.github.doodler.common.page.DefaultPageContent;
+import com.github.doodler.common.page.PageContent;
+import com.github.doodler.common.page.PageReader;
 import com.github.doodler.common.utils.BeanCopyUtils;
 
 /**

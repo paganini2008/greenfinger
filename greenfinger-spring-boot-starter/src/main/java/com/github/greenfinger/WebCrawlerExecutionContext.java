@@ -67,7 +67,7 @@ public final class WebCrawlerExecutionContext implements Runnable {
             RedisConnectionFactory redisConnectionFactory) {
         this.catalog = resourceManager.getCatalog(catalogId);
         CatalogIndex catalogIndex = resourceManager.getCatalogIndex(catalogId);
-        this.existingUrlPathFilter = new BloomFilterUrlPathFilter(catalogId,
+        this.existingUrlPathFilter = new RedisBloomUrlPathFilter(catalogId,
                 catalogIndex.getVersion(), redisConnectionFactory);
         this.dashboardData = new OneTimeDashboardData(catalogId, catalogIndex.getVersion(),
                 redisConnectionFactory);

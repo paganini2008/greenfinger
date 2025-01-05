@@ -20,7 +20,11 @@ public class RedisUrlPathFilter implements ExistingUrlPathFilter {
 
     public RedisUrlPathFilter(long catalogId, int version,
             RedisConnectionFactory redisConnectionFactory) {
-        this.key = String.format(NAMESPACE_PATTERN, catalogId, version);
+        this(String.format(NAMESPACE_PATTERN, catalogId, version), redisConnectionFactory);
+    }
+
+    public RedisUrlPathFilter(String key, RedisConnectionFactory redisConnectionFactory) {
+        this.key = key;
         this.redisTemplate = new StringRedisTemplate(redisConnectionFactory);
     }
 

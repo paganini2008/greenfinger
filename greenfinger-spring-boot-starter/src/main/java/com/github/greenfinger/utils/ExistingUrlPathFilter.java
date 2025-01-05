@@ -15,4 +15,8 @@ public interface ExistingUrlPathFilter {
 
     default void clean() {}
 
+    default long size() {
+        return -1;
+    }
+
 }
