@@ -124,7 +124,7 @@
 						<manifest>
 							<addClasspath>true</addClasspath>
 							<classpathPrefix>lib/</classpathPrefix>
-							<mainClass>io.atlantisframework.greenfinger.console.GreenFingerServerConsoleMain</mainClass>
+							<mainClass>com.github.greenfinger.ui.GreenFingerApplicationMain</mainClass>
 						</manifest>
 					</archive>
 					<excludes>

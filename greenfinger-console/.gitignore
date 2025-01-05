@@ -25,4 +25,5 @@
 /logs/
 /mec-cloud-registry.iml
 /bin/
+/run/
 .dbeaver
