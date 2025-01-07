@@ -95,11 +95,61 @@ GreenFinger provides a user-friendly **Web UI** for managing crawler tasks:
 2. Build and run the application:
    ```bash
    mvn clean install
-   java -jar target/greenfinger.jar
+   java -jar target/greenfinger-console.jar
    ```
 
 3. Access the Web UI:
    Navigate to `http://localhost:8080` to configure tasks and monitor progress.
+
+###  Greenfinger Console Using Guide：
+
+-------------------------
+
+Understanding the meaning of **Catalog** and **Resource:**
+
+* **Catalog**: a website that will be crawled
+* *Resource**: a URL that is crawled from a catalog
+
+Home Page：http://localhost:8080/greenfinger/catalog/
+
+* **Catalog List**
+  ![image.png]( https://paganini2008.github.io/assets/images/greenfinger/1.png)
+  **Description：**
+
+- 【Edit】 Edit Catalog
+
+- 【Delete】Delete directory (including resources and indexes under the directory)
+
+- 【Clean】 Clean up the directory (including the resources and indexes under the directory, but the directory is still there, and the version number is set to 0)
+
+- 【Rebuild】Reconstruct the directory (start a web spider, crawl the directory again, build an index, and increase the version number)
+
+- 【Update】Update the directory (start a web spider, then continue to crawl and update the directory from the latest resource, and build an index, with the version number unchanged)
+
+  *When the crawler is running, you can also:*
+
+- 【Stop】Stop running a web spider
+
+- 【Realtime】Watching real-time statistics when a web spider works
+
+* **Save Catalog：**
+  ![image.png](https://paganini2008.github.io/assets/images/greenfinger/2.png)
+  **说明：**
+  + **Name**: catalog name
+  + **Cat**: category of catalogs
+  + **URL**: the started url      (e.g.  http://www.example.com)
+  + **Page Encoding**: encoding of page content    (e.g.  UTF-8, ISO-8859-1)
+  + **Path Pattern**: URL matching pattern, more patterns are separated by ","           (e.g. http://www/example.com/foo/\*\*, http://www/example.com/bar/\*\*)
+  + **Excluded Path Pattern**: Excluded URL matching pattern，more patterns are separated by ","
+  + **Max Fetch Size**: Maximum number of links crawled（100000 by default）
+  + **Duration**: The running time (milliseconds) of a web spider  (20 minutes by default), that means  beyond this time, the web spider will automatically end the crawling work.
+
+* **Observe the statistics of a running web spider：**
+  ![image.png](https://paganini2008.github.io/assets/images/greenfinger/3.png)
+* **While the crawler is crawling, you can also search with keywords in real-time:**
+  ![image.png](https://paganini2008.github.io/assets/images/greenfinger/4.png)
+* **If no keyword is entered, all items will be queried：**
+  ![image.png](https://paganini2008.github.io/assets/images/greenfinger/5.png)
 
 ---
 
