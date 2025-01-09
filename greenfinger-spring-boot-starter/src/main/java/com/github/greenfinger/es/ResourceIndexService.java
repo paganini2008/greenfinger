@@ -23,7 +23,7 @@ import com.github.greenfinger.ResourceManager;
 import com.github.greenfinger.api.CatalogInfo;
 import com.github.greenfinger.model.Catalog;
 import com.github.greenfinger.model.Resource;
-import com.github.greenfinger.utils.PageSourceExtractor;
+import com.github.greenfinger.utils.Extractor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -43,7 +43,7 @@ public class ResourceIndexService {
     private ResourceManager resourceManager;
 
     @Autowired
-    private PageSourceExtractor pageExtractor;
+    private Extractor pageExtractor;
 
     @Autowired
     private ElasticsearchRestTemplate elasticsearchTemplate;

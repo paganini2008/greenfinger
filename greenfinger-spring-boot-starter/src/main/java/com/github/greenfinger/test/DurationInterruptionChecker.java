@@ -8,13 +8,13 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * 
- * @Description: DurationCondition
+ * @Description: DurationInterruptionChecker
  * @Author: Fred Feng
  * @Date: 31/12/2024
  * @Version 1.0.0
  */
 @RequiredArgsConstructor
-public class DurationCondition implements InterruptibleCondition {
+public class DurationInterruptionChecker implements InterruptionChecker {
 
     private final WebCrawlerProperties config;
 

@@ -6,13 +6,13 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * 
- * @Description: FetchSizeLimitCondition
+ * @Description: MaxFetchSizeInterruptionChecker
  * @Author: Fred Feng
  * @Date: 31/12/2024
  * @Version 1.0.0
  */
 @RequiredArgsConstructor
-public class FetchSizeLimitCondition implements InterruptibleCondition {
+public class MaxFetchSizeInterruptionChecker implements InterruptionChecker {
 
     private final WebCrawlerProperties config;
     private final ConditionalCountingType countingType;

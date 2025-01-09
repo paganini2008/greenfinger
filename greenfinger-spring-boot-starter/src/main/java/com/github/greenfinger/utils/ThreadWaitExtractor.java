@@ -5,21 +5,21 @@ import com.github.doodler.common.transmitter.Packet;
 
 /**
  * 
- * @Description: ThreadWaitPageExtractor
+ * @Description: ThreadWaitExtractor
  * @Author: Fred Feng
  * @Date: 30/12/2024
  * @Version 1.0.0
  */
-public class ThreadWaitPageExtractor implements PageSourceExtractor {
+public class ThreadWaitExtractor implements Extractor {
 
-    private final PageSourceExtractor pageExtractor;
+    private final Extractor pageExtractor;
     private final ThreadWait threadWait;
 
-    public ThreadWaitPageExtractor(PageSourceExtractor pageExtractor) {
+    public ThreadWaitExtractor(Extractor pageExtractor) {
         this(pageExtractor, ThreadWait.RANDOM_SLEEP);
     }
 
-    public ThreadWaitPageExtractor(PageSourceExtractor pageExtractor, ThreadWait threadWait) {
+    public ThreadWaitExtractor(Extractor pageExtractor, ThreadWait threadWait) {
         this.pageExtractor = pageExtractor;
         this.threadWait = threadWait;
     }

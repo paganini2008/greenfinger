@@ -21,16 +21,16 @@ import com.github.greenfinger.WebCrawlerConstants;
 
 /**
  * 
- * @Description: RestTemplatePageSourceExtractor
+ * @Description: RestTemplateExtractor
  * @Author: Fred Feng
  * @Date: 30/12/2024
  * @Version 1.0.0
  */
-public class RestTemplatePageSourceExtractor implements PageSourceExtractor, InitializingBean {
+public class RestTemplateExtractor implements Extractor, InitializingBean {
 
-    public RestTemplatePageSourceExtractor() {}
+    public RestTemplateExtractor() {}
 
-    public RestTemplatePageSourceExtractor(RestTemplate restTemplate) {
+    public RestTemplateExtractor(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
 
@@ -117,12 +117,12 @@ public class RestTemplatePageSourceExtractor implements PageSourceExtractor, Ini
         if (responseEntity.getStatusCode().is2xxSuccessful()) {
             return responseEntity.getBody();
         }
-        throw new PageSourceExtractorException(url, responseEntity.getStatusCode());
+        throw new ExtractorException(url, responseEntity.getStatusCode());
     }
 
 
     public static void main(String[] args) throws Exception {
-        RestTemplatePageSourceExtractor pageSource = new RestTemplatePageSourceExtractor();
+        RestTemplateExtractor pageSource = new RestTemplateExtractor();
         pageSource.afterPropertiesSet();
         // System.out.println(pageSource.getHtml("https://blog.csdn.net/u010814849/article/details/52526705"));
         System.out.println(pageSource.extractHtml("https://www.tuniu.com",

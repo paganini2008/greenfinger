@@ -5,12 +5,12 @@ import com.github.doodler.common.transmitter.Packet;
 
 /**
  * 
- * @Description: PageSourceExtractor
+ * @Description: Extractor
  * @Author: Fred Feng
  * @Date: 30/12/2024
  * @Version 1.0.0
  */
-public interface PageSourceExtractor {
+public interface Extractor {
 
     String extractHtml(String refer, String url, Charset pageEncoding, Packet packet)
             throws Exception;

@@ -19,15 +19,14 @@ import com.github.greenfinger.WebCrawlerConstants;
 
 /**
  * 
- * @Description: SeleniumPageSourceExtractor
+ * @Description: SeleniumExtractor
  * @Author: Fred Feng
  * @Date: 30/12/2024
  * @Version 1.0.0
  */
-public class SeleniumPageSourceExtractor extends PageSourceExtractorSupport<WebDriver>
-        implements PageSourceExtractor {
+public class SeleniumExtractor extends PooledExtractor<WebDriver> implements Extractor {
 
-    public SeleniumPageSourceExtractor(String webdriverExecutionPath) {
+    public SeleniumExtractor(String webdriverExecutionPath) {
         System.setProperty("webdriver.chrome.driver", webdriverExecutionPath);
         System.setProperty("webdriver.chrome.args", "--disable-logging");
         System.setProperty("webdriver.chrome.silentOutput", "true");
@@ -95,8 +94,7 @@ public class SeleniumPageSourceExtractor extends PageSourceExtractorSupport<WebD
     public static void main(String[] args) throws Exception {
         // String webdriverExecutionPath = "D:\\software\\chromedriver_win32\\chromedriver.exe";
         String webdriverExecutionPath = "D:\\software\\chromedriver_win32\\chromedriver.exe";
-        SeleniumPageSourceExtractor pageExtractor =
-                new SeleniumPageSourceExtractor(webdriverExecutionPath);
+        SeleniumExtractor pageExtractor = new SeleniumExtractor(webdriverExecutionPath);
         pageExtractor.afterPropertiesSet();
 
         System.out.println(pageExtractor.extractHtml("http://www.ttmeishi.com",

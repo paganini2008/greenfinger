@@ -25,12 +25,12 @@ import com.github.doodler.common.context.ManagedBeanLifeCycle;
 
 /**
  * 
- * @Description: PageSourceExtractorSupport
+ * @Description: PooledExtractor
  * @Author: Fred Feng
  * @Date: 30/12/2024
  * @Version 1.0.0
  */
-public abstract class PageSourceExtractorSupport<T> extends BasePooledObjectFactory<T>
+public abstract class PooledExtractor<T> extends BasePooledObjectFactory<T>
         implements ManagedBeanLifeCycle {
 
     protected final Logger log = LoggerFactory.getLogger(getClass());

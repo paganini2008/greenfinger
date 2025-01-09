@@ -23,14 +23,13 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * 
- * @Description: HtmlUnitPageSourceExtractor
+ * @Description: HtmlUnitExtractor
  * @Author: Fred Feng
  * @Date: 30/12/2024
  * @Version 1.0.0
  */
 @RequiredArgsConstructor
-public class HtmlUnitPageSourceExtractor extends PageSourceExtractorSupport<WebClient>
-        implements PageSourceExtractor {
+public class HtmlUnitExtractor extends PooledExtractor<WebClient> implements Extractor {
 
     private Map<String, String> defaultHeaders = new HashMap<>() {
 
@@ -101,7 +100,7 @@ public class HtmlUnitPageSourceExtractor extends PageSourceExtractorSupport<WebC
                 return pageEncoding != null ? webResponse.getContentAsString(pageEncoding)
                         : webResponse.getContentAsString();
             }
-            throw new PageSourceExtractorException(url, HttpStatus.valueOf(responseStatusCode));
+            throw new ExtractorException(url, HttpStatus.valueOf(responseStatusCode));
         } finally {
             if (webClient != null) {
                 objectPool.returnObject(webClient);
@@ -110,8 +109,7 @@ public class HtmlUnitPageSourceExtractor extends PageSourceExtractorSupport<WebC
     }
 
     public static void main(String[] args) throws Exception {
-        HtmlUnitPageSourceExtractor pageSource =
-                new HtmlUnitPageSourceExtractor(new WebCrawlerProperties());
+        HtmlUnitExtractor pageSource = new HtmlUnitExtractor(new WebCrawlerProperties());
         pageSource.afterPropertiesSet();
         // System.out.println(pageSource.getHtml("https://blog.csdn.net/u010814849/article/details/52526705"));
         System.out.println(pageSource.extractHtml("https://www.tuniu.com",

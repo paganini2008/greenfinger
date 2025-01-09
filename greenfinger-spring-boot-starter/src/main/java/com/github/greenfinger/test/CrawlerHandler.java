@@ -12,7 +12,6 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.github.doodler.common.events.EventSubscriber;
-import com.github.doodler.common.transmitter.HashPartitioner;
 import com.github.doodler.common.transmitter.NioClient;
 import com.github.doodler.common.transmitter.Packet;
 import com.github.doodler.common.transmitter.Partitioner;
@@ -28,11 +27,10 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * 
- * CrawlerHandler
- *
- * @author Fred Feng
- * 
- * @since 2.0.1
+ * @Description: CrawlerHandler
+ * @Author: Fred Feng
+ * @Date: 10/01/2025
+ * @Version 1.0.0
  */
 @Slf4j
 public class CrawlerHandler implements EventSubscriber<Packet> {
@@ -83,7 +81,7 @@ public class CrawlerHandler implements EventSubscriber<Packet> {
         final String cat = (String) packet.getField("cat");
         final String pageEncoding = (String) packet.getField("pageEncoding");
         final int version = (Integer) packet.getField("version");
-        final boolean indexEnabled = (Boolean) packet.getField("indexEnabled");
+        final boolean indexEnabled = (Boolean) packet.getField("indexEnabled", true);
 
         executionContext.getDashboardData().incrementTotalUrlCount();
 
@@ -145,7 +143,7 @@ public class CrawlerHandler implements EventSubscriber<Packet> {
                     href = element.attr("href");
                 }
                 if (StringUtils.isNotBlank(href)
-                        && isAcceptedUrlPath(catalogId, refer, href, packet, executionContext)) {
+                        && isUrlAcceptable(catalogId, refer, href, packet, executionContext)) {
                     crawlRecursively(action, catalogId, refer, href, version, packet,
                             executionContext);
                 }
@@ -227,7 +225,7 @@ public class CrawlerHandler implements EventSubscriber<Packet> {
                     href = element.attr("href");
                 }
                 if (StringUtils.isNotBlank(href)
-                        && isAcceptedUrlPath(catalogId, refer, href, packet, executionContext)) {
+                        && isUrlAcceptable(catalogId, refer, href, packet, executionContext)) {
                     updateRecursively(action, catalogId, refer, href, version, packet);
                 }
             }
@@ -247,9 +245,9 @@ public class CrawlerHandler implements EventSubscriber<Packet> {
         context.getDashboardData().incrementIndexedResourceCount();
     }
 
-    private boolean isAcceptedUrlPath(long catalogId, String refer, String path, Packet packet,
+    private boolean isUrlAcceptable(long catalogId, String refer, String path, Packet packet,
             WebCrawlerExecutionContext context) {
-        boolean accepted = context.acceptUrlPath(refer, path, packet);
+        boolean accepted = context.isUrlAcceptable(refer, path, packet);
         if (!accepted) {
             context.getDashboardData().incrementFilteredUrlCount();
         }
@@ -258,18 +256,18 @@ public class CrawlerHandler implements EventSubscriber<Packet> {
 
     private void updateRecursively(String action, long catalogId, String refer, String path,
             int version, Packet current) {
-        Packet tuple = new Packet();
-        tuple.setField("partitioner", "hash");
-        tuple.setField("action", action);
-        tuple.setField("catalogId", catalogId);
-        tuple.setField("refer", refer);
-        tuple.setField("path", path);
-        tuple.setField("version", version);
-        tuple.setField("cat", current.getField("cat"));
-        tuple.setField("duration", current.getField("duration"));
-        tuple.setField("maxFetchSize", current.getField("maxFetchSize"));
-        tuple.setField("pageEncoding", current.getField("pageEncoding"));
-        nioClient.send(tuple, partitioner);
+        Packet packet = new Packet();
+        packet.setField("partitioner", "hash");
+        packet.setField("action", action);
+        packet.setField("catalogId", catalogId);
+        packet.setField("refer", refer);
+        packet.setField("path", path);
+        packet.setField("version", version);
+        packet.setField("cat", current.getField("cat"));
+        packet.setField("duration", current.getField("duration"));
+        packet.setField("maxFetchSize", current.getField("maxFetchSize"));
+        packet.setField("pageEncoding", current.getField("pageEncoding"));
+        nioClient.send(packet, partitioner);
     }
 
     private void crawlRecursively(String action, long catalogId, String refer, String path,
@@ -281,7 +279,7 @@ public class CrawlerHandler implements EventSubscriber<Packet> {
             return;
         }
         Packet packet = new Packet();
-        packet.setField(Partitioner.class.getName(), HashPartitioner.class.getName());
+        packet.setField("partitioner", "hash");
         packet.setField("action", action);
         packet.setField("catalogId", catalogId);
         packet.setField("refer", refer);

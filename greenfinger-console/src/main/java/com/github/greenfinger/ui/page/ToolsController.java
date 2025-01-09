@@ -17,7 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import com.github.greenfinger.utils.PageSourceExtractor;
+import com.github.greenfinger.utils.Extractor;
 
 /**
  * 
@@ -31,7 +31,7 @@ import com.github.greenfinger.utils.PageSourceExtractor;
 public class ToolsController {
 
     @Autowired
-    private PageSourceExtractor pageExtractor;
+    private Extractor pageExtractor;
 
     // @Autowired
     // private PathFilterFactory pathFilterFactory;

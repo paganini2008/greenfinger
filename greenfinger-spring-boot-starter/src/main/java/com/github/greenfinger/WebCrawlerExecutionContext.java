@@ -3,6 +3,7 @@ package com.github.greenfinger;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import com.github.doodler.common.context.ApplicationContextUtils;
@@ -11,11 +12,11 @@ import com.github.doodler.common.utils.MapUtils;
 import com.github.doodler.common.utils.SerializableTaskTimer;
 import com.github.greenfinger.model.Catalog;
 import com.github.greenfinger.model.CatalogIndex;
-import com.github.greenfinger.test.InterruptibleCondition;
+import com.github.greenfinger.test.InterruptionChecker;
 import com.github.greenfinger.test.OneTimeDashboardData;
-import com.github.greenfinger.test.WebCrawler;
 import com.github.greenfinger.utils.ExistingUrlPathFilter;
-import com.github.greenfinger.utils.PageSourceExtractor;
+import com.github.greenfinger.utils.Extractor;
+import com.github.greenfinger.utils.RobotRuleFilter;
 import lombok.Getter;
 
 /**
@@ -39,11 +40,17 @@ public final class WebCrawlerExecutionContext implements Runnable {
 
     private final long catalogId;
 
-    private List<InterruptibleCondition> interruptedConditions;
+    @Autowired
+    private List<InterruptionChecker> interruptionCheckers;
 
+    @Autowired
+    private RobotRuleFilter robotRuleFilter;
+
+    @Autowired
     private List<UrlPathAcceptor> urlPathAcceptors;
 
-    private PageSourceExtractor pageSourceExtractor;
+    @Autowired
+    private Extractor pageSourceExtractor;
 
     private ExistingUrlPathFilter existingUrlPathFilter;
 
@@ -56,19 +63,12 @@ public final class WebCrawlerExecutionContext implements Runnable {
     private Catalog catalog;
 
     @Autowired
-    public void configure(WebCrawler webCrawler) {
-        this.interruptedConditions = webCrawler.getInterruptedConditions();
-        this.urlPathAcceptors = webCrawler.getUrlPathAcceptors();
-        this.pageSourceExtractor = webCrawler.getPageSourceExtractor();
-    }
-
-    @Autowired
     public void configure2(ResourceManager resourceManager,
-            RedisConnectionFactory redisConnectionFactory) {
+            RedisConnectionFactory redisConnectionFactory, RedissonClient redissonClient) {
         this.catalog = resourceManager.getCatalog(catalogId);
         CatalogIndex catalogIndex = resourceManager.getCatalogIndex(catalogId);
-        this.existingUrlPathFilter = new RedisBloomUrlPathFilter(catalogId,
-                catalogIndex.getVersion(), redisConnectionFactory);
+        this.existingUrlPathFilter = new RedissionBloomUrlPathFilter(catalogId,
+                catalogIndex.getVersion(), redissonClient);
         this.dashboardData = new OneTimeDashboardData(catalogId, catalogIndex.getVersion(),
                 redisConnectionFactory);
     }
@@ -78,7 +78,11 @@ public final class WebCrawlerExecutionContext implements Runnable {
         timer.addBatch(this);
     }
 
-    public boolean acceptUrlPath(String refer, String path, Packet packet) {
+    public boolean isUrlAllowable(String refer, String path) {
+        return robotRuleFilter.isAllowed(path);
+    }
+
+    public boolean isUrlAcceptable(String refer, String path, Packet packet) {
         for (UrlPathAcceptor urlPathAcceptor : urlPathAcceptors) {
             if (!urlPathAcceptor.accept(refer, path, packet)) {
                 return false;
@@ -91,9 +95,9 @@ public final class WebCrawlerExecutionContext implements Runnable {
         return dashboardData.isCompleted();
     }
 
-    public boolean isInterrupted() {
-        for (InterruptibleCondition interruptedCondition : interruptedConditions) {
-            if (interruptedCondition.shouldInterrupt(dashboardData, catalog)) {
+    public boolean shouldInterrupt() {
+        for (InterruptionChecker interruptionChecker : interruptionCheckers) {
+            if (interruptionChecker.shouldInterrupt(dashboardData, catalog)) {
                 dashboardData.setCompleted(true);
                 break;
             }
@@ -103,7 +107,7 @@ public final class WebCrawlerExecutionContext implements Runnable {
 
     @Override
     public void run() {
-        isInterrupted();
+        shouldInterrupt();
     }
 
 }

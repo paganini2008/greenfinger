@@ -15,22 +15,22 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * 
- * @Description: RetryablePageSourceExtractor
+ * @Description: RetryableExtractor
  * @Author: Fred Feng
  * @Date: 30/12/2024
  * @Version 1.0.0
  */
 @Slf4j
-public class RetryablePageSourceExtractor implements PageSourceExtractor, RetryListener {
+public class RetryableExtractor implements Extractor, RetryListener {
 
-    private final PageSourceExtractor pageExtractor;
+    private final Extractor pageExtractor;
     private final RetryTemplate retryTemplate;
 
-    public RetryablePageSourceExtractor(PageSourceExtractor pageExtractor) {
+    public RetryableExtractor(Extractor pageExtractor) {
         this(pageExtractor, 3);
     }
 
-    public RetryablePageSourceExtractor(PageSourceExtractor pageExtractor, int maxAttempts) {
+    public RetryableExtractor(Extractor pageExtractor, int maxAttempts) {
         this.pageExtractor = pageExtractor;
         this.retryTemplate = createRetryTemplate(maxAttempts);
     }
@@ -42,10 +42,10 @@ public class RetryablePageSourceExtractor implements PageSourceExtractor, RetryL
             return pageExtractor.extractHtml(refer, url, pageEncoding, packet);
         }, context -> {
             Throwable e = context.getLastThrowable();
-            if (e instanceof PageSourceExtractorException) {
-                throw (PageSourceExtractorException) e;
+            if (e instanceof ExtractorException) {
+                throw (ExtractorException) e;
             }
-            throw new PageSourceExtractorException(url, HttpStatus.FOUND);
+            throw new ExtractorException(url, HttpStatus.FOUND);
         });
     }
 

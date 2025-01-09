@@ -19,13 +19,13 @@ import com.github.greenfinger.test.ConditionalCountingType;
 import com.github.greenfinger.test.CrawlerHandler;
 import com.github.greenfinger.test.DefaultCatalogUrlPathAcceptor;
 import com.github.greenfinger.test.DepthUrlPathAcceptor;
-import com.github.greenfinger.test.DurationCondition;
-import com.github.greenfinger.test.FetchSizeLimitCondition;
-import com.github.greenfinger.test.InterruptibleCondition;
+import com.github.greenfinger.test.DurationInterruptionChecker;
+import com.github.greenfinger.test.InterruptionChecker;
+import com.github.greenfinger.test.MaxFetchSizeInterruptionChecker;
 import com.github.greenfinger.test.WebCrawlerService;
-import com.github.greenfinger.utils.HtmlUnitPageSourceExtractor;
-import com.github.greenfinger.utils.PageSourceExtractor;
-import com.github.greenfinger.utils.ThreadWaitPageExtractor;
+import com.github.greenfinger.utils.Extractor;
+import com.github.greenfinger.utils.HtmlUnitExtractor;
+import com.github.greenfinger.utils.ThreadWaitExtractor;
 
 /**
  * 
@@ -34,7 +34,7 @@ import com.github.greenfinger.utils.ThreadWaitPageExtractor;
  * @Date: 31/12/2024
  * @Version 1.0.0
  */
-@EnableElasticsearchRepositories("io.atlantisframework.greenfinger.es")
+@EnableElasticsearchRepositories("com.github.greenfinger.es")
 @Import({CatalogApiController.class, IndexApiController.class})
 @EnableConfigurationProperties({WebCrawlerProperties.class})
 @Configuration(proxyBeanMethods = false)
@@ -67,19 +67,19 @@ public class GreenFingerAutoConfiguration {
 
     @ConditionalOnMissingBean
     @Bean
-    public PageSourceExtractor pageExtractor(WebCrawlerProperties config) {
-        HtmlUnitPageSourceExtractor pageExtractor = new HtmlUnitPageSourceExtractor(config);
-        return new ThreadWaitPageExtractor(pageExtractor);
+    public Extractor extractor(WebCrawlerProperties config) {
+        HtmlUnitExtractor pageExtractor = new HtmlUnitExtractor(config);
+        return new ThreadWaitExtractor(pageExtractor);
     }
 
     @Bean
-    public InterruptibleCondition durationCondition(WebCrawlerProperties config) {
-        return new DurationCondition(config);
+    public InterruptionChecker durationInterruptionChecker(WebCrawlerProperties config) {
+        return new DurationInterruptionChecker(config);
     }
 
     @Bean
-    public InterruptibleCondition fetchSizeLimitCondition(WebCrawlerProperties config) {
-        return new FetchSizeLimitCondition(config, ConditionalCountingType.URL_TOTAL_COUNT);
+    public InterruptionChecker maxFetchSizeInterruptionChecker(WebCrawlerProperties config) {
+        return new MaxFetchSizeInterruptionChecker(config, ConditionalCountingType.URL_TOTAL_COUNT);
     }
 
     @Bean

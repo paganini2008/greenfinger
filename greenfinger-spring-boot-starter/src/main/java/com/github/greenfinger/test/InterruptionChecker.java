@@ -4,12 +4,12 @@ import com.github.greenfinger.model.Catalog;
 
 /**
  * 
- * @Description: InterruptibleCondition
+ * @Description: InterruptionChecker
  * @Author: Fred Feng
  * @Date: 31/12/2024
  * @Version 1.0.0
  */
-public interface InterruptibleCondition {
+public interface InterruptionChecker {
 
     boolean shouldInterrupt(OneTimeDashboardData dashboardData, Catalog catalog);
 

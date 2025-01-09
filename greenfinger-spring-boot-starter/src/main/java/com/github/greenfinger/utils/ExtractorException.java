@@ -5,16 +5,16 @@ import org.springframework.http.HttpStatus;
 
 /**
  * 
- * @Description: PageSourceExtractorException
+ * @Description: ExtractorException
  * @Author: Fred Feng
  * @Date: 30/12/2024
  * @Version 1.0.0
  */
-public class PageSourceExtractorException extends RuntimeException {
+public class ExtractorException extends RuntimeException {
 
     private static final long serialVersionUID = 4816595505153970862L;
 
-    public PageSourceExtractorException(String url, HttpStatus httpStatus) {
+    public ExtractorException(String url, HttpStatus httpStatus) {
         super(String.format("%s [%s: %s]", url, httpStatus.value(), httpStatus.getReasonPhrase()));
         this.httpStatus = httpStatus;
     }
