@@ -17,8 +17,8 @@ import com.github.doodler.common.page.PageResponse;
 import com.github.greenfinger.CatalogAdminService;
 import com.github.greenfinger.ResourceManager;
 import com.github.greenfinger.WebCrawlerExecutionContext;
+import com.github.greenfinger.WebCrawlerService;
 import com.github.greenfinger.model.Catalog;
-import com.github.greenfinger.test.WebCrawlerService;
 
 /**
  * 

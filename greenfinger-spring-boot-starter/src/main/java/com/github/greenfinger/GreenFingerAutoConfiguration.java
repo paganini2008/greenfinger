@@ -12,20 +12,19 @@ import com.github.doodler.common.transmitter.MultipleChoicePartitioner;
 import com.github.doodler.common.transmitter.Partitioner;
 import com.github.greenfinger.api.CatalogApiController;
 import com.github.greenfinger.api.IndexApiController;
+import com.github.greenfinger.components.CompositeCatalogUrlPathAcceptor;
+import com.github.greenfinger.components.ConditionalCountingType;
+import com.github.greenfinger.components.DefaultCatalogUrlPathAcceptor;
+import com.github.greenfinger.components.DepthUrlPathAcceptor;
+import com.github.greenfinger.components.DurationInterruptionChecker;
+import com.github.greenfinger.components.Extractor;
+import com.github.greenfinger.components.HtmlUnitExtractor;
+import com.github.greenfinger.components.InterruptionChecker;
+import com.github.greenfinger.components.MaxFetchSizeInterruptionChecker;
+import com.github.greenfinger.components.ThreadWaitExtractor;
+import com.github.greenfinger.components.UrlPathAcceptor;
 import com.github.greenfinger.es.ResourceIndexService;
 import com.github.greenfinger.jdbc.JdbcResourceManger;
-import com.github.greenfinger.test.CompositeCatalogUrlPathAcceptor;
-import com.github.greenfinger.test.ConditionalCountingType;
-import com.github.greenfinger.test.CrawlerHandler;
-import com.github.greenfinger.test.DefaultCatalogUrlPathAcceptor;
-import com.github.greenfinger.test.DepthUrlPathAcceptor;
-import com.github.greenfinger.test.DurationInterruptionChecker;
-import com.github.greenfinger.test.InterruptionChecker;
-import com.github.greenfinger.test.MaxFetchSizeInterruptionChecker;
-import com.github.greenfinger.test.WebCrawlerService;
-import com.github.greenfinger.utils.Extractor;
-import com.github.greenfinger.utils.HtmlUnitExtractor;
-import com.github.greenfinger.utils.ThreadWaitExtractor;
 
 /**
  * 
@@ -36,7 +35,7 @@ import com.github.greenfinger.utils.ThreadWaitExtractor;
  */
 @EnableElasticsearchRepositories("com.github.greenfinger.es")
 @Import({CatalogApiController.class, IndexApiController.class})
-@EnableConfigurationProperties({WebCrawlerProperties.class})
+@EnableConfigurationProperties({WebCrawlerExtractorProperties.class})
 @Configuration(proxyBeanMethods = false)
 public class GreenFingerAutoConfiguration {
 
@@ -67,18 +66,18 @@ public class GreenFingerAutoConfiguration {
 
     @ConditionalOnMissingBean
     @Bean
-    public Extractor extractor(WebCrawlerProperties config) {
+    public Extractor extractor(WebCrawlerExtractorProperties config) {
         HtmlUnitExtractor pageExtractor = new HtmlUnitExtractor(config);
         return new ThreadWaitExtractor(pageExtractor);
     }
 
     @Bean
-    public InterruptionChecker durationInterruptionChecker(WebCrawlerProperties config) {
+    public InterruptionChecker durationInterruptionChecker(WebCrawlerExtractorProperties config) {
         return new DurationInterruptionChecker(config);
     }
 
     @Bean
-    public InterruptionChecker maxFetchSizeInterruptionChecker(WebCrawlerProperties config) {
+    public InterruptionChecker maxFetchSizeInterruptionChecker(WebCrawlerExtractorProperties config) {
         return new MaxFetchSizeInterruptionChecker(config, ConditionalCountingType.URL_TOTAL_COUNT);
     }
 
@@ -93,7 +92,7 @@ public class GreenFingerAutoConfiguration {
     }
 
     @Bean
-    public UrlPathAcceptor depthCatalogUrlPathAcceptor(WebCrawlerProperties config) {
+    public UrlPathAcceptor depthCatalogUrlPathAcceptor(WebCrawlerExtractorProperties config) {
         return new DepthUrlPathAcceptor(config);
     }
 

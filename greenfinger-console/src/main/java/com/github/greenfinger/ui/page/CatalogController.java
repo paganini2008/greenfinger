@@ -47,7 +47,7 @@ import com.github.greenfinger.model.Catalog;
 public class CatalogController {
 
     @Autowired
-    private com.github.greenfinger.test.WebCrawlerService webCrawlerService;
+    private com.github.greenfinger.WebCrawlerService webCrawlerService;
 
     @Autowired
     private ResourceManager resourceManager;

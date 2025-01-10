@@ -2,8 +2,8 @@ package com.github.greenfinger.api;
 
 import java.util.Date;
 import org.apache.commons.lang3.time.DurationFormatUtils;
+import com.github.greenfinger.components.OneTimeDashboardData;
 import com.github.greenfinger.model.Catalog;
-import com.github.greenfinger.test.OneTimeDashboardData;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;

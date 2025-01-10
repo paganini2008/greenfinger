@@ -31,6 +31,13 @@
 			<artifactId>selenium-java</artifactId>
 			<scope>provided</scope>
 		</dependency>
+		
+		<dependency>
+		    <groupId>com.microsoft.playwright</groupId>
+		    <artifactId>playwright</artifactId>
+		    <version>1.48.0</version>
+		    <scope>provided</scope>
+		</dependency>
 
 		<dependency>
 			<groupId>net.sourceforge.htmlunit</groupId>

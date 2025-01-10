@@ -21,9 +21,9 @@ import com.github.doodler.common.utils.CharsetUtils;
 import com.github.doodler.common.utils.MapUtils;
 import com.github.greenfinger.ResourceManager;
 import com.github.greenfinger.api.CatalogInfo;
+import com.github.greenfinger.components.Extractor;
 import com.github.greenfinger.model.Catalog;
 import com.github.greenfinger.model.Resource;
-import com.github.greenfinger.utils.Extractor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
