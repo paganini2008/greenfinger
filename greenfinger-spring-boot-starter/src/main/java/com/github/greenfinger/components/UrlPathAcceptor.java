@@ -9,7 +9,7 @@ import com.github.doodler.common.transmitter.Packet;
  * @Date: 30/12/2024
  * @Version 1.0.0
  */
-public interface UrlPathAcceptor {
+public interface UrlPathAcceptor extends WebCrawlerComponent {
 
     boolean accept(String referUrl, String path, Packet packet);
 

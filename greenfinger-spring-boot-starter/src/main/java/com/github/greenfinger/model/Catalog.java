@@ -2,6 +2,7 @@ package com.github.greenfinger.model;
 
 import java.io.Serializable;
 import java.util.Date;
+import com.github.greenfinger.components.CountingType;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
@@ -30,10 +31,12 @@ public class Catalog implements Serializable {
     private Integer depth;
     private Long interval;
     private Long duration;
+    private CountingType countingType;
     private Integer maxRetryCount;
     private String urlPathAcceptor;
     private String urlPathFilter;
     private String extractor;
+    private String credentialHandler;
     private Date lastModified;
 
 }

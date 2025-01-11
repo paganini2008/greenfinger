@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -16,14 +15,9 @@ import lombok.Setter;
  * @Version 1.0.0
  */
 @ConfigurationProperties("greenfinger.extractor")
-@Data
+@Getter
+@Setter
 public class WebCrawlerExtractorProperties {
-
-    private int defaultMaxFetchSize = 10000;
-    private int defaultFetchDepth = -1;
-    private long defaultDuration = 5;
-    private int defaultRetries = 3;
-    private long defaultIntervalTime = 1000L;
 
     private Default restTemplate = new Default();
     private Playwright playwright = new Playwright();

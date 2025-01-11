@@ -2,6 +2,7 @@ package com.github.greenfinger.components;
 
 import java.nio.charset.Charset;
 import com.github.doodler.common.transmitter.Packet;
+import com.github.greenfinger.model.Catalog;
 
 /**
  * 
@@ -25,18 +26,10 @@ public class ThreadWaitExtractor implements Extractor {
     }
 
     @Override
-    public String extractHtml(String refer, String url, Charset pageEncoding, Packet packet)
-            throws Exception {
-        long interval;
-        try {
-            interval = packet.getLongField("interval");
-        } catch (RuntimeException e) {
-            interval = 0;
-        }
-        if (interval > 0) {
-            threadWait.doWait(interval);
-        }
-        return extractor.extractHtml(refer, url, pageEncoding, packet);
+    public String extractHtml(Catalog catalog, String referUrl, String url, Charset pageEncoding,
+            Packet packet) throws Exception {
+        threadWait.doWait(catalog.getInterval());
+        return extractor.extractHtml(catalog, referUrl, url, pageEncoding, packet);
     }
 
 }

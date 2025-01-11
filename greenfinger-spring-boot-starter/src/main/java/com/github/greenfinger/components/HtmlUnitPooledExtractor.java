@@ -20,6 +20,7 @@ import com.github.doodler.common.utils.RandomUtils;
 import com.github.doodler.common.utils.ThreadUtils;
 import com.github.greenfinger.WebCrawlerConstants;
 import com.github.greenfinger.WebCrawlerExtractorProperties;
+import com.github.greenfinger.model.Catalog;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -80,8 +81,8 @@ public class HtmlUnitPooledExtractor extends PooledExtractor<WebClient> implemen
     }
 
     @Override
-    protected String requestUrl(String refer, String url, Charset pageEncoding, Packet packet)
-            throws Exception {
+    protected String requestUrl(Catalog catalog, String refer, String url, Charset pageEncoding,
+            Packet packet) throws Exception {
         WebClient webClient = objectPool.borrowObject();
         try {
             WebCrawlerExtractorProperties.HtmlUnit config = extractorProperties.getHtmlunit();
@@ -118,7 +119,7 @@ public class HtmlUnitPooledExtractor extends PooledExtractor<WebClient> implemen
                 new HtmlUnitPooledExtractor(new WebCrawlerExtractorProperties());
         pageSource.afterPropertiesSet();
         // System.out.println(pageSource.getHtml("https://blog.csdn.net/u010814849/article/details/52526705"));
-        System.out.println(pageSource.extractHtml("https://www.tuniu.com",
+        System.out.println(pageSource.extractHtml(null, "https://www.tuniu.com",
                 "https://goldenmatrix.com/", StandardCharsets.UTF_8, null));
         System.in.read();
         pageSource.destroy();

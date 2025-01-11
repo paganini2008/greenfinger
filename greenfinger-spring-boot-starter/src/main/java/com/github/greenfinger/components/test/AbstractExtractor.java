@@ -9,6 +9,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import com.github.doodler.common.transmitter.Packet;
 import com.github.greenfinger.components.Extractor;
+import com.github.greenfinger.model.Catalog;
 
 /**
  * 
@@ -37,9 +38,9 @@ public abstract class AbstractExtractor implements Extractor {
     }
 
     @Override
-    public String extractHtml(String referUrl, String url, Charset pageEncoding, Packet packet)
-            throws Exception {
-        String content = requestUrl(referUrl, url, pageEncoding, packet);
+    public String extractHtml(Catalog catalog, String referUrl, String url, Charset pageEncoding,
+            Packet packet) throws Exception {
+        String content = requestUrl(catalog, referUrl, url, pageEncoding, packet);
         return rewriteContent(content);
     }
 
@@ -49,8 +50,8 @@ public abstract class AbstractExtractor implements Extractor {
         this.responseBodyRewriters = responseBodyRewriters;
     }
 
-    protected abstract String requestUrl(String referUrl, String url, Charset pageEncoding,
-            Packet packet) throws Exception;
+    protected abstract String requestUrl(Catalog catalog, String referUrl, String url,
+            Charset pageEncoding, Packet packet) throws Exception;
 
     protected String rewriteContent(String content) {
         if (StringUtils.isBlank(content)) {
@@ -63,6 +64,11 @@ public abstract class AbstractExtractor implements Extractor {
             content = bodyRewriter.rewrite(content);
         }
         return content;
+    }
+
+    @Override
+    public String getDescription() {
+        return getClass().getSimpleName();
     }
 
 }

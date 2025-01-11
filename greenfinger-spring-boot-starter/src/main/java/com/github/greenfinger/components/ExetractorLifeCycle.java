@@ -1,5 +1,7 @@
 package com.github.greenfinger.components;
 
+import com.github.greenfinger.model.Catalog;
+
 /**
  * 
  * @Description: ExetractorLifeCycle
@@ -9,12 +11,12 @@ package com.github.greenfinger.components;
  */
 public interface ExetractorLifeCycle {
 
-    default boolean hasLogged() {
+    default boolean hasLogged(Catalog catalog) {
         return true;
     }
 
-    default void login() {}
+    default void login(Catalog catalog) {}
 
-    default void logout() {}
+    default void logout(Catalog catalog) {}
 
 }

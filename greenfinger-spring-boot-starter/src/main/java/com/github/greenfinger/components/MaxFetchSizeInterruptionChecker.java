@@ -1,6 +1,7 @@
 package com.github.greenfinger.components;
 
-import com.github.greenfinger.WebCrawlerExtractorProperties;
+import java.util.Optional;
+import com.github.greenfinger.WebCrawlerProperties;
 import com.github.greenfinger.model.Catalog;
 import lombok.RequiredArgsConstructor;
 
@@ -14,16 +15,17 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class MaxFetchSizeInterruptionChecker implements InterruptionChecker {
 
-    private final WebCrawlerExtractorProperties config;
-    private final ConditionalCountingType countingType;
+    private final Catalog catalog;
+    private final WebCrawlerProperties config;
 
     @Override
-    public boolean shouldInterrupt(OneTimeDashboardData dashboardData, Catalog catalog) {
-        int maxFetchSize = catalog.getMaxFetchSize() != null ? catalog.getMaxFetchSize().intValue()
-                : config.getDefaultMaxFetchSize();
+    public boolean shouldInterrupt(Dashboard dashboardData) {
+        int maxFetchSize = Optional.ofNullable(catalog.getMaxFetchSize())
+                .orElse(config.getDefaultMaxFetchSize()).intValue();
+        CountingType countingType = Optional.ofNullable(catalog.getCountingType())
+                .orElse(CountingType.INDEXED_RESOURCE_COUNT);
         return countingType.compare(dashboardData, maxFetchSize);
     }
-
 
 
 }

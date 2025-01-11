@@ -13,8 +13,8 @@ import com.github.doodler.common.transmitter.Partitioner;
 import com.github.greenfinger.api.CatalogApiController;
 import com.github.greenfinger.api.IndexApiController;
 import com.github.greenfinger.components.CompositeCatalogUrlPathAcceptor;
-import com.github.greenfinger.components.ConditionalCountingType;
-import com.github.greenfinger.components.CatalogUrlPathAcceptor;
+import com.github.greenfinger.components.CountingType;
+import com.github.greenfinger.components.CatalogPatternUrlPathAcceptor;
 import com.github.greenfinger.components.DepthUrlPathAcceptor;
 import com.github.greenfinger.components.DurationInterruptionChecker;
 import com.github.greenfinger.components.Extractor;
@@ -78,7 +78,7 @@ public class GreenFingerAutoConfiguration {
 
     @Bean
     public InterruptionChecker maxFetchSizeInterruptionChecker(WebCrawlerExtractorProperties config) {
-        return new MaxFetchSizeInterruptionChecker(config, ConditionalCountingType.URL_TOTAL_COUNT);
+        return new MaxFetchSizeInterruptionChecker(config, CountingType.URL_TOTAL_COUNT);
     }
 
     @Bean
@@ -88,7 +88,7 @@ public class GreenFingerAutoConfiguration {
 
     @Bean
     public UrlPathAcceptor defaultCatalogUrlPathAcceptor(ResourceManager resourceManager) {
-        return new CatalogUrlPathAcceptor(resourceManager);
+        return new CatalogPatternUrlPathAcceptor(resourceManager);
     }
 
     @Bean

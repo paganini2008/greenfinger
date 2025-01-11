@@ -25,6 +25,7 @@ import com.github.doodler.common.utils.ThreadUtils;
 import com.github.greenfinger.WebCrawlerConstants;
 import com.github.greenfinger.WebCrawlerExtractorProperties;
 import com.github.greenfinger.components.ExtractorException;
+import com.github.greenfinger.model.Catalog;
 
 /**
  * 
@@ -33,7 +34,8 @@ import com.github.greenfinger.components.ExtractorException;
  * @Date: 30/12/2024
  * @Version 1.0.0
  */
-public class HtmlUnitStatefulExtractor extends StatefulExtractor<WebClient> implements DisposableBean {
+public class HtmlUnitStatefulExtractor extends StatefulExtractor<WebClient>
+        implements DisposableBean {
 
     private final WebCrawlerExtractorProperties extractorProperties;
 
@@ -119,8 +121,8 @@ public class HtmlUnitStatefulExtractor extends StatefulExtractor<WebClient> impl
     }
 
     @Override
-    protected synchronized String requestUrl(String referUrl, String url, Charset pageEncoding,
-            Packet packet) throws Exception {
+    protected synchronized String requestUrl(Catalog catalog, String referUrl, String url,
+            Charset pageEncoding, Packet packet) throws Exception {
         WebClient webClient = get();
         return doRequestUrl(webClient, referUrl, url, pageEncoding, packet);
     }
@@ -159,7 +161,8 @@ public class HtmlUnitStatefulExtractor extends StatefulExtractor<WebClient> impl
     }
 
     public static void main(String[] args) throws Exception {
-        HtmlUnitStatefulExtractor pageSource = new HtmlUnitStatefulExtractor(new WebCrawlerExtractorProperties());
+        HtmlUnitStatefulExtractor pageSource =
+                new HtmlUnitStatefulExtractor(new WebCrawlerExtractorProperties());
         // System.out.println(pageSource.getHtml("https://blog.csdn.net/u010814849/article/details/52526705"));
         System.out.println(pageSource.test("https://goldenmatrix.com/", StandardCharsets.UTF_8));
         System.in.read();

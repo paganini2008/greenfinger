@@ -7,7 +7,7 @@ package com.github.greenfinger.components;
  * @Date: 30/12/2024
  * @Version 1.0.0
  */
-public interface ExistingUrlPathFilter {
+public interface ExistingUrlPathFilter extends WebCrawlerComponent {
 
     String NAMESPACE_PATTERN = "greenfinger:url-path-filter:%s:%s";
 

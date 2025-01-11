@@ -1,5 +1,6 @@
 package com.github.greenfinger.components;
 
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import com.github.doodler.common.redis.RedisBloomFilter;
@@ -13,25 +14,26 @@ import lombok.extern.slf4j.Slf4j;
  * @Version 1.0.0
  */
 @Slf4j
-public class RedisBloomUrlPathFilter implements ExistingUrlPathFilter {
+public class RedisBloomUrlPathFilter extends RedisBasedExistingUrlPathFilter
+        implements InitializingBean {
 
     private static final int MAX_EXPECTED_INSERTIONS = 100_000_000;
 
     public RedisBloomUrlPathFilter(long catalogId, int version,
             RedisConnectionFactory redisConnectionFactory) {
-        this(String.format(NAMESPACE_PATTERN, catalogId, version), redisConnectionFactory);
-    }
-
-    public RedisBloomUrlPathFilter(String key, RedisConnectionFactory redisConnectionFactory) {
-        this.key = key;
-        this.bloomFilter =
-                new RedisBloomFilter(key, MAX_EXPECTED_INSERTIONS, 0.03d, redisConnectionFactory);
+        super(catalogId, version);
         this.redisConnectionFactory = redisConnectionFactory;
     }
 
-    private final String key;
-    private final RedisBloomFilter bloomFilter;
     private final RedisConnectionFactory redisConnectionFactory;
+    private RedisBloomFilter bloomFilter;
+
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        this.bloomFilter =
+                new RedisBloomFilter(key, MAX_EXPECTED_INSERTIONS, 0.03d, redisConnectionFactory);
+    }
 
     @Override
     public boolean mightExist(String path) {
@@ -47,8 +49,7 @@ public class RedisBloomUrlPathFilter implements ExistingUrlPathFilter {
         StringRedisTemplate redisTemplate = new StringRedisTemplate(redisConnectionFactory);
         redisTemplate.delete(key);
         if (log.isInfoEnabled()) {
-            log.info("Clean RedisUrlPathFilter on key: {}", key);
+            log.info("Clean RedisUrlPathFilter: {}", key);
         }
     }
-
 }

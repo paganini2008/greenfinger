@@ -12,18 +12,13 @@ import lombok.extern.slf4j.Slf4j;
  * @Version 1.0.0
  */
 @Slf4j
-public class RedisUrlPathFilter implements ExistingUrlPathFilter {
+public class RedisUrlPathFilter extends RedisBasedExistingUrlPathFilter {
 
-    private final String key;
     private final StringRedisTemplate redisTemplate;
 
     public RedisUrlPathFilter(long catalogId, int version,
             RedisConnectionFactory redisConnectionFactory) {
-        this(String.format(NAMESPACE_PATTERN, catalogId, version), redisConnectionFactory);
-    }
-
-    public RedisUrlPathFilter(String key, RedisConnectionFactory redisConnectionFactory) {
-        this.key = key;
+        super(catalogId, version);
         this.redisTemplate = new StringRedisTemplate(redisConnectionFactory);
     }
 
@@ -41,7 +36,7 @@ public class RedisUrlPathFilter implements ExistingUrlPathFilter {
         if (redisTemplate.hasKey(key)) {
             redisTemplate.delete(key);
             if (log.isInfoEnabled()) {
-                log.info("Clean RedisUrlPathFilter on key: {}", key);
+                log.info("Clean RedisUrlPathFilter: {}", key);
             }
         }
     }
@@ -50,6 +45,5 @@ public class RedisUrlPathFilter implements ExistingUrlPathFilter {
     public long size() {
         return redisTemplate.opsForSet().size(key);
     }
-
 
 }

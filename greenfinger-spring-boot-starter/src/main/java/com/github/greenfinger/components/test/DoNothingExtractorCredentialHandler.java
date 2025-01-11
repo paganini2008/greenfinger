@@ -1,5 +1,7 @@
 package com.github.greenfinger.components.test;
 
+import com.github.greenfinger.model.Catalog;
+
 /**
  * 
  * @Description: DoNothingExtractorCredentialHandler
@@ -12,6 +14,6 @@ public class DoNothingExtractorCredentialHandler<T> implements ExtractorCredenti
     DoNothingExtractorCredentialHandler() {}
 
     @Override
-    public void login(WebClientHolder<T> supplier) {}
+    public void login(Catalog catalog, WebClientHolder<T> supplier) {}
 
 }

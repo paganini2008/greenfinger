@@ -10,16 +10,15 @@ import com.github.doodler.common.context.ApplicationContextUtils;
 import com.github.doodler.common.transmitter.Packet;
 import com.github.doodler.common.utils.MapUtils;
 import com.github.doodler.common.utils.SerializableTaskTimer;
+import com.github.greenfinger.components.Dashboard;
 import com.github.greenfinger.components.ExistingUrlPathFilter;
 import com.github.greenfinger.components.Extractor;
 import com.github.greenfinger.components.InterruptionChecker;
-import com.github.greenfinger.components.OneTimeDashboardData;
+import com.github.greenfinger.components.OneTimeDashboard;
 import com.github.greenfinger.components.RedissionBloomUrlPathFilter;
-import com.github.greenfinger.components.RobotRuleFilter;
 import com.github.greenfinger.components.UrlPathAcceptor;
 import com.github.greenfinger.model.Catalog;
 import com.github.greenfinger.model.CatalogIndex;
-import lombok.Getter;
 
 /**
  * 
@@ -42,21 +41,16 @@ public final class WebCrawlerExecutionContext implements Runnable {
 
     private final long catalogId;
 
-    @Autowired
+
     private List<InterruptionChecker> interruptionCheckers;
 
-    @Autowired
-    private RobotRuleFilter robotRuleFilter;
-
-    @Autowired
     private List<UrlPathAcceptor> urlPathAcceptors;
 
-    @Autowired
-    private Extractor pageSourceExtractor;
+    private Extractor extractor;
 
     private ExistingUrlPathFilter existingUrlPathFilter;
 
-    private OneTimeDashboardData dashboardData;
+    private Dashboard dashboardData;
 
     WebCrawlerExecutionContext(long catalogId) {
         this.catalogId = catalogId;
@@ -71,17 +65,13 @@ public final class WebCrawlerExecutionContext implements Runnable {
         CatalogIndex catalogIndex = resourceManager.getCatalogIndex(catalogId);
         this.existingUrlPathFilter = new RedissionBloomUrlPathFilter(catalogId,
                 catalogIndex.getVersion(), redissonClient);
-        this.dashboardData = new OneTimeDashboardData(catalogId, catalogIndex.getVersion(),
+        this.dashboardData = new OneTimeDashboard(catalogId, catalogIndex.getVersion(),
                 redisConnectionFactory);
     }
 
     @Autowired
     public void configure(SerializableTaskTimer timer) {
         timer.addBatch(this);
-    }
-
-    public boolean isUrlAllowable(String refer, String path) {
-        return robotRuleFilter.isAllowed(path);
     }
 
     public boolean isUrlAcceptable(String refer, String path, Packet packet) {

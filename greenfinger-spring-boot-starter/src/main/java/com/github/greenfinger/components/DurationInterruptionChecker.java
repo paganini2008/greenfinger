@@ -1,8 +1,9 @@
 package com.github.greenfinger.components;
 
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import com.github.doodler.common.utils.DateUtils;
-import com.github.greenfinger.WebCrawlerExtractorProperties;
+import com.github.greenfinger.WebCrawlerProperties;
 import com.github.greenfinger.model.Catalog;
 import lombok.RequiredArgsConstructor;
 
@@ -16,12 +17,13 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class DurationInterruptionChecker implements InterruptionChecker {
 
-    private final WebCrawlerExtractorProperties config;
+    private final Catalog catalog;
+    private final WebCrawlerProperties config;
 
     @Override
-    public boolean shouldInterrupt(OneTimeDashboardData dashboardData, Catalog catalog) {
-        long duration = catalog.getDuration() != null ? catalog.getDuration().longValue()
-                : config.getDefaultDuration();
+    public boolean shouldInterrupt(Dashboard dashboardData) {
+        long duration = Optional.ofNullable(catalog.getDuration())
+                .orElse(config.getDefaultDuration()).longValue();
         long durationInMs = DateUtils.convertToMillis(duration, TimeUnit.MINUTES);
         return dashboardData.getElapsedTime() > durationInMs;
     }

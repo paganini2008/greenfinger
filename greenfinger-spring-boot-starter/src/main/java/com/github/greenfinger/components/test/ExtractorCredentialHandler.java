@@ -1,5 +1,7 @@
 package com.github.greenfinger.components.test;
 
+import com.github.greenfinger.model.Catalog;
+
 /**
  * 
  * @Description: ExtractorCredentialHandler
@@ -9,8 +11,8 @@ package com.github.greenfinger.components.test;
  */
 public interface ExtractorCredentialHandler<T> {
 
-    void login(WebClientHolder<T> holder);
+    void login(Catalog catalog, WebClientHolder<T> holder);
 
-    default void logout(WebClientHolder<T> holder) {}
+    default void logout(Catalog catalog, WebClientHolder<T> holder) {}
 
 }

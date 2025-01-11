@@ -18,6 +18,7 @@ import com.github.doodler.common.utils.ThreadUtils;
 import com.github.greenfinger.WebCrawlerConstants;
 import com.github.greenfinger.WebCrawlerExtractorProperties;
 import com.github.greenfinger.components.test.AbstractExtractor;
+import com.github.greenfinger.model.Catalog;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -77,8 +78,8 @@ public class SeleniumExtractor extends AbstractExtractor
         driver = new ChromeDriver(options);
     }
 
-    public synchronized String requestUrl(String referUrl, String url, Charset pageEncoding,
-            Packet packet) throws Exception {
+    public synchronized String requestUrl(Catalog catalog, String referUrl, String url,
+            Charset pageEncoding, Packet packet) throws Exception {
         driver.get(url);
         WebCrawlerExtractorProperties.Selenium selenium = extractorProperties.getSelenium();
         if (selenium.getLoadingTimeout() > 0) {
@@ -121,7 +122,7 @@ public class SeleniumExtractor extends AbstractExtractor
                 new SeleniumExtractor(new WebCrawlerExtractorProperties());
         pageExtractor.afterPropertiesSet();
 
-        System.out.println(pageExtractor.extractHtml("http://www.ttmeishi.com",
+        System.out.println(pageExtractor.extractHtml(null, "http://www.ttmeishi.com",
                 "https://goldenmatrix.com/", null, null));
         System.in.read();
         pageExtractor.destroy();

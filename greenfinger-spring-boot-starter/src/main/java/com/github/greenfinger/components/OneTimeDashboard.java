@@ -6,12 +6,12 @@ import org.springframework.data.redis.support.atomic.RedisAtomicLong;
 
 /**
  * 
- * @Description: OneTimeDashboardData
+ * @Description: OneTimeDashboard
  * @Author: Fred Feng
  * @Date: 31/12/2024
  * @Version 1.0.0
  */
-public class OneTimeDashboardData {
+public class OneTimeDashboard implements Dashboard {
 
     private static final String NAMESPACE_PATTERN = "greenfinger:dashboard:%s:%s:%s";
 
@@ -26,7 +26,7 @@ public class OneTimeDashboardData {
     private final RedisGenericDataType<Boolean> completed;
     private long timestamp;
 
-    public OneTimeDashboardData(long catalogId, int version,
+    public OneTimeDashboard(long catalogId, int version,
             RedisConnectionFactory redisConnectionFactory) {
         startTime = new RedisGenericDataType<Long>(
                 String.format(NAMESPACE_PATTERN, catalogId, version, "startTime"), Long.class,
@@ -57,6 +57,7 @@ public class OneTimeDashboardData {
                 redisConnectionFactory, true);
     }
 
+    @Override
     public void reset(long durationInMs, boolean includingCount) {
         startTime.set(System.currentTimeMillis());
         endTime.set(startTime.get() + durationInMs);
@@ -72,147 +73,113 @@ public class OneTimeDashboardData {
         timestamp = System.currentTimeMillis();
     }
 
+    @Override
     public boolean isCompleted() {
         return completed.get();
     }
 
+    @Override
     public void setCompleted(boolean completed) {
         this.completed.set(completed);
         this.timestamp = System.currentTimeMillis();
     }
 
-    public long incrementTotalUrlCount() {
+    @Override
+    public long incrementCount(String type) {
+        return incrementCount(type, 1);
+    }
+
+    @Override
+    public long incrementCount(String type, int delta) {
+        RedisAtomicLong longCounter = null;
+        switch (type.toLowerCase()) {
+            case "total":
+                longCounter = totalUrlCount;
+                break;
+            case "invalid":
+                longCounter = invalidUrlCount;
+                break;
+            case "existing":
+                longCounter = existingUrlCount;
+                break;
+            case "filtered":
+                longCounter = filteredUrlCount;
+                break;
+            case "saved":
+                longCounter = savedResourceCount;
+                break;
+            case "indexed":
+                longCounter = indexedResourceCount;
+                break;
+            default:
+                throw new UnsupportedOperationException("Unknown incremental type: " + type);
+        }
         try {
-            return totalUrlCount.incrementAndGet();
+            if (delta == 1) {
+                return longCounter.incrementAndGet();
+            }
+            return longCounter.addAndGet(delta);
         } finally {
             this.timestamp = System.currentTimeMillis();
         }
     }
 
-    public long incrementInvalidUrlCount() {
-        try {
-            return invalidUrlCount.incrementAndGet();
-        } finally {
-            this.timestamp = System.currentTimeMillis();
-        }
-    }
-
-    public long incrementExistingUrlCount() {
-        try {
-            return existingUrlCount.incrementAndGet();
-        } finally {
-            this.timestamp = System.currentTimeMillis();
-        }
-    }
-
-    public long incrementFilteredUrlCount() {
-        try {
-            return filteredUrlCount.incrementAndGet();
-        } finally {
-            this.timestamp = System.currentTimeMillis();
-        }
-    }
-
-    public long incrementSavedResourceCount() {
-        try {
-            return savedResourceCount.incrementAndGet();
-        } finally {
-            this.timestamp = System.currentTimeMillis();
-        }
-    }
-
-    public long incrementIndexedResourceCount() {
-        return indexedResourceCount.incrementAndGet();
-    }
-
-    public long incrementTotalUrlCount(int delta) {
-        try {
-            return totalUrlCount.addAndGet(delta);
-        } finally {
-            this.timestamp = System.currentTimeMillis();
-        }
-    }
-
-    public long incrementInvalidUrlCount(int delta) {
-        try {
-            return invalidUrlCount.addAndGet(delta);
-        } finally {
-            this.timestamp = System.currentTimeMillis();
-        }
-    }
-
-    public long incrementExistingUrlCount(int delta) {
-        try {
-            return existingUrlCount.addAndGet(delta);
-        } finally {
-            this.timestamp = System.currentTimeMillis();
-        }
-    }
-
-    public long incrementFilteredUrlCount(int delta) {
-        try {
-            return filteredUrlCount.addAndGet(delta);
-        } finally {
-            this.timestamp = System.currentTimeMillis();
-        }
-    }
-
-    public long incrementSavedResourceCount(int delta) {
-        try {
-            return savedResourceCount.addAndGet(delta);
-        } finally {
-            this.timestamp = System.currentTimeMillis();
-        }
-    }
-
-    public long incrementIndexedResourceCount(int delta) {
-        try {
-            return indexedResourceCount.addAndGet(delta);
-        } finally {
-            this.timestamp = System.currentTimeMillis();
-        }
-    }
-
+    @Override
     public long getTotalUrlCount() {
         return totalUrlCount.get();
     }
 
+    @Override
     public long getInvalidUrlCount() {
         return invalidUrlCount.get();
     }
 
+    @Override
     public long getExistingUrlCount() {
         return existingUrlCount.get();
     }
 
+    @Override
     public long getFilteredUrlCount() {
         return filteredUrlCount.get();
     }
 
+    @Override
     public long getSavedResourceCount() {
         return savedResourceCount.get();
     }
 
+    @Override
     public long getIndexedResourceCount() {
         return indexedResourceCount.get();
     }
 
+    @Override
     public long getStartTime() {
         return startTime.get();
     }
 
+    @Override
     public long getEndTime() {
         return endTime.get();
     }
 
+    @Override
     public long getElapsedTime() {
         return startTime.get() > 0 ? System.currentTimeMillis() - startTime.get() : 0;
     }
 
+    @Override
     public long getTimestamp() {
         return timestamp;
     }
 
+    @Override
+    public String getDescription() {
+        return "OneTimeDashboard";
+    }
+
+    @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
     }

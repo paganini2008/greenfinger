@@ -2,7 +2,7 @@ package com.github.greenfinger.api;
 
 import java.util.Date;
 import org.apache.commons.lang3.time.DurationFormatUtils;
-import com.github.greenfinger.components.OneTimeDashboardData;
+import com.github.greenfinger.components.Dashboard;
 import com.github.greenfinger.model.Catalog;
 import lombok.Getter;
 import lombok.Setter;
@@ -22,7 +22,7 @@ public class CatalogSummary {
 
     private final Catalog catalog;
 
-    public CatalogSummary(Catalog catalog, OneTimeDashboardData dashboardData) {
+    public CatalogSummary(Catalog catalog, Dashboard dashboardData) {
         this.catalog = catalog;
         this.startTime = new Date(dashboardData.getStartTime());
         this.completed = dashboardData.isCompleted();

@@ -10,6 +10,7 @@ import org.springframework.util.Assert;
 import com.github.doodler.common.utils.Coookie;
 import com.github.greenfinger.components.ExetractorLifeCycle;
 import com.github.greenfinger.components.NamedExetractor;
+import com.github.greenfinger.model.Catalog;
 
 /**
  * 
@@ -44,7 +45,7 @@ public abstract class StatefulExtractor<T> extends AbstractExtractor
     }
 
     @Override
-    public boolean hasLogged() {
+    public boolean hasLogged(Catalog catalog) {
         return logged.get();
     }
 
@@ -53,18 +54,18 @@ public abstract class StatefulExtractor<T> extends AbstractExtractor
     }
 
     @Override
-    public void login() {
-        if (hasLogged()) {
+    public void login(Catalog catalog) {
+        if (hasLogged(catalog)) {
             return;
         }
-        credentialHandler.login(this);
+        credentialHandler.login(catalog, this);
         setLogged(true);
     }
 
     @Override
-    public void logout() {
-        if (hasLogged()) {
-            credentialHandler.logout(this);
+    public void logout(Catalog catalog) {
+        if (hasLogged(catalog)) {
+            credentialHandler.logout(catalog, this);
             setLogged(false);
         }
     }

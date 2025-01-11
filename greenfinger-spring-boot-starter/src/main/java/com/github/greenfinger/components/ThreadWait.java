@@ -14,13 +14,13 @@ public enum ThreadWait {
     NONE {
 
         @Override
-        void doWait(long delay) {}
+        public void doWait(long delay) {}
 
     },
     RANDOM_SLEEP {
 
         @Override
-        void doWait(long delay) {
+        public void doWait(long delay) {
             ThreadUtils.randomSleep(100, delay);
         }
 
@@ -29,12 +29,12 @@ public enum ThreadWait {
     SLEEP {
 
         @Override
-        void doWait(long delay) {
+        public void doWait(long delay) {
             ThreadUtils.sleep(delay);
         }
 
     };
 
-    abstract void doWait(long delay);
+    public abstract void doWait(long delay);
 
 }

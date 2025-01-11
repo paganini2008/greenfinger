@@ -11,19 +11,14 @@ import org.springframework.beans.factory.InitializingBean;
  * @Date: 01/01/2025
  * @Version 1.0.0
  */
-public class RedissionBloomUrlPathFilter implements ExistingUrlPathFilter, InitializingBean {
+public class RedissionBloomUrlPathFilter extends RedisBasedExistingUrlPathFilter
+        implements InitializingBean {
 
     private static final int MAX_EXPECTED_INSERTIONS = 100_000_000;
-
-    private final String name;
     private final RedissonClient redissonClient;
 
     public RedissionBloomUrlPathFilter(long catalogId, int version, RedissonClient redissonClient) {
-        this(String.format(NAMESPACE_PATTERN, catalogId, version), redissonClient);
-    }
-
-    public RedissionBloomUrlPathFilter(String name, RedissonClient redissonClient) {
-        this.name = name;
+        super(catalogId, version);
         this.redissonClient = redissonClient;
     }
 
@@ -31,7 +26,7 @@ public class RedissionBloomUrlPathFilter implements ExistingUrlPathFilter, Initi
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        bloomFilter = redissonClient.getBloomFilter(name);
+        bloomFilter = redissonClient.getBloomFilter(key);
         bloomFilter.tryInit(MAX_EXPECTED_INSERTIONS, 0.03d);
     }
 

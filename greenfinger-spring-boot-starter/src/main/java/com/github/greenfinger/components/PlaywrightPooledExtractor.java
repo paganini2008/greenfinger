@@ -13,6 +13,7 @@ import com.github.doodler.common.utils.RandomUtils;
 import com.github.doodler.common.utils.ThreadUtils;
 import com.github.greenfinger.WebCrawlerConstants;
 import com.github.greenfinger.WebCrawlerExtractorProperties;
+import com.github.greenfinger.model.Catalog;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.BrowserType;
@@ -68,8 +69,8 @@ public class PlaywrightPooledExtractor extends PooledExtractor<BrowserContext>
     }
 
     @Override
-    public String requestUrl(String referUrl, String url, Charset pageEncoding, Packet packet)
-            throws Exception {
+    protected String requestUrl(Catalog catalog, String referUrl, String url, Charset pageEncoding,
+            Packet packet) throws Exception {
         WebCrawlerExtractorProperties.Playwright config = extractorProperties.getPlaywright();
         BrowserContext context = objectPool.borrowObject();
         Page page = context.newPage();
@@ -107,7 +108,7 @@ public class PlaywrightPooledExtractor extends PooledExtractor<BrowserContext>
         PlaywrightPooledExtractor extractor =
                 new PlaywrightPooledExtractor(new WebCrawlerExtractorProperties());
         extractor.afterPropertiesSet();
-        String html = extractor.extractHtml("", "https://goldenmatrix.com/company",
+        String html = extractor.extractHtml(null, "", "https://goldenmatrix.com/company",
                 StandardCharsets.UTF_8, null);
         System.out.println(html);
         System.in.read();

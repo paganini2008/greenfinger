@@ -21,6 +21,7 @@ import com.github.doodler.common.utils.ThreadUtils;
 import com.github.greenfinger.WebCrawlerConstants;
 import com.github.greenfinger.WebCrawlerExtractorProperties;
 import com.github.greenfinger.components.ExtractorException;
+import com.github.greenfinger.model.Catalog;
 
 /**
  * 
@@ -77,8 +78,8 @@ public class RestTemplateStatefulExtractor extends StatefulExtractor<RestTemplat
         return doRequestUrl(restTemplate, url, url, pageEncoding, new Packet());
     }
 
-    protected synchronized String requestUrl(String referUrl, String url, Charset pageEncoding,
-            Packet packet) throws Exception {
+    protected synchronized String requestUrl(Catalog catalog, String referUrl, String url,
+            Charset pageEncoding, Packet packet) throws Exception {
         RestTemplate restTemplate = get();
         return doRequestUrl(restTemplate, referUrl, url, pageEncoding, packet);
     }

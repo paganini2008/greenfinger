@@ -16,6 +16,7 @@ import com.github.doodler.common.utils.RandomUtils;
 import com.github.doodler.common.utils.ThreadUtils;
 import com.github.greenfinger.WebCrawlerConstants;
 import com.github.greenfinger.WebCrawlerExtractorProperties;
+import com.github.greenfinger.model.Catalog;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.BrowserType;
@@ -46,7 +47,6 @@ public class PlaywrighStatefulExtractor extends StatefulExtractor<BrowserContext
     }
 
     private final WebCrawlerExtractorProperties extractorProperties;
-
 
     private Playwright playwright;
     private BrowserContext browserContext;
@@ -112,8 +112,8 @@ public class PlaywrighStatefulExtractor extends StatefulExtractor<BrowserContext
     }
 
     @Override
-    public synchronized String requestUrl(String referUrl, String url, Charset pageEncoding,
-            Packet packet) throws Exception {
+    public synchronized String requestUrl(Catalog catalog, String referUrl, String url,
+            Charset pageEncoding, Packet packet) throws Exception {
         BrowserContext context = get();
         return doRequestUrl(context, referUrl, url, pageEncoding, packet);
     }
