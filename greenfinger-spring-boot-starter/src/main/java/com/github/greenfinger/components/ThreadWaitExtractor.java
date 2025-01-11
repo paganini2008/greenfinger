@@ -39,9 +39,4 @@ public class ThreadWaitExtractor implements Extractor {
         return extractor.extractHtml(refer, url, pageEncoding, packet);
     }
 
-    @Override
-    public String getName() {
-        return extractor.getName();
-    }
-
 }

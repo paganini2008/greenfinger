@@ -98,11 +98,4 @@ public class RetryableExtractor implements Extractor, RetryListener {
         }
     }
 
-    @Override
-    public String getName() {
-        return extractor.getName();
-    }
-
-
-
 }

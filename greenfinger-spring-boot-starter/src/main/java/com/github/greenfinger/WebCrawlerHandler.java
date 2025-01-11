@@ -25,13 +25,13 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * 
- * @Description: CrawlerHandler
+ * @Description: WebCrawlerHandler
  * @Author: Fred Feng
  * @Date: 10/01/2025
  * @Version 1.0.0
  */
 @Slf4j
-public class CrawlerHandler implements EventSubscriber<Packet> {
+public class WebCrawlerHandler implements EventSubscriber<Packet> {
 
     private static final String UNIQUE_PATH_IDENTIFIER = "%s||%s||%s||%s";
 
@@ -102,7 +102,7 @@ public class CrawlerHandler implements EventSubscriber<Packet> {
         } catch (Exception e) {
             log.error(e.getMessage(), e);
             executionContext.getDashboardData().incrementInvalidUrlCount();
-            html = executionContext.getPageSourceExtractor().defaultPage(refer, path, charset,
+            html = executionContext.getPageSourceExtractor().defaultHtml(refer, path, charset,
                     packet, e);
         }
         if (StringUtils.isBlank(html)) {
@@ -174,7 +174,7 @@ public class CrawlerHandler implements EventSubscriber<Packet> {
         } catch (Exception e) {
             log.error(e.getMessage(), e);
             executionContext.getDashboardData().incrementInvalidUrlCount();
-            html = executionContext.getPageSourceExtractor().defaultPage(refer, path, charset,
+            html = executionContext.getPageSourceExtractor().defaultHtml(refer, path, charset,
                     packet, e);
         }
         if (StringUtils.isBlank(html)) {

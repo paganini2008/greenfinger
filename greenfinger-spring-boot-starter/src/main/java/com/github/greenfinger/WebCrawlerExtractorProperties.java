@@ -25,6 +25,7 @@ public class WebCrawlerExtractorProperties {
     private int defaultRetries = 3;
     private long defaultIntervalTime = 1000L;
 
+    private Default restTemplate = new Default();
     private Playwright playwright = new Playwright();
     private Selenium selenium = new Selenium();
     private HtmlUnit htmlunit = new HtmlUnit();
@@ -33,7 +34,7 @@ public class WebCrawlerExtractorProperties {
     @Setter
     public static class Base {
 
-        private Map<String, String> defaultHeaders = new HashMap<>();
+        private Map<String, String> defaultHttpHeaders = new HashMap<>();
         private String proxyHost;
         private int proxyPort;
         private long loadingTimeout;
@@ -45,6 +46,14 @@ public class WebCrawlerExtractorProperties {
             return "";
         }
 
+    }
+
+    @Getter
+    @Setter
+    public static class Default extends Base {
+
+        private int connectionTime = 10000;
+        private int readTimeout = 60000;
     }
 
     @Getter

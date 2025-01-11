@@ -16,12 +16,12 @@ import com.github.greenfinger.model.Catalog;
 
 /**
  * 
- * @Description: DefaultCatalogUrlPathAcceptor
+ * @Description: CatalogUrlPathAcceptor
  * @Author: Fred Feng
  * @Date: 30/12/2024
  * @Version 1.0.0
  */
-public class DefaultCatalogUrlPathAcceptor extends CatalogBasedUrlPathAcceptor {
+public class CatalogUrlPathAcceptor extends CatalogBasedUrlPathAcceptor {
 
     private final PathMatcher pathMather = new AntPathMatcher();
 
@@ -30,12 +30,12 @@ public class DefaultCatalogUrlPathAcceptor extends CatalogBasedUrlPathAcceptor {
     private final Map<Long, List<String>> excludedPathPatternCache =
             new ConcurrentHashMap<Long, List<String>>();
 
-    public DefaultCatalogUrlPathAcceptor(ResourceManager resourceManager) {
+    public CatalogUrlPathAcceptor(ResourceManager resourceManager) {
         super(resourceManager);
     }
 
     @Override
-    public boolean accept(Catalog catalog, String refer, String path, Packet packet) {
+    public boolean accept(Catalog catalog, String referUrl, String path, Packet packet) {
         List<String> pathPatterns =
                 MapUtils.getOrCreate(excludedPathPatternCache, catalog.getId(), () -> {
                     if (StringUtils.isBlank(catalog.getExcludedPathPattern())) {
@@ -56,14 +56,16 @@ public class DefaultCatalogUrlPathAcceptor extends CatalogBasedUrlPathAcceptor {
             return Arrays.asList(catalog.getPathPattern().split(","));
         });
 
-        if (CollectionUtils.isEmpty(pathPatterns)) {
-            return path.startsWith(refer);
-        }
         for (String pathPattern : pathPatterns) {
             if (pathMather.match(pathPattern, path)) {
                 return true;
             }
         }
+
+        if (CollectionUtils.isEmpty(pathPatterns)) {
+            return path.startsWith(referUrl);
+        }
+
         return false;
     }
 

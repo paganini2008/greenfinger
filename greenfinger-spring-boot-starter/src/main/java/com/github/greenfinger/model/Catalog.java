@@ -30,6 +30,10 @@ public class Catalog implements Serializable {
     private Integer depth;
     private Long interval;
     private Long duration;
+    private Integer maxRetryCount;
+    private String urlPathAcceptor;
+    private String urlPathFilter;
+    private String extractor;
     private Date lastModified;
 
 }

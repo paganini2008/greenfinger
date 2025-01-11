@@ -24,28 +24,16 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * 
- * @Description: PlaywrightExtractor
+ * @Description: PlaywrightPooledExtractor
  * @Author: Fred Feng
  * @Date: 10/01/2025
  * @Version 1.0.0
  */
 @RequiredArgsConstructor
-public class PlaywrightExtractor extends PooledExtractor<Browser> implements ManagedBeanLifeCycle {
+public class PlaywrightPooledExtractor extends PooledExtractor<BrowserContext>
+        implements NamedExetractor, ManagedBeanLifeCycle {
 
-    private Map<String, String> defaultHeaders = new HashMap<>() {
-
-        private static final long serialVersionUID = 1L;
-        {
-            put("Accept", "*/*");
-            put("Accept-Language", "en-US,en;q=0.9");
-        }
-    };
-
-    private final WebCrawlerExtractorProperties webCrawlerProperties;
-
-    public void setDefaultHeaders(Map<String, String> defaultHeaders) {
-        this.defaultHeaders = defaultHeaders;
-    }
+    private final WebCrawlerExtractorProperties extractorProperties;
 
     private Playwright playwright;
 
@@ -56,34 +44,34 @@ public class PlaywrightExtractor extends PooledExtractor<Browser> implements Man
     }
 
     @Override
-    public Browser createObject() throws Exception {
+    public BrowserContext createObject() throws Exception {
         Browser browser =
                 playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
-        return browser;
+        WebCrawlerExtractorProperties.Playwright config = extractorProperties.getPlaywright();
+        Browser.NewContextOptions newContextOptions =
+                new Browser.NewContextOptions().setIsMobile(false).setAcceptDownloads(false)
+                        .setJavaScriptEnabled(config.isJavaScriptEnabled())
+                        .setExtraHTTPHeaders(mergeHttpHeaders());
+        if (StringUtils.isNotBlank(config.getProxyServer())) {
+            newContextOptions.setProxy(new Proxy(config.getProxyServer()));
+        }
+        return browser.newContext(newContextOptions);
     }
 
-    private Map<String, String> getDefaultHttpHeaders() {
-        WebCrawlerExtractorProperties.Playwright config = webCrawlerProperties.getPlaywright();
-        Map<String, String> defaultHeaders = new HashMap<>(this.defaultHeaders);
-        defaultHeaders.putAll(config.getDefaultHeaders());
+    private Map<String, String> mergeHttpHeaders() {
+        WebCrawlerExtractorProperties.Playwright config = extractorProperties.getPlaywright();
+        Map<String, String> defaultHeaders = new HashMap<>(this.defaultHttpHeaders);
         defaultHeaders.put("X-Forwarded-For", RandomIpUtils.randomIp());
         defaultHeaders.put("User-Agent", RandomUtils.randomChoice(WebCrawlerConstants.userAgents));
+        defaultHeaders.putAll(config.getDefaultHttpHeaders());
         return defaultHeaders;
     }
 
     @Override
     public String requestUrl(String referUrl, String url, Charset pageEncoding, Packet packet)
             throws Exception {
-        Browser browser = objectPool.borrowObject();
-        WebCrawlerExtractorProperties.Playwright config = webCrawlerProperties.getPlaywright();
-        Browser.NewContextOptions newContextOptions =
-                new Browser.NewContextOptions().setIsMobile(false).setAcceptDownloads(false)
-                        .setJavaScriptEnabled(config.isJavaScriptEnabled())
-                        .setExtraHTTPHeaders(getDefaultHttpHeaders());
-        if (StringUtils.isNotBlank(config.getProxyServer())) {
-            newContextOptions.setProxy(new Proxy(config.getProxyServer()));
-        }
-        BrowserContext context = browser.newContext(newContextOptions);
+        WebCrawlerExtractorProperties.Playwright config = extractorProperties.getPlaywright();
+        BrowserContext context = objectPool.borrowObject();
         Page page = context.newPage();
         page.navigate(url);
         page.setDefaultNavigationTimeout(config.getTimeout());
@@ -98,7 +86,7 @@ public class PlaywrightExtractor extends PooledExtractor<Browser> implements Man
     }
 
     @Override
-    public void destroyObject(PooledObject<Browser> object) throws Exception {
+    public void destroyObject(PooledObject<BrowserContext> object) throws Exception {
         object.getObject().close();
     }
 
@@ -116,8 +104,8 @@ public class PlaywrightExtractor extends PooledExtractor<Browser> implements Man
     }
 
     public static void main(String[] args) throws Exception {
-        PlaywrightExtractor extractor =
-                new PlaywrightExtractor(new WebCrawlerExtractorProperties());
+        PlaywrightPooledExtractor extractor =
+                new PlaywrightPooledExtractor(new WebCrawlerExtractorProperties());
         extractor.afterPropertiesSet();
         String html = extractor.extractHtml("", "https://goldenmatrix.com/company",
                 StandardCharsets.UTF_8, null);

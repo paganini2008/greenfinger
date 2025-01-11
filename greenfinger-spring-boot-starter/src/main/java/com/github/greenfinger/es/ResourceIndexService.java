@@ -147,7 +147,7 @@ public class ResourceIndexService {
                         CharsetUtils.toCharset(catalog.getPageEncoding()), packet);
             } catch (Exception e) {
                 log.error(e.getMessage(), e);
-                html = pageExtractor.defaultPage(catalog.getUrl(), resource.getUrl(),
+                html = pageExtractor.defaultHtml(catalog.getUrl(), resource.getUrl(),
                         CharsetUtils.toCharset(catalog.getPageEncoding()), packet, e);
             }
         }

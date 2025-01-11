@@ -24,47 +24,25 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * 
- * @Description: HtmlUnitExtractor
+ * @Description: HtmlUnitPooledExtractor
  * @Author: Fred Feng
  * @Date: 30/12/2024
  * @Version 1.0.0
  */
 @RequiredArgsConstructor
-public class HtmlUnitExtractor extends PooledExtractor<WebClient> implements Extractor {
+public class HtmlUnitPooledExtractor extends PooledExtractor<WebClient> implements NamedExetractor {
 
-    private Map<String, String> defaultHeaders = new HashMap<>() {
-
-        private static final long serialVersionUID = 1L;
-        {
-            put("Accept", "*/*");
-            put("Accept-Language", "en-US,en;q=0.9");
-        }
-    };
-
-    private final WebCrawlerExtractorProperties webCrawlerProperties;
-
-    public void setDefaultHeaders(Map<String, String> defaultHeaders) {
-        this.defaultHeaders = defaultHeaders;
-    }
+    private final WebCrawlerExtractorProperties extractorProperties;
 
     @Override
     public WebClient createObject() throws Exception {
-        WebCrawlerExtractorProperties.HtmlUnit config = webCrawlerProperties.getHtmlunit();
+        WebCrawlerExtractorProperties.HtmlUnit config = extractorProperties.getHtmlunit();
         WebClient webClient;
         if (StringUtils.isNotBlank(config.getProxyHost()) && config.getProxyPort() > 0) {
             webClient = new WebClient(BrowserVersion.BEST_SUPPORTED, config.getProxyHost(),
                     config.getProxyPort());
         } else {
             webClient = new WebClient(BrowserVersion.BEST_SUPPORTED);
-        }
-        Map<String, String> defaultHeaders = new HashMap<>(this.defaultHeaders);
-        defaultHeaders.putAll(config.getDefaultHeaders());
-        defaultHeaders.put("X-Forwarded-For", RandomIpUtils.randomIp());
-        defaultHeaders.put("User-Agent", RandomUtils.randomChoice(WebCrawlerConstants.userAgents));
-        if (MapUtils.isNotEmpty(defaultHeaders)) {
-            for (Map.Entry<String, String> entry : defaultHeaders.entrySet()) {
-                webClient.addRequestHeader(entry.getKey(), entry.getValue());
-            }
         }
         webClient.getOptions().setThrowExceptionOnScriptError(false);
         webClient.getOptions().setThrowExceptionOnFailingStatusCode(false);
@@ -78,7 +56,22 @@ public class HtmlUnitExtractor extends PooledExtractor<WebClient> implements Ext
         webClient.setCookieManager(new CookieManager());
         webClient.setAjaxController(new NicelyResynchronizingAjaxController());
         webClient.setJavaScriptTimeout(config.getJavaScriptTimeout());
+
+        setDefaultHttpHeaders(webClient);
         return webClient;
+    }
+
+    private void setDefaultHttpHeaders(WebClient webClient) {
+        WebCrawlerExtractorProperties.HtmlUnit config = extractorProperties.getHtmlunit();
+        Map<String, String> defaultHeaders = new HashMap<>(this.defaultHttpHeaders);
+        defaultHeaders.put("X-Forwarded-For", RandomIpUtils.randomIp());
+        defaultHeaders.put("User-Agent", RandomUtils.randomChoice(WebCrawlerConstants.userAgents));
+        defaultHeaders.putAll(config.getDefaultHttpHeaders());
+        if (MapUtils.isNotEmpty(defaultHeaders)) {
+            for (Map.Entry<String, String> entry : defaultHeaders.entrySet()) {
+                webClient.addRequestHeader(entry.getKey(), entry.getValue());
+            }
+        }
     }
 
     @Override
@@ -91,7 +84,7 @@ public class HtmlUnitExtractor extends PooledExtractor<WebClient> implements Ext
             throws Exception {
         WebClient webClient = objectPool.borrowObject();
         try {
-            WebCrawlerExtractorProperties.HtmlUnit config = webCrawlerProperties.getHtmlunit();
+            WebCrawlerExtractorProperties.HtmlUnit config = extractorProperties.getHtmlunit();
             Page page = webClient.getPage(url);
             if (config.isJavaScriptEnabled()) {
                 webClient.waitForBackgroundJavaScript(config.getJavaScriptTimeout());
@@ -121,7 +114,8 @@ public class HtmlUnitExtractor extends PooledExtractor<WebClient> implements Ext
     }
 
     public static void main(String[] args) throws Exception {
-        HtmlUnitExtractor pageSource = new HtmlUnitExtractor(new WebCrawlerExtractorProperties());
+        HtmlUnitPooledExtractor pageSource =
+                new HtmlUnitPooledExtractor(new WebCrawlerExtractorProperties());
         pageSource.afterPropertiesSet();
         // System.out.println(pageSource.getHtml("https://blog.csdn.net/u010814849/article/details/52526705"));
         System.out.println(pageSource.extractHtml("https://www.tuniu.com",

@@ -11,6 +11,6 @@ import com.github.doodler.common.transmitter.Packet;
  */
 public interface UrlPathAcceptor {
 
-    boolean accept(String refer, String path, Packet packet);
+    boolean accept(String referUrl, String path, Packet packet);
 
 }

@@ -14,11 +14,11 @@ import com.github.greenfinger.api.CatalogApiController;
 import com.github.greenfinger.api.IndexApiController;
 import com.github.greenfinger.components.CompositeCatalogUrlPathAcceptor;
 import com.github.greenfinger.components.ConditionalCountingType;
-import com.github.greenfinger.components.DefaultCatalogUrlPathAcceptor;
+import com.github.greenfinger.components.CatalogUrlPathAcceptor;
 import com.github.greenfinger.components.DepthUrlPathAcceptor;
 import com.github.greenfinger.components.DurationInterruptionChecker;
 import com.github.greenfinger.components.Extractor;
-import com.github.greenfinger.components.HtmlUnitExtractor;
+import com.github.greenfinger.components.HtmlUnitPooledExtractor;
 import com.github.greenfinger.components.InterruptionChecker;
 import com.github.greenfinger.components.MaxFetchSizeInterruptionChecker;
 import com.github.greenfinger.components.ThreadWaitExtractor;
@@ -45,8 +45,8 @@ public class GreenFingerAutoConfiguration {
     }
 
     @Bean
-    public CrawlerHandler crawlerHandler() {
-        return new CrawlerHandler();
+    public WebCrawlerHandler crawlerHandler() {
+        return new WebCrawlerHandler();
     }
 
     @Autowired
@@ -67,7 +67,7 @@ public class GreenFingerAutoConfiguration {
     @ConditionalOnMissingBean
     @Bean
     public Extractor extractor(WebCrawlerExtractorProperties config) {
-        HtmlUnitExtractor pageExtractor = new HtmlUnitExtractor(config);
+        HtmlUnitPooledExtractor pageExtractor = new HtmlUnitPooledExtractor(config);
         return new ThreadWaitExtractor(pageExtractor);
     }
 
@@ -88,7 +88,7 @@ public class GreenFingerAutoConfiguration {
 
     @Bean
     public UrlPathAcceptor defaultCatalogUrlPathAcceptor(ResourceManager resourceManager) {
-        return new DefaultCatalogUrlPathAcceptor(resourceManager);
+        return new CatalogUrlPathAcceptor(resourceManager);
     }
 
     @Bean

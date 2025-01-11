@@ -18,12 +18,12 @@ public class DepthUrlPathAcceptor implements UrlPathAcceptor, Ordered {
     private final WebCrawlerExtractorProperties config;
 
     @Override
-    public boolean accept(String refer, String path, Packet packet) {
+    public boolean accept(String referUrl, String path, Packet packet) {
         int depth = (Integer) packet.getField("depth", config.getDefaultFetchDepth());
         if (depth < 0) {
             return true;
         }
-        String part = path.replace(refer, "");
+        String part = path.replace(referUrl, "");
         if (part.charAt(0) == '/') {
             part = part.substring(1);
         }

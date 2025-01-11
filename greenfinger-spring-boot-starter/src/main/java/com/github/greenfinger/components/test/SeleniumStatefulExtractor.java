@@ -1,4 +1,4 @@
-package com.github.greenfinger.components;
+package com.github.greenfinger.components.test;
 
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -6,53 +6,46 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
+import org.openqa.selenium.Cookie;
 import org.openqa.selenium.Proxy;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
-import com.github.doodler.common.context.ManagedBeanLifeCycle;
+import org.springframework.beans.factory.DisposableBean;
 import com.github.doodler.common.transmitter.Packet;
+import com.github.doodler.common.utils.Coookie;
 import com.github.doodler.common.utils.MapUtils;
 import com.github.doodler.common.utils.RandomUtils;
 import com.github.doodler.common.utils.ThreadUtils;
 import com.github.greenfinger.WebCrawlerConstants;
 import com.github.greenfinger.WebCrawlerExtractorProperties;
-import com.github.greenfinger.components.test.AbstractExtractor;
-import lombok.RequiredArgsConstructor;
 
 /**
  * 
- * @Description: SeleniumExtractor
+ * @Description: SeleniumStatefulExtractor
  * @Author: Fred Feng
  * @Date: 30/12/2024
  * @Version 1.0.0
  */
-@RequiredArgsConstructor
-public class SeleniumExtractor extends AbstractExtractor
-        implements NamedExetractor, ManagedBeanLifeCycle {
+public class SeleniumStatefulExtractor extends StatefulExtractor<WebDriver>
+        implements DisposableBean {
+
+    public SeleniumStatefulExtractor(WebCrawlerExtractorProperties extractorProperties) {
+        this(new DoNothingExtractorCredentialHandler<>(), extractorProperties);
+    }
+
+    public SeleniumStatefulExtractor(ExtractorCredentialHandler<WebDriver> credentialHandler,
+            WebCrawlerExtractorProperties extractorProperties) {
+        super(credentialHandler);
+        this.extractorProperties = extractorProperties;
+    }
 
     private final WebCrawlerExtractorProperties extractorProperties;
-    private Map<String, String> defaultHttpHeaders = new HashMap<>() {
-
-        private static final long serialVersionUID = 1L;
-        {
-            put("Accept", "*/*");
-            put("Accept-Language", "en-US,en;q=0.9");
-        }
-    };
-
-    public Map<String, String> getDefaultHttpHeaders() {
-        return defaultHttpHeaders;
-    }
-
-    public void setDefaultHttpHeaders(Map<String, String> defaultHttpHeaders) {
-        this.defaultHttpHeaders = defaultHttpHeaders;
-    }
 
     private WebDriver driver;
 
     @Override
-    public void afterPropertiesSet() throws Exception {
+    public WebDriver createNew() {
         System.setProperty("webdriver.chrome.driver",
                 extractorProperties.getSelenium().getWebDriverExecutionPath());
 
@@ -73,11 +66,48 @@ public class SeleniumExtractor extends AbstractExtractor
             proxy.setHttpProxy(selenium.getProxyServer());
             options.setProxy(proxy);
         }
-        setDefaultHeaders(options);
-        driver = new ChromeDriver(options);
+        setDefaultHttpHeaders(options);
+        return new ChromeDriver(options);
+    }
+
+    @Override
+    public WebDriver get() {
+        if (driver == null) {
+            driver = createNew();
+        }
+        return driver;
+    }
+
+    @Override
+    public void setExtraCookies(List<Coookie> coookies) {
+        coookies.forEach(co -> {
+            driver.manage()
+                    .addCookie(new Cookie.Builder(co.getName(), co.getValue())
+                            .domain(co.getDomain()).path(co.getPath()).expiresOn(co.getExpires())
+                            .isSecure(co.isSecure()).isHttpOnly(co.isHttpOnly()).build());
+        });
+    }
+
+    @Override
+    public String test(String url, Charset pageEncoding) throws Exception {
+        WebDriver driver = null;
+        try {
+            driver = createNew();
+            return doRequestUrl(driver, url, url, pageEncoding, new Packet());
+        } finally {
+            if (driver != null) {
+                driver.close();
+            }
+        }
     }
 
     public synchronized String requestUrl(String referUrl, String url, Charset pageEncoding,
+            Packet packet) throws Exception {
+        WebDriver driver = get();
+        return doRequestUrl(driver, referUrl, url, pageEncoding, packet);
+    }
+
+    private String doRequestUrl(WebDriver driver, String referUrl, String url, Charset pageEncoding,
             Packet packet) throws Exception {
         driver.get(url);
         WebCrawlerExtractorProperties.Selenium selenium = extractorProperties.getSelenium();
@@ -89,7 +119,7 @@ public class SeleniumExtractor extends AbstractExtractor
         return driver.getPageSource();
     }
 
-    private void setDefaultHeaders(ChromeOptions options) {
+    private void setDefaultHttpHeaders(ChromeOptions options) {
         Map<String, String> defaultHeaders = new HashMap<>(this.defaultHttpHeaders);
         defaultHeaders.putAll(extractorProperties.getSelenium().getDefaultHttpHeaders());
         if (MapUtils.isNotEmpty(defaultHeaders)) {
@@ -117,12 +147,11 @@ public class SeleniumExtractor extends AbstractExtractor
         // String webdriverExecutionPath = "D:\\software\\chromedriver_win32\\chromedriver.exe";
         // String webdriverExecutionPath =
         // "G:\\selfEmployed\\chromedriver-win64\\chromedriver-win64\\chromedriver.exe";
-        SeleniumExtractor pageExtractor =
-                new SeleniumExtractor(new WebCrawlerExtractorProperties());
-        pageExtractor.afterPropertiesSet();
+        SeleniumStatefulExtractor pageExtractor =
+                new SeleniumStatefulExtractor(new WebCrawlerExtractorProperties());
 
-        System.out.println(pageExtractor.extractHtml("http://www.ttmeishi.com",
-                "https://goldenmatrix.com/", null, null));
+        System.out
+                .println(pageExtractor.test("https://goldenmatrix.com/", Charset.defaultCharset()));
         System.in.read();
         pageExtractor.destroy();
     }

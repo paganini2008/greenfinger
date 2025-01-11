@@ -15,12 +15,8 @@ public interface Extractor {
     String extractHtml(String referUrl, String url, Charset pageEncoding, Packet packet)
             throws Exception;
 
-    default String defaultPage(String referUrl, String url, Charset pageEncoding, Packet packet,
+    default String defaultHtml(String referUrl, String url, Charset pageEncoding, Packet packet,
             Throwable e) {
-        return "";
-    }
-
-    default String getName() {
         return "";
     }
 

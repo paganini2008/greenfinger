@@ -21,13 +21,13 @@ public abstract class CatalogBasedUrlPathAcceptor implements UrlPathAcceptor, Or
     }
 
     @Override
-    public boolean accept(String refer, String path, Packet packet) {
+    public boolean accept(String referUrl, String path, Packet packet) {
         final long catalogId = packet.getLongField("catalogId");
         Catalog catalog = resourceManager.getCatalog(catalogId);
-        return accept(catalog, refer, path, packet);
+        return accept(catalog, referUrl, path, packet);
     }
 
-    protected abstract boolean accept(Catalog catalog, String refer, String path, Packet packet);
+    protected abstract boolean accept(Catalog catalog, String referUrl, String path, Packet packet);
 
 
 
