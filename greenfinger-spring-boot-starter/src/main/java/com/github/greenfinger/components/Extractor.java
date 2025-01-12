@@ -2,7 +2,7 @@ package com.github.greenfinger.components;
 
 import java.nio.charset.Charset;
 import com.github.doodler.common.transmitter.Packet;
-import com.github.greenfinger.model.Catalog;
+import com.github.greenfinger.CatalogDetails;
 
 /**
  * 
@@ -13,11 +13,15 @@ import com.github.greenfinger.model.Catalog;
  */
 public interface Extractor extends WebCrawlerComponent {
 
-    String extractHtml(Catalog catalog, String referUrl, String url, Charset pageEncoding,
-            Packet packet) throws Exception;
+    default String test(String url, Charset pageEncoding) throws Exception {
+        return extractHtml(null, url, url, pageEncoding, null);
+    }
 
-    default String defaultHtml(Catalog catalog, String referUrl, String url, Charset pageEncoding,
-            Packet packet, Throwable e) {
+    String extractHtml(CatalogDetails catalogDetails, String referUrl, String url,
+            Charset pageEncoding, Packet packet) throws Exception;
+
+    default String defaultHtml(CatalogDetails catalogDetails, String referUrl, String url,
+            Charset pageEncoding, Packet packet, Throwable e) {
         return "";
     }
 

@@ -1,4 +1,4 @@
-package com.github.greenfinger.components.test;
+package com.github.greenfinger.components;
 
 import com.github.greenfinger.model.Catalog;
 

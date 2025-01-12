@@ -1,9 +1,10 @@
 package com.github.greenfinger;
 
 import java.util.Date;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import com.github.greenfinger.es.ResourceIndexService;
 import com.github.greenfinger.model.CatalogIndex;
+import lombok.RequiredArgsConstructor;
 
 /**
  * 
@@ -12,13 +13,12 @@ import com.github.greenfinger.model.CatalogIndex;
  * @Date: 31/12/2024
  * @Version 1.0.0
  */
+@Service
+@RequiredArgsConstructor
 public class CatalogAdminService {
 
-    @Autowired
-    private ResourceManager resourceManager;
-
-    @Autowired
-    private ResourceIndexService resourceIndexService;
+    private final ResourceManager resourceManager;
+    private final ResourceIndexService resourceIndexService;
 
     public void cleanCatalog(long catalogId, boolean retainIndex) {
         resourceManager.deleteResourceByCatalogId(catalogId);

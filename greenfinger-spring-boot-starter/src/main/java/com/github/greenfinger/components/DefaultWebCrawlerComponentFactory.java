@@ -1,6 +1,9 @@
 package com.github.greenfinger.components;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,15 +12,10 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.util.ClassUtils;
 import org.springframework.web.client.RestTemplate;
 import com.github.doodler.common.context.ApplicationContextUtils;
+import com.github.greenfinger.CatalogDetails;
 import com.github.greenfinger.WebCrawlerExtractorProperties;
 import com.github.greenfinger.WebCrawlerProperties;
-import com.github.greenfinger.components.test.ExtractorCredentialHandler;
-import com.github.greenfinger.components.test.HtmlUnitStatefulExtractor;
-import com.github.greenfinger.components.test.PlaywrighStatefulExtractor;
-import com.github.greenfinger.components.test.RestTemplateStatefulExtractor;
-import com.github.greenfinger.components.test.SeleniumStatefulExtractor;
-import com.github.greenfinger.model.Catalog;
-import com.github.greenfinger.model.CatalogIndex;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 
@@ -26,6 +24,7 @@ import com.github.greenfinger.model.CatalogIndex;
  * @Date: 11/01/2025
  * @Version 1.0.0
  */
+@Slf4j
 @SuppressWarnings("all")
 public class DefaultWebCrawlerComponentFactory implements WebCrawlerComponentFactory {
 
@@ -46,62 +45,79 @@ public class DefaultWebCrawlerComponentFactory implements WebCrawlerComponentFac
     private RestTemplate restTemplate;
 
     @Override
-    public List<InterruptionChecker> getInterruptionCheckers(Catalog catalog,
-            CatalogIndex catalogIndex) {
-        return List.of(new DurationInterruptionChecker(catalog, webCrawlerProperties),
-                new MaxFetchSizeInterruptionChecker(catalog, webCrawlerProperties));
+    public List<InterruptionChecker> getInterruptionCheckers(CatalogDetails catalogDetails) {
+        return List.of(new FetchDurationInterruptionChecker(), new MaxFetchSizeInterruptionChecker());
     }
 
     @Override
-    public List<UrlPathAcceptor> getUrlPathAcceptors(Catalog catalog, CatalogIndex catalogIndex) {
-        return List.of(new CatalogRobotRuleFilter(catalog),
-                new DepthUrlPathAcceptor(catalog, webCrawlerProperties),
-                new CatalogPatternUrlPathAcceptor(catalog, webCrawlerProperties));
+    public List<UrlPathAcceptor> getUrlPathAcceptors(CatalogDetails catalogDetails) {
+        List<UrlPathAcceptor> all = new ArrayList<>();
+        List<String> urlPathAcceptors = catalogDetails.getUrlPathAcceptors();
+        if (CollectionUtils.isNotEmpty(urlPathAcceptors)) {
+            all.addAll(urlPathAcceptors.stream().map(cName -> {
+                Class<?> requireType;
+                try {
+                    requireType = ClassUtils.forName(cName,
+                            Thread.currentThread().getContextClassLoader());
+                    return (UrlPathAcceptor) ApplicationContextUtils.getOrCreateBean(requireType);
+                } catch (Exception e) {
+                    if (log.isErrorEnabled()) {
+                        log.error(e.getMessage(), e);
+                    }
+                    return null;
+                }
+
+            }).filter(o -> o != null && o instanceof UrlPathAcceptor).toList());
+        }
+        all.addAll(List.of(new CatalogRobotRuleFilter(catalogDetails), new DepthUrlPathAcceptor(),
+                new CatalogPatternUrlPathAcceptor()));
+        return Collections.unmodifiableList(all);
     }
 
     @Override
-    public Extractor getExtractor(Catalog catalog, CatalogIndex catalogIndex) {
+    public Extractor getExtractor(CatalogDetails catalogDetails) {
         Extractor extractor = null;
-        String extractorType = catalog.getExtractor();
-        switch (extractorType) {
+        String extractorType = catalogDetails.getExtractor();
+        switch (extractorType.toLowerCase()) {
             case "default":
             case "resttemplate":
-                extractor = StringUtils.isNotBlank(catalog.getCredentialHandler())
-                        ? new RestTemplateStatefulExtractor(
+                extractor = StringUtils.isNotBlank(catalogDetails.getCredentialHandler())
+                        ? new RestTemplateStatefulExtractor(restTemplate,
                                 (ExtractorCredentialHandler) getExtractorCredentialHandler(
-                                        catalog.getCredentialHandler()),
-                                restTemplate, webCrawlerExtractorProperties)
-                        : null;
+                                        catalogDetails.getCredentialHandler()),
+                                webCrawlerExtractorProperties)
+                        : new RestTemplateExtractor(restTemplate, webCrawlerExtractorProperties);
                 break;
             case "htmlunit":
-                extractor = StringUtils.isNotBlank(catalog.getCredentialHandler())
+                extractor = StringUtils.isNotBlank(catalogDetails.getCredentialHandler())
                         ? new HtmlUnitStatefulExtractor(
                                 (ExtractorCredentialHandler) getExtractorCredentialHandler(
-                                        catalog.getCredentialHandler()),
+                                        catalogDetails.getCredentialHandler()),
                                 webCrawlerExtractorProperties)
                         : new HtmlUnitPooledExtractor(webCrawlerExtractorProperties);
                 break;
             case "playwright":
-                extractor = StringUtils.isNotBlank(catalog.getCredentialHandler())
-                        ? new PlaywrighStatefulExtractor(webCrawlerExtractorProperties)
+                extractor = StringUtils.isNotBlank(catalogDetails.getCredentialHandler())
+                        ? new PlaywrighStatefulExtractor(
+                                (ExtractorCredentialHandler) getExtractorCredentialHandler(
+                                        catalogDetails.getCredentialHandler()),
+                                webCrawlerExtractorProperties)
                         : new PlaywrightPooledExtractor(webCrawlerExtractorProperties);
                 break;
             case "selenium":
-                extractor = StringUtils.isNotBlank(catalog.getCredentialHandler())
+                extractor = StringUtils.isNotBlank(catalogDetails.getCredentialHandler())
                         ? new SeleniumStatefulExtractor(
                                 (ExtractorCredentialHandler) getExtractorCredentialHandler(
-                                        catalog.getCredentialHandler()),
+                                        catalogDetails.getCredentialHandler()),
                                 webCrawlerExtractorProperties)
                         : new SeleniumExtractor(webCrawlerExtractorProperties);
                 break;
             default:
                 throw new UnsupportedOperationException("Unknown Extractor type: " + extractorType);
         }
-        if (catalog.getInterval() != null) {
-            extractor = new ThreadWaitExtractor(extractor, ThreadWait.SLEEP);
-        }
-        if (catalog.getMaxRetryCount() != null) {
-            extractor = new RetryableExtractor(extractor, catalog.getMaxRetryCount());
+        extractor = new ThreadWaitExtractor(extractor, ThreadWait.SLEEP);
+        if (catalogDetails.getMaxRetryCount() > 0) {
+            extractor = new RetryableExtractor(extractor, catalogDetails.getMaxRetryCount());
         }
         return extractor;
     }
@@ -118,19 +134,18 @@ public class DefaultWebCrawlerComponentFactory implements WebCrawlerComponentFac
     }
 
     @Override
-    public ExistingUrlPathFilter getExistingUrlPathFilter(Catalog catalog,
-            CatalogIndex catalogIndex) {
-        String urlPathFilterType = catalog.getUrlPathFilter();
-        switch (urlPathFilterType) {
+    public ExistingUrlPathFilter getExistingUrlPathFilter(CatalogDetails catalogDetails) {
+        String urlPathFilterType = catalogDetails.getUrlPathFilter();
+        switch (urlPathFilterType.toLowerCase()) {
             case "redis":
-                return new RedisUrlPathFilter(catalog.getId(), catalogIndex.getVersion(),
+                return new RedisUrlPathFilter(catalogDetails.getId(), catalogDetails.getVersion(),
                         redisConnectionFactory);
             case "redis-bloomfilter":
-                return new RedisBloomUrlPathFilter(catalog.getId(), catalogIndex.getVersion(),
-                        redisConnectionFactory);
+                return new RedisBloomUrlPathFilter(catalogDetails.getId(),
+                        catalogDetails.getVersion(), redisConnectionFactory);
             case "redission-bloomfilter":
-                return new RedissionBloomUrlPathFilter(catalog.getId(), catalogIndex.getVersion(),
-                        redissonClient);
+                return new RedissionBloomUrlPathFilter(catalogDetails.getId(),
+                        catalogDetails.getVersion(), redissonClient);
             default:
                 throw new UnsupportedOperationException(
                         "Unknown UrlPathFilter type: " + urlPathFilterType);
@@ -138,8 +153,8 @@ public class DefaultWebCrawlerComponentFactory implements WebCrawlerComponentFac
     }
 
     @Override
-    public Dashboard getDashboard(Catalog catalog, CatalogIndex catalogIndex) {
-        return new OneTimeDashboard(catalog.getId(), catalogIndex.getVersion(),
+    public Dashboard getDashboard(CatalogDetails catalogDetails) {
+        return new OneTimeDashboard(catalogDetails.getId(), catalogDetails.getVersion(),
                 redisConnectionFactory);
     }
 

@@ -1,30 +1,21 @@
 package com.github.greenfinger;
 
+import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.elasticsearch.repository.config.EnableElasticsearchRepositories;
 import com.github.doodler.common.transmitter.HashPartitioner;
 import com.github.doodler.common.transmitter.MultipleChoicePartitioner;
 import com.github.doodler.common.transmitter.Partitioner;
+import com.github.doodler.common.utils.SerializableTaskTimer;
 import com.github.greenfinger.api.CatalogApiController;
 import com.github.greenfinger.api.IndexApiController;
-import com.github.greenfinger.components.CompositeCatalogUrlPathAcceptor;
-import com.github.greenfinger.components.CountingType;
-import com.github.greenfinger.components.CatalogPatternUrlPathAcceptor;
-import com.github.greenfinger.components.DepthUrlPathAcceptor;
-import com.github.greenfinger.components.DurationInterruptionChecker;
-import com.github.greenfinger.components.Extractor;
-import com.github.greenfinger.components.HtmlUnitPooledExtractor;
-import com.github.greenfinger.components.InterruptionChecker;
-import com.github.greenfinger.components.MaxFetchSizeInterruptionChecker;
-import com.github.greenfinger.components.ThreadWaitExtractor;
-import com.github.greenfinger.components.UrlPathAcceptor;
-import com.github.greenfinger.es.ResourceIndexService;
-import com.github.greenfinger.jdbc.JdbcResourceManger;
+import com.github.greenfinger.components.DefaultWebCrawlerComponentFactory;
+import com.github.greenfinger.components.WebCrawlerComponentFactory;
 
 /**
  * 
@@ -34,23 +25,17 @@ import com.github.greenfinger.jdbc.JdbcResourceManger;
  * @Version 1.0.0
  */
 @EnableElasticsearchRepositories("com.github.greenfinger.es")
+@ComponentScan("com.github.greenfinger")
 @Import({CatalogApiController.class, IndexApiController.class})
-@EnableConfigurationProperties({WebCrawlerExtractorProperties.class})
+@EnableConfigurationProperties({WebCrawlerProperties.class, WebCrawlerExtractorProperties.class})
 @Configuration(proxyBeanMethods = false)
 public class GreenFingerAutoConfiguration {
 
-    @Bean
-    public WebCrawlerService crawlerLauncher() {
-        return new WebCrawlerService();
-    }
-
-    @Bean
-    public WebCrawlerHandler crawlerHandler() {
-        return new WebCrawlerHandler();
-    }
-
     @Autowired
     public void addPartitioner(Partitioner partitioner) {
+        if (!(partitioner instanceof MultipleChoicePartitioner)) {
+            return;
+        }
         MultipleChoicePartitioner multipleChoicePartitioner =
                 (MultipleChoicePartitioner) partitioner;
         final String[] fieldNames = "catalogId,refer,path,version".split(",", 4);
@@ -58,52 +43,14 @@ public class GreenFingerAutoConfiguration {
         multipleChoicePartitioner.addPartitioner(hashPartitioner);
     }
 
-    @ConditionalOnMissingBean
     @Bean
-    public ResourceManager resourceManager() {
-        return new JdbcResourceManger();
-    }
-
-    @ConditionalOnMissingBean
-    @Bean
-    public Extractor extractor(WebCrawlerExtractorProperties config) {
-        HtmlUnitPooledExtractor pageExtractor = new HtmlUnitPooledExtractor(config);
-        return new ThreadWaitExtractor(pageExtractor);
+    public SerializableTaskTimer taskTimer() {
+        return new SerializableTaskTimer(5, 5, TimeUnit.SECONDS, false);
     }
 
     @Bean
-    public InterruptionChecker durationInterruptionChecker(WebCrawlerExtractorProperties config) {
-        return new DurationInterruptionChecker(config);
-    }
-
-    @Bean
-    public InterruptionChecker maxFetchSizeInterruptionChecker(WebCrawlerExtractorProperties config) {
-        return new MaxFetchSizeInterruptionChecker(config, CountingType.URL_TOTAL_COUNT);
-    }
-
-    @Bean
-    public UrlPathAcceptor compositeCatalogUrlPathAcceptor(ResourceManager resourceManager) {
-        return new CompositeCatalogUrlPathAcceptor(resourceManager);
-    }
-
-    @Bean
-    public UrlPathAcceptor defaultCatalogUrlPathAcceptor(ResourceManager resourceManager) {
-        return new CatalogPatternUrlPathAcceptor(resourceManager);
-    }
-
-    @Bean
-    public UrlPathAcceptor depthCatalogUrlPathAcceptor(WebCrawlerExtractorProperties config) {
-        return new DepthUrlPathAcceptor(config);
-    }
-
-    @Bean
-    public ResourceIndexService resourceIndexService() {
-        return new ResourceIndexService();
-    }
-
-    @Bean
-    public CatalogAdminService catalogAdminService() {
-        return new CatalogAdminService();
+    public WebCrawlerComponentFactory webCrawlerComponentFactory() {
+        return new DefaultWebCrawlerComponentFactory();
     }
 
 }

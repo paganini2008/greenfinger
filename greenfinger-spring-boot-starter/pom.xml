@@ -97,6 +97,12 @@
 		    <artifactId>crawler-commons</artifactId>
 		    <version>1.4</version>
 		</dependency>
+		
+        <dependency>
+            <groupId>org.rocksdb</groupId>
+            <artifactId>rocksdbjni</artifactId>
+            <version>9.7.3</version>
+        </dependency>
 
 	</dependencies>
 

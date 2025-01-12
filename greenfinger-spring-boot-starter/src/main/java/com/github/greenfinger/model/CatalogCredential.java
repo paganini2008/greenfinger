@@ -22,6 +22,6 @@ public class CatalogCredential implements Serializable {
     private Long catalogId;
     private String username;
     private String password;
-    private String attachment;
+    private String additionalInformation;
 
 }

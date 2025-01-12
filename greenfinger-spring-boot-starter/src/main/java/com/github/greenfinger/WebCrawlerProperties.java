@@ -14,9 +14,12 @@ import lombok.Data;
 @Data
 public class WebCrawlerProperties {
 
+    private String defaultPageEncoding = "UTF-8";
     private int defaultMaxFetchSize = 10000;
-    private int defaultFetchDepth = -1;
-    private long defaultDuration = 5;
-    private int defaultRetryCount = 3;
-    private long defaultIntervalTime = 1000L;
+    private int defaultMaxFetchDepth = -1;
+    private long defaultFetchDuration = 5;
+    private int defaultMaxRetryCount = 0;
+    private long defaultFetchInterval = 1000L;
+    private String defaultUrlPathFilter = "redission-bloomfilter";
+    private String defaultExtractor = "resttemplate";
 }

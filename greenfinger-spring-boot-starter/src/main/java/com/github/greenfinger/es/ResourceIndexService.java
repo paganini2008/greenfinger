@@ -11,15 +11,17 @@ import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
 import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
 import org.springframework.data.elasticsearch.core.query.NativeSearchQuery;
 import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
+import org.springframework.stereotype.Service;
 import org.springframework.util.StopWatch;
 import com.github.doodler.common.page.EachPage;
 import com.github.doodler.common.page.PageReader;
 import com.github.doodler.common.page.PageRequest;
 import com.github.doodler.common.page.PageResponse;
-import com.github.doodler.common.transmitter.Packet;
 import com.github.doodler.common.utils.CharsetUtils;
-import com.github.doodler.common.utils.MapUtils;
+import com.github.greenfinger.CatalogDetails;
+import com.github.greenfinger.CatalogDetailsService;
 import com.github.greenfinger.ResourceManager;
+import com.github.greenfinger.WebCrawlerException;
 import com.github.greenfinger.api.CatalogInfo;
 import com.github.greenfinger.components.Extractor;
 import com.github.greenfinger.model.Catalog;
@@ -34,10 +36,14 @@ import lombok.extern.slf4j.Slf4j;
  * @Version 1.0.0
  */
 @Slf4j
+@Service
 public class ResourceIndexService {
 
     @Autowired
     private IndexedResourceRepository indexedResourceRepository;
+
+    @Autowired
+    private CatalogDetailsService catalogDetailsService;
 
     @Autowired
     private ResourceManager resourceManager;
@@ -82,7 +88,7 @@ public class ResourceIndexService {
         return indexedResourceRepository.count();
     }
 
-    public void upgradeCatalogIndex() {
+    public void upgradeCatalogIndex() throws WebCrawlerException {
         final StopWatch stopWatch = new StopWatch();
         int page = 1;
         PageResponse<CatalogInfo> pageResponse = resourceManager.pageForCatalog(null, page, 10);
@@ -96,7 +102,7 @@ public class ResourceIndexService {
         log.info(stopWatch.prettyPrint());
     }
 
-    public void indexCatalogIndex() {
+    public void indexCatalogIndex() throws WebCrawlerException {
         final StopWatch stopWatch = new StopWatch();
         int page = 1;
         PageResponse<CatalogInfo> pageResponse = resourceManager.pageForCatalog(null, page, 10);
@@ -110,45 +116,47 @@ public class ResourceIndexService {
         log.info(stopWatch.prettyPrint());
     }
 
-    public void upgradeCatalogIndex(long catalogId) {
+    public void upgradeCatalogIndex(long catalogId) throws WebCrawlerException {
         resourceManager.incrementCatalogIndexVersion(catalogId);
         indexCatalogIndex(catalogId);
     }
 
-    public void indexCatalogIndex(long catalogId) {
+    public void indexCatalogIndex(long catalogId) throws WebCrawlerException {
         long startTime = System.currentTimeMillis();
-        Catalog catalog = resourceManager.getCatalog(catalogId);
-        log.info("Start to index catalog '{}' ...", catalog.getName());
-        int version = resourceManager.getCatalogIndexVersion(catalogId);
+        CatalogDetails catalogDetails = catalogDetailsService.loadCatalogDetails(catalogId);
+        log.info("Start to index catalog '{}' ...", catalogDetails.getName());
         int page = 1;
         PageResponse<Resource> pageResponse =
                 resourceManager.pageForResourceForIndex(catalogId, page, 100);
         for (EachPage<Resource> current : pageResponse) {
             for (Resource resource : current.getContent()) {
                 try {
-                    indexResource(catalog, resource, true, version);
+                    indexResource(catalogDetails, resource, true, catalogDetails.getVersion());
                 } catch (Exception e) {
                     log.error(e.getMessage(), e);
                 }
             }
         }
-        int effectedRows = resourceManager.updateResourceVersion(catalogId, version);
+        int effectedRows =
+                resourceManager.updateResourceVersion(catalogId, catalogDetails.getVersion());
         log.info("Index catalog '{}' completedly. Effected rows: {}, Total time: {}",
-                catalog.getName(), effectedRows, System.currentTimeMillis() - startTime);
+                catalogDetails.getName(), effectedRows, System.currentTimeMillis() - startTime);
     }
 
-    public void indexResource(Catalog catalog, Resource resource, boolean refresh, int version) {
+    public void indexResource(CatalogDetails catalogDetails, Resource resource, boolean refresh,
+            int version) {
         IndexedResource indexedResource = new IndexedResource();
         String html = resource.getHtml();
         if (refresh) {
-            Packet packet = Packet.wrap(MapUtils.obj2Map(catalog));
             try {
-                html = pageExtractor.extractHtml(catalog, catalog.getUrl(), resource.getUrl(),
-                        CharsetUtils.toCharset(catalog.getPageEncoding()), packet);
+                html = pageExtractor.extractHtml(catalogDetails, catalogDetails.getUrl(),
+                        resource.getUrl(), CharsetUtils.toCharset(catalogDetails.getPageEncoding()),
+                        null);
             } catch (Exception e) {
                 log.error(e.getMessage(), e);
-                html = pageExtractor.defaultHtml(catalog, catalog.getUrl(), resource.getUrl(),
-                        CharsetUtils.toCharset(catalog.getPageEncoding()), packet, e);
+                html = pageExtractor.defaultHtml(catalogDetails, catalogDetails.getUrl(),
+                        resource.getUrl(), CharsetUtils.toCharset(catalogDetails.getPageEncoding()),
+                        null, e);
             }
         }
         Document document = Jsoup.parse(html);
@@ -157,8 +165,8 @@ public class ResourceIndexService {
         indexedResource.setContent(document.body().text());
         indexedResource.setPath(resource.getUrl());
         indexedResource.setCat(resource.getCat());
-        indexedResource.setUrl(catalog.getUrl());
-        indexedResource.setCatalog(catalog.getName());
+        indexedResource.setUrl(catalogDetails.getUrl());
+        indexedResource.setCatalog(catalogDetails.getName());
         indexedResource.setCreateTime(resource.getCreateTime().getTime());
         indexedResource.setVersion(version);
         indexedResourceRepository.save(indexedResource);

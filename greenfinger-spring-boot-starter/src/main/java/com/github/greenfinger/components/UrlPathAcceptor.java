@@ -1,6 +1,8 @@
 package com.github.greenfinger.components;
 
+import org.springframework.core.Ordered;
 import com.github.doodler.common.transmitter.Packet;
+import com.github.greenfinger.CatalogDetails;
 
 /**
  * 
@@ -9,8 +11,8 @@ import com.github.doodler.common.transmitter.Packet;
  * @Date: 30/12/2024
  * @Version 1.0.0
  */
-public interface UrlPathAcceptor extends WebCrawlerComponent {
+public interface UrlPathAcceptor extends WebCrawlerComponent, Ordered {
 
-    boolean accept(String referUrl, String path, Packet packet);
+    boolean accept(CatalogDetails catalogDetails, String referUrl, String url, Packet packet);
 
 }

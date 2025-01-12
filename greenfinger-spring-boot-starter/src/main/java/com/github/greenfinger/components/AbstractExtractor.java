@@ -1,4 +1,4 @@
-package com.github.greenfinger.components.test;
+package com.github.greenfinger.components;
 
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -8,8 +8,7 @@ import java.util.Map;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import com.github.doodler.common.transmitter.Packet;
-import com.github.greenfinger.components.Extractor;
-import com.github.greenfinger.model.Catalog;
+import com.github.greenfinger.CatalogDetails;
 
 /**
  * 
@@ -38,10 +37,10 @@ public abstract class AbstractExtractor implements Extractor {
     }
 
     @Override
-    public String extractHtml(Catalog catalog, String referUrl, String url, Charset pageEncoding,
-            Packet packet) throws Exception {
-        String content = requestUrl(catalog, referUrl, url, pageEncoding, packet);
-        return rewriteContent(content);
+    public String extractHtml(CatalogDetails catalogDetails, String referUrl, String url,
+            Charset pageEncoding, Packet packet) throws Exception {
+        String content = requestUrl(catalogDetails, referUrl, url, pageEncoding, packet);
+        return rewriteContent(catalogDetails, referUrl, url, pageEncoding, content);
     }
 
     private List<ResponseBodyRewriter> responseBodyRewriters = new ArrayList<>();
@@ -50,10 +49,11 @@ public abstract class AbstractExtractor implements Extractor {
         this.responseBodyRewriters = responseBodyRewriters;
     }
 
-    protected abstract String requestUrl(Catalog catalog, String referUrl, String url,
+    protected abstract String requestUrl(CatalogDetails catalogDetails, String referUrl, String url,
             Charset pageEncoding, Packet packet) throws Exception;
 
-    protected String rewriteContent(String content) {
+    protected String rewriteContent(CatalogDetails catalogDetails, String referUrl, String url,
+            Charset pageEncoding, String content) {
         if (StringUtils.isBlank(content)) {
             return "";
         }
@@ -61,14 +61,9 @@ public abstract class AbstractExtractor implements Extractor {
             return content;
         }
         for (ResponseBodyRewriter bodyRewriter : responseBodyRewriters) {
-            content = bodyRewriter.rewrite(content);
+            content = bodyRewriter.rewrite(catalogDetails, referUrl, url, pageEncoding, content);
         }
         return content;
-    }
-
-    @Override
-    public String getDescription() {
-        return getClass().getSimpleName();
     }
 
 }

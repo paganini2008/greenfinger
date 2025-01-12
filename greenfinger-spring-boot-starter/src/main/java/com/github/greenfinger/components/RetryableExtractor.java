@@ -12,8 +12,10 @@ import org.springframework.retry.backoff.FixedBackOffPolicy;
 import org.springframework.retry.policy.NeverRetryPolicy;
 import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
+import com.github.doodler.common.context.BeanLifeCycleUtils;
+import com.github.doodler.common.context.ManagedBeanLifeCycle;
 import com.github.doodler.common.transmitter.Packet;
-import com.github.greenfinger.model.Catalog;
+import com.github.greenfinger.CatalogDetails;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -24,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
  * @Version 1.0.0
  */
 @Slf4j
-public class RetryableExtractor implements Extractor, RetryListener {
+public class RetryableExtractor implements Extractor, RetryListener, ManagedBeanLifeCycle {
 
     private final Extractor extractor;
     private final RetryTemplate retryTemplate;
@@ -35,10 +37,10 @@ public class RetryableExtractor implements Extractor, RetryListener {
     }
 
     @Override
-    public String extractHtml(final Catalog catalog, final String referUrl, final String url,
-            final Charset pageEncoding, final Packet packet) throws Exception {
+    public String extractHtml(final CatalogDetails catalogDetails, final String referUrl,
+            final String url, final Charset pageEncoding, final Packet packet) throws Exception {
         return retryTemplate.execute(context -> {
-            return extractor.extractHtml(catalog, referUrl, url, pageEncoding, packet);
+            return extractor.extractHtml(catalogDetails, referUrl, url, pageEncoding, packet);
         }, context -> {
             Throwable e = context.getLastThrowable();
             if (e instanceof ExtractorException) {
@@ -94,4 +96,16 @@ public class RetryableExtractor implements Extractor, RetryListener {
                     e.getMessage(), e);
         }
     }
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        BeanLifeCycleUtils.afterPropertiesSet(extractor);
+    }
+
+    @Override
+    public void destroy() throws Exception {
+        BeanLifeCycleUtils.destroy(extractor);
+    }
+
+
 }

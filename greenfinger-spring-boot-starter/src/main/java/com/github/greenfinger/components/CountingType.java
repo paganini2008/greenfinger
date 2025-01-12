@@ -24,6 +24,8 @@ public enum CountingType implements EnumConstant {
     },
 
     INVALID_URL_COUNT(1, "invalidUrlCount") {
+
+
         @Override
         public boolean compare(Dashboard data, long maxFetchSize) {
             return data.getInvalidUrlCount() > maxFetchSize;
@@ -31,6 +33,8 @@ public enum CountingType implements EnumConstant {
     },
 
     EXISTING_URL_COUNT(2, "existingUrlCount") {
+
+
         @Override
         public boolean compare(Dashboard data, long maxFetchSize) {
             return data.getExistingUrlCount() > maxFetchSize;
@@ -38,6 +42,8 @@ public enum CountingType implements EnumConstant {
     },
 
     FILTERED_URL_COUNT(3, "filteredUrlCount") {
+
+
         @Override
         public boolean compare(Dashboard data, long maxFetchSize) {
             return data.getFilteredUrlCount() > maxFetchSize;
@@ -45,6 +51,7 @@ public enum CountingType implements EnumConstant {
     },
 
     SAVED_RESOURCE_COUNT(4, "savedResourceCount") {
+
         @Override
         public boolean compare(Dashboard data, long maxFetchSize) {
             return data.getSavedResourceCount() > maxFetchSize;
@@ -52,6 +59,7 @@ public enum CountingType implements EnumConstant {
     },
 
     INDEXED_RESOURCE_COUNT(5, "indexedResourceCount") {
+
         @Override
         public boolean compare(Dashboard data, long maxFetchSize) {
             return data.getIndexedResourceCount() > maxFetchSize;

@@ -1,4 +1,4 @@
-package com.github.greenfinger.components.test;
+package com.github.greenfinger.components;
 
 import java.net.InetSocketAddress;
 import java.net.Proxy;
@@ -18,10 +18,9 @@ import com.github.doodler.common.utils.MapUtils;
 import com.github.doodler.common.utils.RandomIpUtils;
 import com.github.doodler.common.utils.RandomUtils;
 import com.github.doodler.common.utils.ThreadUtils;
+import com.github.greenfinger.CatalogDetails;
 import com.github.greenfinger.WebCrawlerConstants;
 import com.github.greenfinger.WebCrawlerExtractorProperties;
-import com.github.greenfinger.components.ExtractorException;
-import com.github.greenfinger.model.Catalog;
 
 /**
  * 
@@ -34,11 +33,12 @@ public class RestTemplateStatefulExtractor extends StatefulExtractor<RestTemplat
 
     public RestTemplateStatefulExtractor(RestTemplate restTemplate,
             WebCrawlerExtractorProperties extractorProperties) {
-        this(new DoNothingExtractorCredentialHandler<>(), restTemplate, extractorProperties);
+        this(restTemplate, new DoNothingExtractorCredentialHandler<>(), extractorProperties);
     }
 
-    public RestTemplateStatefulExtractor(ExtractorCredentialHandler<RestTemplate> credentialHandler,
-            RestTemplate restTemplate, WebCrawlerExtractorProperties extractorProperties) {
+    public RestTemplateStatefulExtractor(RestTemplate restTemplate,
+            ExtractorCredentialHandler<RestTemplate> credentialHandler,
+            WebCrawlerExtractorProperties extractorProperties) {
         super(credentialHandler);
         this.restTemplate = restTemplate;
         this.extractorProperties = extractorProperties;
@@ -78,7 +78,7 @@ public class RestTemplateStatefulExtractor extends StatefulExtractor<RestTemplat
         return doRequestUrl(restTemplate, url, url, pageEncoding, new Packet());
     }
 
-    protected synchronized String requestUrl(Catalog catalog, String referUrl, String url,
+    protected String requestUrl(CatalogDetails catalogDetails, String referUrl, String url,
             Charset pageEncoding, Packet packet) throws Exception {
         RestTemplate restTemplate = get();
         return doRequestUrl(restTemplate, referUrl, url, pageEncoding, packet);

@@ -1,9 +1,7 @@
 package com.github.greenfinger.components;
 
-import java.util.Optional;
 import com.github.doodler.common.transmitter.Packet;
-import com.github.greenfinger.WebCrawlerProperties;
-import com.github.greenfinger.model.Catalog;
+import com.github.greenfinger.CatalogDetails;
 
 /**
  * 
@@ -12,20 +10,16 @@ import com.github.greenfinger.model.Catalog;
  * @Date: 31/12/2024
  * @Version 1.0.0
  */
-public class DepthUrlPathAcceptor extends CatalogBasedUrlPathAcceptor {
-
-    public DepthUrlPathAcceptor(Catalog catalog, WebCrawlerProperties webCrawlerProperties) {
-        super(catalog, webCrawlerProperties);
-    }
+public class DepthUrlPathAcceptor implements UrlPathAcceptor {
 
     @Override
-    protected boolean accept(Catalog catalog, String referUrl, String path, Packet packet) {
-        final int depth = Optional.ofNullable(catalog.getDepth())
-                .orElse(getWebCrawlerProperties().getDefaultFetchDepth()).intValue();
+    public boolean accept(CatalogDetails catalogDetails, String referUrl, String url,
+            Packet packet) {
+        final int depth = catalogDetails.getMaxFetchDepth();
         if (depth < 0) {
             return true;
         }
-        String part = path.replace(referUrl, "");
+        String part = url.replace(referUrl, "");
         if (part.charAt(0) == '/') {
             part = part.substring(1);
         }

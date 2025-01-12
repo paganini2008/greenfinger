@@ -30,6 +30,7 @@ import com.github.doodler.common.page.PageResponse;
 import com.github.greenfinger.CatalogAdminService;
 import com.github.greenfinger.ResourceManager;
 import com.github.greenfinger.WebCrawlerExecutionContext;
+import com.github.greenfinger.DefaultWebCrawlerExecutionContext;
 import com.github.greenfinger.api.CatalogInfo;
 import com.github.greenfinger.api.CatalogSummary;
 import com.github.greenfinger.model.Catalog;
@@ -87,7 +88,7 @@ public class CatalogController {
         List<CatalogSummary> dataList = new ArrayList<CatalogSummary>(size);
         for (CatalogInfo catalogInfo : pageBean.getResults()) {
             WebCrawlerExecutionContext context =
-                    WebCrawlerExecutionContext.get(catalogInfo.getId());
+                    DefaultWebCrawlerExecutionContext.get(catalogInfo.getId());
             dataList.add(new CatalogSummary(catalogInfo, context.getDashboardData()));
         }
         PageBean<CatalogSummary> newPageBean = (PageBean<CatalogSummary>) pageBean.clone();
@@ -135,14 +136,14 @@ public class CatalogController {
     @PostMapping("/{id}/summary/content")
     public String summaryContent(@PathVariable("id") Long catalogId, Model ui) {
         Catalog catalog = resourceManager.getCatalog(catalogId);
-        WebCrawlerExecutionContext context = WebCrawlerExecutionContext.get(catalogId);
+        WebCrawlerExecutionContext context = DefaultWebCrawlerExecutionContext.get(catalogId);
         ui.addAttribute("summary", new CatalogSummary(catalog, context.getDashboardData()));
         return "catalog_index_summary";
     }
 
     @PostMapping("/{id}/stop")
     public String stop(@PathVariable("id") Long catalogId, Model ui) {
-        WebCrawlerExecutionContext context = WebCrawlerExecutionContext.get(catalogId);
+        WebCrawlerExecutionContext context = DefaultWebCrawlerExecutionContext.get(catalogId);
         context.getDashboardData().setCompleted(true);
         return "redirect:/catalog/";
     }

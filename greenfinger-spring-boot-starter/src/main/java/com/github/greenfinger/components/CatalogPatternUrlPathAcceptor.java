@@ -1,13 +1,11 @@
 package com.github.greenfinger.components;
 
-import java.util.Arrays;
 import java.util.List;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.util.PathMatcher;
 import com.github.doodler.common.transmitter.Packet;
-import com.github.greenfinger.WebCrawlerProperties;
-import com.github.greenfinger.model.Catalog;
+import com.github.greenfinger.CatalogDetails;
 
 /**
  * 
@@ -16,35 +14,27 @@ import com.github.greenfinger.model.Catalog;
  * @Date: 30/12/2024
  * @Version 1.0.0
  */
-public class CatalogPatternUrlPathAcceptor extends CatalogBasedUrlPathAcceptor {
+public class CatalogPatternUrlPathAcceptor implements UrlPathAcceptor {
 
     private final PathMatcher pathMather = new AntPathMatcher();
-    private final List<String> excludedPathPatterns;
-    private final List<String> pathPatterns;
-
-    public CatalogPatternUrlPathAcceptor(Catalog catalog,
-            WebCrawlerProperties webCrawlerProperties) {
-        super(catalog, webCrawlerProperties);
-        this.excludedPathPatterns = Arrays.asList(catalog.getExcludedPathPattern().split(","));
-        this.pathPatterns = Arrays.asList(catalog.getPathPattern().split(","));
-    }
 
     @Override
-    public boolean accept(Catalog catalog, String referUrl, String path, Packet packet) {
-        List<String> pathPatterns = this.excludedPathPatterns;
+    public boolean accept(CatalogDetails catalogDetails, String referUrl, String url,
+            Packet packet) {
+        List<String> pathPatterns = catalogDetails.getExcludedPathPatterns();
         for (String pathPattern : pathPatterns) {
-            if (pathMather.match(pathPattern, path)) {
+            if (pathMather.match(pathPattern, url)) {
                 return false;
             }
         }
-        pathPatterns = this.pathPatterns;
+        pathPatterns = catalogDetails.getPathPatterns();
         for (String pathPattern : pathPatterns) {
-            if (pathMather.match(pathPattern, path)) {
+            if (pathMather.match(pathPattern, url)) {
                 return true;
             }
         }
         if (CollectionUtils.isEmpty(pathPatterns)) {
-            return path.startsWith(referUrl);
+            return url.startsWith(referUrl);
         }
         return false;
     }

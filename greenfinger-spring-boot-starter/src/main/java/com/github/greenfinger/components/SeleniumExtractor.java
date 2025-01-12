@@ -15,10 +15,9 @@ import com.github.doodler.common.transmitter.Packet;
 import com.github.doodler.common.utils.MapUtils;
 import com.github.doodler.common.utils.RandomUtils;
 import com.github.doodler.common.utils.ThreadUtils;
+import com.github.greenfinger.CatalogDetails;
 import com.github.greenfinger.WebCrawlerConstants;
 import com.github.greenfinger.WebCrawlerExtractorProperties;
-import com.github.greenfinger.components.test.AbstractExtractor;
-import com.github.greenfinger.model.Catalog;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -74,12 +73,12 @@ public class SeleniumExtractor extends AbstractExtractor
             proxy.setHttpProxy(selenium.getProxyServer());
             options.setProxy(proxy);
         }
-        setDefaultHeaders(options);
+        setDefaultHttpHeaders(options);
         driver = new ChromeDriver(options);
     }
 
-    public synchronized String requestUrl(Catalog catalog, String referUrl, String url,
-            Charset pageEncoding, Packet packet) throws Exception {
+    protected synchronized String requestUrl(CatalogDetails catalogDetails, String referUrl,
+            String url, Charset pageEncoding, Packet packet) throws Exception {
         driver.get(url);
         WebCrawlerExtractorProperties.Selenium selenium = extractorProperties.getSelenium();
         if (selenium.getLoadingTimeout() > 0) {
@@ -90,7 +89,7 @@ public class SeleniumExtractor extends AbstractExtractor
         return driver.getPageSource();
     }
 
-    private void setDefaultHeaders(ChromeOptions options) {
+    private void setDefaultHttpHeaders(ChromeOptions options) {
         Map<String, String> defaultHeaders = new HashMap<>(this.defaultHttpHeaders);
         defaultHeaders.putAll(extractorProperties.getSelenium().getDefaultHttpHeaders());
         if (MapUtils.isNotEmpty(defaultHeaders)) {

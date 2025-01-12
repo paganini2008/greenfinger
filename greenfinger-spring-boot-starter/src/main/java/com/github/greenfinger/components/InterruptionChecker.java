@@ -1,5 +1,7 @@
 package com.github.greenfinger.components;
 
+import com.github.greenfinger.CatalogDetails;
+
 /**
  * 
  * @Description: InterruptionChecker
@@ -9,6 +11,6 @@ package com.github.greenfinger.components;
  */
 public interface InterruptionChecker extends WebCrawlerComponent {
 
-    boolean shouldInterrupt(Dashboard dashboard);
+    boolean shouldInterrupt(CatalogDetails catalogDetails, Dashboard dashboard);
 
 }

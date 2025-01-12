@@ -18,6 +18,7 @@ import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import com.github.doodler.common.id.IdGenerator;
 import com.github.doodler.common.page.PageReader;
@@ -37,6 +38,7 @@ import com.github.greenfinger.model.Resource;
  * @Version 1.0.0
  */
 @Transactional(rollbackFor = Exception.class, readOnly = false)
+@Component
 public class JdbcResourceManger implements ResourceManager {
 
     public static final String SQL_CATALOG_INSERT =
@@ -69,7 +71,7 @@ public class JdbcResourceManger implements ResourceManager {
             "select * from crawler_resource where catalog_id=:catalogId and version<(select version from crawler_catalog_index where catalog_id=:catalogId)";
     public static final String SQL_RESOURCE_SELECT_ONE =
             "select * from crawler_resource where id=:id limit 1";
-    public static final String SQL_RESOURCE_LATEST_PATH =
+    public static final String SQL_RESOURCE_LATEST_REFERENCE_PATH =
             "select url from crawler_resource where catalog_id=:catalogId order by create_time desc limit 1";
     public static final String SQL_RESOURCE_DELETE_ALL =
             "delete from crawler_resource where catalog_id=:catalogId";
@@ -211,8 +213,8 @@ public class JdbcResourceManger implements ResourceManager {
     }
 
     @Override
-    public String getLatestPath(long catalogId) {
-        return resourceDao.getLatestPath(catalogId);
+    public String getLatestReferencePath(long catalogId) {
+        return resourceDao.getLatestReferencePath(catalogId);
     }
 
 }

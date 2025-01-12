@@ -13,8 +13,6 @@ import org.springframework.data.redis.support.atomic.RedisAtomicLong;
  */
 public class OneTimeDashboard implements Dashboard {
 
-    private static final String NAMESPACE_PATTERN = "greenfinger:dashboard:%s:%s:%s";
-
     private final RedisAtomicLong totalUrlCount;
     private final RedisAtomicLong invalidUrlCount;
     private final RedisAtomicLong existingUrlCount;
@@ -85,34 +83,35 @@ public class OneTimeDashboard implements Dashboard {
     }
 
     @Override
-    public long incrementCount(String type) {
-        return incrementCount(type, 1);
+    public long incrementCount(CountingType countingType) {
+        return incrementCount(countingType, 1);
     }
 
     @Override
-    public long incrementCount(String type, int delta) {
+    public long incrementCount(CountingType countingType, int delta) {
         RedisAtomicLong longCounter = null;
-        switch (type.toLowerCase()) {
-            case "total":
+        switch (countingType) {
+            case URL_TOTAL_COUNT:
                 longCounter = totalUrlCount;
                 break;
-            case "invalid":
+            case INVALID_URL_COUNT:
                 longCounter = invalidUrlCount;
                 break;
-            case "existing":
+            case EXISTING_URL_COUNT:
                 longCounter = existingUrlCount;
                 break;
-            case "filtered":
+            case FILTERED_URL_COUNT:
                 longCounter = filteredUrlCount;
                 break;
-            case "saved":
+            case SAVED_RESOURCE_COUNT:
                 longCounter = savedResourceCount;
                 break;
-            case "indexed":
+            case INDEXED_RESOURCE_COUNT:
                 longCounter = indexedResourceCount;
                 break;
             default:
-                throw new UnsupportedOperationException("Unknown incremental type: " + type);
+                throw new UnsupportedOperationException(
+                        "Unknown incremental type: " + countingType);
         }
         try {
             if (delta == 1) {

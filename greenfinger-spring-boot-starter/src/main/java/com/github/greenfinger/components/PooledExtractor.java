@@ -22,7 +22,6 @@ import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.github.doodler.common.context.ManagedBeanLifeCycle;
-import com.github.greenfinger.components.test.AbstractExtractor;
 
 /**
  * 

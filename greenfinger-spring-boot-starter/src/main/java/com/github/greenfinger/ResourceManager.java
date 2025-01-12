@@ -46,6 +46,6 @@ public interface ResourceManager {
 
     int incrementCatalogIndexVersion(long catalogId);
 
-    String getLatestPath(long catalogId);
+    String getLatestReferencePath(long catalogId);
 
 }

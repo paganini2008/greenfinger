@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.github.doodler.common.ApiResult;
 import com.github.doodler.common.page.PageBean;
 import com.github.doodler.common.page.PageResponse;
-import com.github.doodler.common.utils.ThreadUtils;
 import com.github.greenfinger.es.ResourceIndexService;
 import com.github.greenfinger.es.SearchResult;
 
@@ -30,34 +29,26 @@ public class IndexApiController {
     private ResourceIndexService resourceIndexService;
 
     @PostMapping("/all")
-    public ApiResult<String> indexAllCatalogs() {
-        ThreadUtils.runAsThread(() -> {
-            resourceIndexService.indexCatalogIndex();
-        });
+    public ApiResult<String> indexAllCatalogs() throws Exception {
+        resourceIndexService.indexCatalogIndex();
         return ApiResult.ok("Submit Successfully.");
     }
 
     @PostMapping("/{id}")
-    public ApiResult<String> indexCatalog(@PathVariable("id") Long catalogId) {
-        ThreadUtils.runAsThread(() -> {
-            resourceIndexService.indexCatalogIndex(catalogId);
-        });
+    public ApiResult<String> indexCatalog(@PathVariable("id") Long catalogId) throws Exception {
+        resourceIndexService.indexCatalogIndex(catalogId);
         return ApiResult.ok("Submit Successfully.");
     }
 
     @PostMapping("/upgrade/all")
-    public ApiResult<String> upgradeAllCatalogs() {
-        ThreadUtils.runAsThread(() -> {
-            resourceIndexService.upgradeCatalogIndex();
-        });
+    public ApiResult<String> upgradeAllCatalogs() throws Exception {
+        resourceIndexService.upgradeCatalogIndex();
         return ApiResult.ok("Submit Successfully.");
     }
 
     @PostMapping("/upgrade/{id}")
-    public ApiResult<String> upgradeCatalog(@PathVariable("id") Long catalogId) {
-        ThreadUtils.runAsThread(() -> {
-            resourceIndexService.upgradeCatalogIndex(catalogId);
-        });
+    public ApiResult<String> upgradeCatalog(@PathVariable("id") Long catalogId) throws Exception {
+        resourceIndexService.upgradeCatalogIndex(catalogId);
         return ApiResult.ok("Submit Successfully.");
     }
 

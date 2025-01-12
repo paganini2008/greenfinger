@@ -1,6 +1,5 @@
-package com.github.greenfinger.components.test;
+package com.github.greenfinger.components;
 
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -35,9 +34,5 @@ public interface WebClientHolder<T> extends Supplier<T> {
     }
 
     default void setExtraCookies(List<Coookie> coookies) {}
-
-    default String test(String url, Charset pageEncoding) throws Exception {
-        throw new UnsupportedOperationException("test: " + url);
-    }
 
 }

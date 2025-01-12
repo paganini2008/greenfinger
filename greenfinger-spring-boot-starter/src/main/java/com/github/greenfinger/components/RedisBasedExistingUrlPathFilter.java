@@ -20,9 +20,4 @@ public abstract class RedisBasedExistingUrlPathFilter implements ExistingUrlPath
     public String getKey() {
         return key;
     }
-
-    @Override
-    public String getDescription() {
-        return getClass().getSimpleName();
-    }
 }

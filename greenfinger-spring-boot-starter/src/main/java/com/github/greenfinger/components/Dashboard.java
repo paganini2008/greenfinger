@@ -10,15 +10,17 @@ package com.github.greenfinger.components;
  */
 public interface Dashboard extends WebCrawlerComponent {
 
+    String NAMESPACE_PATTERN = "greenfinger:dashboard:%s:%s:%s";
+
     void reset(long durationInMs, boolean includingCount);
 
     boolean isCompleted();
 
     void setCompleted(boolean completed);
 
-    long incrementCount(String type);
+    long incrementCount(CountingType countingType);
 
-    long incrementCount(String type, int delta);
+    long incrementCount(CountingType countingType, int delta);
 
     long getTotalUrlCount();
 

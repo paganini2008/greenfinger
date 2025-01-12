@@ -18,9 +18,9 @@ import com.github.doodler.common.utils.MapUtils;
 import com.github.doodler.common.utils.RandomIpUtils;
 import com.github.doodler.common.utils.RandomUtils;
 import com.github.doodler.common.utils.ThreadUtils;
+import com.github.greenfinger.CatalogDetails;
 import com.github.greenfinger.WebCrawlerConstants;
 import com.github.greenfinger.WebCrawlerExtractorProperties;
-import com.github.greenfinger.model.Catalog;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -81,8 +81,8 @@ public class HtmlUnitPooledExtractor extends PooledExtractor<WebClient> implemen
     }
 
     @Override
-    protected String requestUrl(Catalog catalog, String refer, String url, Charset pageEncoding,
-            Packet packet) throws Exception {
+    protected String requestUrl(CatalogDetails catalogDetails, String referUrl, String url,
+            Charset pageEncoding, Packet packet) throws Exception {
         WebClient webClient = objectPool.borrowObject();
         try {
             WebCrawlerExtractorProperties.HtmlUnit config = extractorProperties.getHtmlunit();

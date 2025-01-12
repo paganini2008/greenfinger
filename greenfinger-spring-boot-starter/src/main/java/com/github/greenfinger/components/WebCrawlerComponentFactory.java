@@ -1,8 +1,7 @@
 package com.github.greenfinger.components;
 
 import java.util.List;
-import com.github.greenfinger.model.Catalog;
-import com.github.greenfinger.model.CatalogIndex;
+import com.github.greenfinger.CatalogDetails;
 
 /**
  * 
@@ -13,14 +12,14 @@ import com.github.greenfinger.model.CatalogIndex;
  */
 public interface WebCrawlerComponentFactory {
 
-    List<InterruptionChecker> getInterruptionCheckers(Catalog catalog, CatalogIndex catalogIndex);
+    List<InterruptionChecker> getInterruptionCheckers(CatalogDetails catalogDetails);
 
-    List<UrlPathAcceptor> getUrlPathAcceptors(Catalog catalog, CatalogIndex catalogIndex);
+    List<UrlPathAcceptor> getUrlPathAcceptors(CatalogDetails catalogDetails);
 
-    Extractor getExtractor(Catalog catalog, CatalogIndex catalogIndex);
+    Extractor getExtractor(CatalogDetails catalogDetails);
 
-    ExistingUrlPathFilter getExistingUrlPathFilter(Catalog catalog, CatalogIndex catalogIndex);
+    ExistingUrlPathFilter getExistingUrlPathFilter(CatalogDetails catalogDetails);
 
-    Dashboard getDashboard(Catalog catalog, CatalogIndex catalogIndex);
+    Dashboard getDashboard(CatalogDetails catalogDetails);
 
 }

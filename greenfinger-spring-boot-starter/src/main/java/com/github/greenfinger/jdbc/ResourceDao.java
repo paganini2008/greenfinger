@@ -2,7 +2,7 @@ package com.github.greenfinger.jdbc;
 
 import static com.github.greenfinger.jdbc.JdbcResourceManger.SQL_RESOURCE_DELETE_ALL;
 import static com.github.greenfinger.jdbc.JdbcResourceManger.SQL_RESOURCE_INSERT;
-import static com.github.greenfinger.jdbc.JdbcResourceManger.SQL_RESOURCE_LATEST_PATH;
+import static com.github.greenfinger.jdbc.JdbcResourceManger.SQL_RESOURCE_LATEST_REFERENCE_PATH;
 import static com.github.greenfinger.jdbc.JdbcResourceManger.SQL_RESOURCE_SELECT_FOR_INDEX;
 import static com.github.greenfinger.jdbc.JdbcResourceManger.SQL_RESOURCE_SELECT_ONE;
 import static com.github.greenfinger.jdbc.JdbcResourceManger.SQL_RESOURCE_VERSION_UPDATE;
@@ -40,7 +40,7 @@ public interface ResourceDao {
     @Update(SQL_RESOURCE_DELETE_ALL)
     int deleteResourceByCatalogId(@Arg("catalogId") long catalogId);
 
-    @Get(value = SQL_RESOURCE_LATEST_PATH, javaType = true)
-    String getLatestPath(@Arg("catalogId") long catalogId);
+    @Get(value = SQL_RESOURCE_LATEST_REFERENCE_PATH, javaType = true)
+    String getLatestReferencePath(@Arg("catalogId") long catalogId);
 
 }

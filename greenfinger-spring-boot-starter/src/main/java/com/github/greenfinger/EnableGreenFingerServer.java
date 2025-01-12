@@ -18,7 +18,7 @@ import com.github.doodler.common.jdbc.annotations.DaoScan;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 @Documented
-@DaoScan(basePackages = "io.atlantisframework.greenfinger.jdbc")
+@DaoScan(basePackages = "com.github.greenfinger.jdbc")
 @Import({GreenFingerAutoConfiguration.class})
 public @interface EnableGreenFingerServer {
 }

@@ -1,4 +1,4 @@
-package com.github.greenfinger.components.test;
+package com.github.greenfinger.components;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -22,10 +22,9 @@ import com.github.doodler.common.utils.MapUtils;
 import com.github.doodler.common.utils.RandomIpUtils;
 import com.github.doodler.common.utils.RandomUtils;
 import com.github.doodler.common.utils.ThreadUtils;
+import com.github.greenfinger.CatalogDetails;
 import com.github.greenfinger.WebCrawlerConstants;
 import com.github.greenfinger.WebCrawlerExtractorProperties;
-import com.github.greenfinger.components.ExtractorException;
-import com.github.greenfinger.model.Catalog;
 
 /**
  * 
@@ -121,8 +120,8 @@ public class HtmlUnitStatefulExtractor extends StatefulExtractor<WebClient>
     }
 
     @Override
-    protected synchronized String requestUrl(Catalog catalog, String referUrl, String url,
-            Charset pageEncoding, Packet packet) throws Exception {
+    protected synchronized String requestUrl(CatalogDetails catalogDetails, String referUrl,
+            String url, Charset pageEncoding, Packet packet) throws Exception {
         WebClient webClient = get();
         return doRequestUrl(webClient, referUrl, url, pageEncoding, packet);
     }

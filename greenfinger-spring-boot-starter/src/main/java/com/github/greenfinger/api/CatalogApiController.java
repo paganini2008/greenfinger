@@ -17,6 +17,7 @@ import com.github.doodler.common.page.PageResponse;
 import com.github.greenfinger.CatalogAdminService;
 import com.github.greenfinger.ResourceManager;
 import com.github.greenfinger.WebCrawlerExecutionContext;
+import com.github.greenfinger.WebCrawlerExecutionContextUtils;
 import com.github.greenfinger.WebCrawlerService;
 import com.github.greenfinger.model.Catalog;
 
@@ -58,19 +59,19 @@ public class CatalogApiController {
     }
 
     @PostMapping("/{id}/rebuild")
-    public ApiResult<String> rebuild(@PathVariable("id") Long catalogId) {
+    public ApiResult<String> rebuild(@PathVariable("id") Long catalogId) throws Exception {
         webCrawlerService.rebuild(catalogId);
         return ApiResult.ok("Crawling Task will be triggered soon.");
     }
 
     @PostMapping("/{id}/crawl")
-    public ApiResult<String> crawl(@PathVariable("id") Long catalogId) {
+    public ApiResult<String> crawl(@PathVariable("id") Long catalogId) throws Exception {
         webCrawlerService.crawl(catalogId, true);
         return ApiResult.ok("Crawling Task will be triggered soon.");
     }
 
     @PostMapping("/{id}/update")
-    public ApiResult<String> update(@PathVariable("id") Long catalogId) {
+    public ApiResult<String> update(@PathVariable("id") Long catalogId) throws Exception {
         webCrawlerService.update(catalogId, true);
         return ApiResult.ok("Crawling Task will be triggered soon.");
     }
@@ -84,20 +85,21 @@ public class CatalogApiController {
     @PostMapping("/{id}/summary")
     public ApiResult<CatalogSummary> summary(@PathVariable("id") Long catalogId) {
         Catalog catalog = resourceManager.getCatalog(catalogId);
-        WebCrawlerExecutionContext executionContext = WebCrawlerExecutionContext.get(catalogId);
-        return ApiResult.ok(new CatalogSummary(catalog, executionContext.getDashboardData()));
+        WebCrawlerExecutionContext executionContext =
+                WebCrawlerExecutionContextUtils.get(catalogId);
+        return ApiResult.ok(new CatalogSummary(catalog, executionContext.getDashboard()));
     }
 
     @PostMapping("/{id}/run")
     public ApiResult<Boolean> isRunning(@PathVariable("id") Long catalogId) {
-        WebCrawlerExecutionContext context = WebCrawlerExecutionContext.get(catalogId);
-        return ApiResult.ok(!context.getDashboardData().isCompleted());
+        WebCrawlerExecutionContext context = WebCrawlerExecutionContextUtils.get(catalogId);
+        return ApiResult.ok(!context.getDashboard().isCompleted());
     }
 
     @PostMapping("/{id}/stop")
     public ApiResult<String> stop(@PathVariable("id") Long catalogId, Model ui) {
-        WebCrawlerExecutionContext context = WebCrawlerExecutionContext.get(catalogId);
-        context.getDashboardData().setCompleted(true);
+        WebCrawlerExecutionContext context = WebCrawlerExecutionContextUtils.get(catalogId);
+        context.getDashboard().setCompleted(true);
         return ApiResult.ok("Stop Successfully");
     }
 

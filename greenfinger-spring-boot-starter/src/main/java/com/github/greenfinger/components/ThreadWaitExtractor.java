@@ -1,8 +1,10 @@
 package com.github.greenfinger.components;
 
 import java.nio.charset.Charset;
+import com.github.doodler.common.context.BeanLifeCycleUtils;
+import com.github.doodler.common.context.ManagedBeanLifeCycle;
 import com.github.doodler.common.transmitter.Packet;
-import com.github.greenfinger.model.Catalog;
+import com.github.greenfinger.CatalogDetails;
 
 /**
  * 
@@ -11,14 +13,10 @@ import com.github.greenfinger.model.Catalog;
  * @Date: 30/12/2024
  * @Version 1.0.0
  */
-public class ThreadWaitExtractor implements Extractor {
+public class ThreadWaitExtractor implements Extractor, ManagedBeanLifeCycle {
 
     private final Extractor extractor;
     private final ThreadWait threadWait;
-
-    public ThreadWaitExtractor(Extractor extractor) {
-        this(extractor, ThreadWait.RANDOM_SLEEP);
-    }
 
     public ThreadWaitExtractor(Extractor extractor, ThreadWait threadWait) {
         this.extractor = extractor;
@@ -26,10 +24,24 @@ public class ThreadWaitExtractor implements Extractor {
     }
 
     @Override
-    public String extractHtml(Catalog catalog, String referUrl, String url, Charset pageEncoding,
-            Packet packet) throws Exception {
-        threadWait.doWait(catalog.getInterval());
-        return extractor.extractHtml(catalog, referUrl, url, pageEncoding, packet);
+    public String extractHtml(CatalogDetails catalogDetails, String referUrl, String url,
+            Charset pageEncoding, Packet packet) throws Exception {
+        if (catalogDetails.getFetchInterval() != null) {
+            threadWait.doWait(catalogDetails.getFetchInterval());
+        } else {
+            ThreadWait.RANDOM_SLEEP.doWait(1000L);
+        }
+        return extractor.extractHtml(catalogDetails, referUrl, url, pageEncoding, packet);
+    }
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        BeanLifeCycleUtils.afterPropertiesSet(extractor);
+    }
+
+    @Override
+    public void destroy() throws Exception {
+        BeanLifeCycleUtils.destroy(extractor);
     }
 
 }
