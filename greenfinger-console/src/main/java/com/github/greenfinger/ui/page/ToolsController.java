@@ -13,41 +13,45 @@
  */
 package com.github.greenfinger.ui.page;
 
+import java.nio.charset.StandardCharsets;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.github.doodler.common.ApiResult;
 import com.github.greenfinger.components.Extractor;
+import com.github.greenfinger.components.RedissionBloomUrlPathFilter;
 
 /**
  * 
- * ToolsController
- *
- * @author Fred Feng
- * 
- * @since 2.0.1
+ * @Description: ToolsController
+ * @Author: Fred Feng
+ * @Date: 12/01/2025
+ * @Version 1.0.0
  */
+@RequestMapping("/test")
 @RestController
 public class ToolsController {
 
     @Autowired
-    private Extractor pageExtractor;
+    private Extractor extractor;
 
-    // @Autowired
-    // private PathFilterFactory pathFilterFactory;
+    @Autowired
+    private RedissonClient redissonClient;
 
     @GetMapping("/echo")
     public String echo(@RequestParam("url") String url) throws Exception {
-        return pageExtractor.extractHtml("", url,
-                com.github.doodler.common.utils.CharsetUtils.UTF_8, null);
+        return extractor.test(url, StandardCharsets.UTF_8);
     }
-    //
-    // @GetMapping("/testExists")
-    // public Map<String, Object> testExists(@RequestParam("url") String url) {
-    // ExistingUrlPathFilter pathFilter = pathFilterFactory.getPathFilter(Long.MAX_VALUE);
-    // Map<String, Object> data = new HashMap<String, Object>();
-    // data.put("exists", pathFilter.mightExist(url));
-    // return data;
-    // }
+
+    @GetMapping("/exists")
+    public ApiResult<String> testExists(@RequestParam("url") String url) {
+        RedissionBloomUrlPathFilter redissionBloomUrlPathFilter =
+                new RedissionBloomUrlPathFilter("test:bloomfilter", redissonClient);
+        return ApiResult
+                .ok(redissionBloomUrlPathFilter.mightExist(url) ? "existed" : "not existed");
+    }
 
 }

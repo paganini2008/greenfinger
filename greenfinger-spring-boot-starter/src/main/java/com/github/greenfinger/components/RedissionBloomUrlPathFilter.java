@@ -22,6 +22,11 @@ public class RedissionBloomUrlPathFilter extends RedisBasedExistingUrlPathFilter
         this.redissonClient = redissonClient;
     }
 
+    public RedissionBloomUrlPathFilter(String key, RedissonClient redissonClient) {
+        super(key);
+        this.redissonClient = redissonClient;
+    }
+
     private RBloomFilter<Object> bloomFilter;
 
     @Override

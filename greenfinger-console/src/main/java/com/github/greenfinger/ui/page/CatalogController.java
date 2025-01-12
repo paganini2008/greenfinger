@@ -30,7 +30,7 @@ import com.github.doodler.common.page.PageResponse;
 import com.github.greenfinger.CatalogAdminService;
 import com.github.greenfinger.ResourceManager;
 import com.github.greenfinger.WebCrawlerExecutionContext;
-import com.github.greenfinger.DefaultWebCrawlerExecutionContext;
+import com.github.greenfinger.WebCrawlerExecutionContextUtils;
 import com.github.greenfinger.api.CatalogInfo;
 import com.github.greenfinger.api.CatalogSummary;
 import com.github.greenfinger.model.Catalog;
@@ -88,8 +88,8 @@ public class CatalogController {
         List<CatalogSummary> dataList = new ArrayList<CatalogSummary>(size);
         for (CatalogInfo catalogInfo : pageBean.getResults()) {
             WebCrawlerExecutionContext context =
-                    DefaultWebCrawlerExecutionContext.get(catalogInfo.getId());
-            dataList.add(new CatalogSummary(catalogInfo, context.getDashboardData()));
+                    WebCrawlerExecutionContextUtils.get(catalogInfo.getId());
+            dataList.add(new CatalogSummary(catalogInfo, context.getDashboard()));
         }
         PageBean<CatalogSummary> newPageBean = (PageBean<CatalogSummary>) pageBean.clone();
         newPageBean.setResults(dataList);
@@ -110,19 +110,19 @@ public class CatalogController {
     }
 
     @PostMapping("/{id}/rebuild")
-    public String rebuild(@PathVariable("id") Long catalogId) {
+    public String rebuild(@PathVariable("id") Long catalogId) throws Exception {
         webCrawlerService.rebuild(catalogId);
         return "redirect:/catalog/";
     }
 
     @PostMapping("/{id}/crawl")
-    public String crawl(@PathVariable("id") Long catalogId) {
+    public String crawl(@PathVariable("id") Long catalogId) throws Exception {
         webCrawlerService.crawl(catalogId, true);
         return "redirect:/catalog/";
     }
 
     @PostMapping("/{id}/update")
-    public String update(@PathVariable("id") Long catalogId) {
+    public String update(@PathVariable("id") Long catalogId) throws Exception {
         webCrawlerService.update(catalogId, true);
         return "redirect:/catalog/";
     }
@@ -136,15 +136,15 @@ public class CatalogController {
     @PostMapping("/{id}/summary/content")
     public String summaryContent(@PathVariable("id") Long catalogId, Model ui) {
         Catalog catalog = resourceManager.getCatalog(catalogId);
-        WebCrawlerExecutionContext context = DefaultWebCrawlerExecutionContext.get(catalogId);
-        ui.addAttribute("summary", new CatalogSummary(catalog, context.getDashboardData()));
+        WebCrawlerExecutionContext context = WebCrawlerExecutionContextUtils.get(catalogId);
+        ui.addAttribute("summary", new CatalogSummary(catalog, context.getDashboard()));
         return "catalog_index_summary";
     }
 
     @PostMapping("/{id}/stop")
     public String stop(@PathVariable("id") Long catalogId, Model ui) {
-        WebCrawlerExecutionContext context = DefaultWebCrawlerExecutionContext.get(catalogId);
-        context.getDashboardData().setCompleted(true);
+        WebCrawlerExecutionContext context = WebCrawlerExecutionContextUtils.get(catalogId);
+        context.getDashboard().setCompleted(true);
         return "redirect:/catalog/";
     }
 

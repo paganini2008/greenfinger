@@ -15,6 +15,10 @@ public abstract class RedisBasedExistingUrlPathFilter implements ExistingUrlPath
         this.key = String.format(NAME_PATTERN_URL_PATH_FILTER, catalogId, version);
     }
 
+    protected RedisBasedExistingUrlPathFilter(String key) {
+        this.key = key;
+    }
+
     protected final String key;
 
     public String getKey() {
