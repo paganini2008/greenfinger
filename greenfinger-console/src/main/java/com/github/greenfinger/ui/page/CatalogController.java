@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022 Fred Feng (paganini.fy@gmail.com)
+ * Copyright 2017-2025 Fred Feng (paganini.fy@gmail.com)
  * 
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -31,24 +31,24 @@ import com.github.greenfinger.CatalogAdminService;
 import com.github.greenfinger.ResourceManager;
 import com.github.greenfinger.WebCrawlerExecutionContext;
 import com.github.greenfinger.WebCrawlerExecutionContextUtils;
+import com.github.greenfinger.WebCrawlerService;
 import com.github.greenfinger.api.CatalogInfo;
 import com.github.greenfinger.api.CatalogSummary;
 import com.github.greenfinger.model.Catalog;
 
 /**
  * 
- * CatalogController
- *
- * @author Fred Feng
- *
- * @since 2.0.2
+ * @Description: CatalogController
+ * @Author: Fred Feng
+ * @Date: 12/01/2025
+ * @Version 1.0.0
  */
 @RequestMapping("/catalog")
 @Controller
 public class CatalogController {
 
     @Autowired
-    private com.github.greenfinger.WebCrawlerService webCrawlerService;
+    private WebCrawlerService webCrawlerService;
 
     @Autowired
     private ResourceManager resourceManager;
