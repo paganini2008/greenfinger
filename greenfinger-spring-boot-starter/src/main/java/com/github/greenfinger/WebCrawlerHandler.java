@@ -249,7 +249,7 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
         long resourceId = (Long) packet.getField("resourceId");
         int version = (Integer) packet.getField("version");
         Resource resource = resourceManager.getResource(resourceId);
-        indexService.indexResource(context.getCatalogDetails(), resource, false, version);
+        indexService.indexResource(context.getCatalogDetails(), resource, version);
         context.getDashboard().incrementCount(CountingType.INDEXED_RESOURCE_COUNT);
     }
 

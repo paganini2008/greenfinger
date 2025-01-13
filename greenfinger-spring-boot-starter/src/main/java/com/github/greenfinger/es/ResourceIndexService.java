@@ -17,13 +17,11 @@ import com.github.doodler.common.page.EachPage;
 import com.github.doodler.common.page.PageReader;
 import com.github.doodler.common.page.PageRequest;
 import com.github.doodler.common.page.PageResponse;
-import com.github.doodler.common.utils.CharsetUtils;
 import com.github.greenfinger.CatalogDetails;
 import com.github.greenfinger.CatalogDetailsService;
 import com.github.greenfinger.ResourceManager;
 import com.github.greenfinger.WebCrawlerException;
 import com.github.greenfinger.api.CatalogInfo;
-import com.github.greenfinger.components.Extractor;
 import com.github.greenfinger.model.Catalog;
 import com.github.greenfinger.model.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -47,9 +45,6 @@ public class ResourceIndexService {
 
     @Autowired
     private ResourceManager resourceManager;
-
-    @Autowired
-    private Extractor pageExtractor;
 
     @Autowired
     private ElasticsearchRestTemplate elasticsearchTemplate;
@@ -131,7 +126,7 @@ public class ResourceIndexService {
         for (EachPage<Resource> current : pageResponse) {
             for (Resource resource : current.getContent()) {
                 try {
-                    indexResource(catalogDetails, resource, true, catalogDetails.getVersion());
+                    indexResource(catalogDetails, resource, catalogDetails.getVersion());
                 } catch (Exception e) {
                     log.error(e.getMessage(), e);
                 }
@@ -143,22 +138,9 @@ public class ResourceIndexService {
                 catalogDetails.getName(), effectedRows, System.currentTimeMillis() - startTime);
     }
 
-    public void indexResource(CatalogDetails catalogDetails, Resource resource, boolean refresh,
-            int version) {
+    public void indexResource(CatalogDetails catalogDetails, Resource resource, int version) {
         IndexedResource indexedResource = new IndexedResource();
         String html = resource.getHtml();
-        if (refresh) {
-            try {
-                html = pageExtractor.extractHtml(catalogDetails, catalogDetails.getUrl(),
-                        resource.getUrl(), CharsetUtils.toCharset(catalogDetails.getPageEncoding()),
-                        null);
-            } catch (Exception e) {
-                log.error(e.getMessage(), e);
-                html = pageExtractor.defaultHtml(catalogDetails, catalogDetails.getUrl(),
-                        resource.getUrl(), CharsetUtils.toCharset(catalogDetails.getPageEncoding()),
-                        null, e);
-            }
-        }
         Document document = Jsoup.parse(html);
         indexedResource.setId(resource.getId());
         indexedResource.setTitle(resource.getTitle());

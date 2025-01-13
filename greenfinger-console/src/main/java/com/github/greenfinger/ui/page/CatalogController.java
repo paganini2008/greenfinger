@@ -123,7 +123,7 @@ public class CatalogController {
 
     @PostMapping("/{id}/update")
     public String update(@PathVariable("id") Long catalogId) throws Exception {
-        webCrawlerService.update(catalogId, true);
+        webCrawlerService.update(catalogId, null, true);
         return "redirect:/catalog/";
     }
 

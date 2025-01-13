@@ -1,4 +1,3 @@
-
 package com.github.greenfinger.ui;
 
 import java.util.TimeZone;
