@@ -3,6 +3,7 @@ package com.github.greenfinger;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.github.doodler.common.transmitter.NioClient;
@@ -37,12 +38,12 @@ public final class WebCrawlerService {
     @Autowired
     private CatalogDetailsService catalogDetailsService;
 
-    public void rebuild(long catalogId) throws WebCrawlerException {
+    public void rebuild(long catalogId) throws Exception {
         catalogAdminService.cleanCatalog(catalogId, false);
         resourceManager.incrementCatalogIndexVersion(catalogId);
         WebCrawlerExecutionContext executionContext =
-                WebCrawlerExecutionContextUtils.get(catalogId);
-        executionContext.getExistingUrlPathFilter().clean();
+                WebCrawlerExecutionContextUtils.remove(catalogId);
+        executionContext.destroy();
         crawl(catalogId, true);
     }
 
@@ -50,7 +51,7 @@ public final class WebCrawlerService {
         CatalogDetails catalog = catalogDetailsService.loadCatalogDetails(catalogId);
 
         WebCrawlerExecutionContext executionContext =
-                WebCrawlerExecutionContextUtils.get(catalogId);
+                WebCrawlerExecutionContextUtils.createFrom(catalog);
         executionContext.getDashboard().reset(
                 DateUtils.convertToMillis(catalog.getFetchDuration(), TimeUnit.MINUTES), true);
 
@@ -73,20 +74,24 @@ public final class WebCrawlerService {
         nioClient.send(Packet.wrap(data), partitioner);
     }
 
-    public void update(long catalogId, boolean indexEnabled) throws WebCrawlerException {
+    public void update(long catalogId, String referencePath, boolean indexEnabled)
+            throws WebCrawlerException {
         CatalogDetails catalog = catalogDetailsService.loadCatalogDetails(catalogId);
 
         WebCrawlerExecutionContext executionContext =
                 WebCrawlerExecutionContextUtils.get(catalogId);
         executionContext.getDashboard().reset(
                 DateUtils.convertToMillis(catalog.getFetchDuration(), TimeUnit.MINUTES), false);
+        if (StringUtils.isBlank(referencePath)) {
+            referencePath = getLatestReferencePath(catalog.getId());
+        }
 
         Map<String, Object> data = new HashMap<String, Object>();
         data.put("partitioner", "hash");
         data.put("action", "update");
         data.put("catalogId", catalog.getId());
         data.put("refer", catalog.getUrl());
-        data.put("path", getLatestReferencePath(catalog.getId()));
+        data.put("path", referencePath);
         data.put("cat", catalog.getCategory());
         data.put("pageEncoding", catalog.getPageEncoding());
         data.put("maxFetchSize", catalog.getMaxFetchSize());

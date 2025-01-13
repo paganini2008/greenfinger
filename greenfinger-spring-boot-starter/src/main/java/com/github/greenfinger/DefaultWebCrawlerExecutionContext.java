@@ -4,13 +4,13 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import com.github.doodler.common.context.BeanLifeCycleUtils;
-import com.github.doodler.common.context.ManagedBeanLifeCycle;
 import com.github.doodler.common.transmitter.Packet;
 import com.github.doodler.common.utils.SerializableTaskTimer;
 import com.github.greenfinger.components.Dashboard;
 import com.github.greenfinger.components.ExistingUrlPathFilter;
 import com.github.greenfinger.components.Extractor;
 import com.github.greenfinger.components.InterruptionChecker;
+import com.github.greenfinger.components.StatefulExtractor;
 import com.github.greenfinger.components.UrlPathAcceptor;
 import com.github.greenfinger.components.WebCrawlerComponentFactory;
 import lombok.extern.slf4j.Slf4j;
@@ -23,8 +23,7 @@ import lombok.extern.slf4j.Slf4j;
  * @Version 1.0.0
  */
 @Slf4j
-public class DefaultWebCrawlerExecutionContext
-        implements WebCrawlerExecutionContext, Runnable, ManagedBeanLifeCycle {
+public class DefaultWebCrawlerExecutionContext implements WebCrawlerExecutionContext, Runnable {
 
     private final CatalogDetails catalogDetails;
 
@@ -80,38 +79,56 @@ public class DefaultWebCrawlerExecutionContext
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        log.info("Initializing WebCrawler ExecutionContext For Catalog: {}",
+        log.info("Initializing WebCrawler ExecutionContext for catalog '{}'",
                 catalogDetails.toString());
 
         interruptionCheckers = webCrawlerComponentFactory.getInterruptionCheckers(catalogDetails);
         AnnotationAwareOrderComparator.sort(interruptionCheckers);
         BeanLifeCycleUtils.afterPropertiesSet(interruptionCheckers);
+        log.info("Initialized InterruptionChecker Component");
 
         urlPathAcceptors = webCrawlerComponentFactory.getUrlPathAcceptors(catalogDetails);
         AnnotationAwareOrderComparator.sort(urlPathAcceptors);
         BeanLifeCycleUtils.afterPropertiesSet(urlPathAcceptors);
+        log.info("Initialized UrlPathAcceptor Component");
 
         existingUrlPathFilter = webCrawlerComponentFactory.getExistingUrlPathFilter(catalogDetails);
         BeanLifeCycleUtils.afterPropertiesSet(existingUrlPathFilter);
+        log.info("Initialized ExistingUrlPathFilter Component {}",
+                existingUrlPathFilter.getDescription());
 
         extractor = webCrawlerComponentFactory.getExtractor(catalogDetails);
         BeanLifeCycleUtils.afterPropertiesSet(extractor);
+        log.info("Initialized Extractor Component {}", extractor.getDescription());
 
         dashboard = webCrawlerComponentFactory.getDashboard(catalogDetails);
         BeanLifeCycleUtils.afterPropertiesSet(dashboard);
+        log.info("Initialized Dashboard Component {}", dashboard.getDescription());
+
+        if (extractor instanceof StatefulExtractor) {
+            ((StatefulExtractor<?>) extractor).login(catalogDetails);
+        }
 
         taskTimer.addBatch(this);
+        log.info("Initialized WebCrawler ExecutionContext for catalog '{}' successfully.",
+                catalogDetails.toString());
     }
-
-
 
     @Override
     public void destroy() throws Exception {
+        log.info("Destroying WebCrawler ExecutionContext ...");
+
+        if (extractor instanceof StatefulExtractor) {
+            ((StatefulExtractor<?>) extractor).logout(catalogDetails);
+        }
+
         BeanLifeCycleUtils.destroy(interruptionCheckers);
         BeanLifeCycleUtils.destroy(urlPathAcceptors);
         BeanLifeCycleUtils.destroy(existingUrlPathFilter);
         BeanLifeCycleUtils.destroy(extractor);
         BeanLifeCycleUtils.destroy(dashboard);
+
+        log.info("Destroyed WebCrawler ExecutionContext successfully.");
     }
 
     @Override

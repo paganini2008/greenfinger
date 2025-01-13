@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.github.doodler.common.utils.JacksonUtils;
 import com.github.greenfinger.components.CountingType;
@@ -160,6 +161,11 @@ public class CatalogDetailsImpl implements CatalogDetails {
         return catalogCredentials;
     }
 
+    @Override
+    public String toString() {
+        return ToStringBuilder.reflectionToString(this);
+    }
+
     /**
      * 
      * @Description: CatalogCredentialsImpl
@@ -192,6 +198,11 @@ public class CatalogDetailsImpl implements CatalogDetails {
         @Override
         public Map<String, String> getAdditionalInformation() {
             return additionalInformation;
+        }
+
+        @Override
+        public String toString() {
+            return ToStringBuilder.reflectionToString(this);
         }
 
     }

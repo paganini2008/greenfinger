@@ -6,14 +6,11 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
 import org.springframework.data.elasticsearch.repository.config.EnableElasticsearchRepositories;
 import com.github.doodler.common.transmitter.HashPartitioner;
 import com.github.doodler.common.transmitter.MultipleChoicePartitioner;
 import com.github.doodler.common.transmitter.Partitioner;
 import com.github.doodler.common.utils.SerializableTaskTimer;
-import com.github.greenfinger.api.CatalogApiController;
-import com.github.greenfinger.api.IndexApiController;
 import com.github.greenfinger.components.DefaultWebCrawlerComponentFactory;
 import com.github.greenfinger.components.WebCrawlerComponentFactory;
 
@@ -26,7 +23,6 @@ import com.github.greenfinger.components.WebCrawlerComponentFactory;
  */
 @EnableElasticsearchRepositories("com.github.greenfinger.es")
 @ComponentScan("com.github.greenfinger")
-@Import({CatalogApiController.class, IndexApiController.class})
 @EnableConfigurationProperties({WebCrawlerProperties.class, WebCrawlerExtractorProperties.class})
 @Configuration(proxyBeanMethods = false)
 public class GreenFingerAutoConfiguration {

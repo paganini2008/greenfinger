@@ -8,7 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.Assert;
 import com.github.doodler.common.utils.Coookie;
-import com.github.greenfinger.model.Catalog;
+import com.github.greenfinger.CatalogDetails;
 
 /**
  * 
@@ -43,7 +43,7 @@ public abstract class StatefulExtractor<T> extends AbstractExtractor
     }
 
     @Override
-    public boolean hasLogged(Catalog catalog) {
+    public boolean hasLogged(CatalogDetails catalogDetails) {
         return logged.get();
     }
 
@@ -52,18 +52,18 @@ public abstract class StatefulExtractor<T> extends AbstractExtractor
     }
 
     @Override
-    public void login(Catalog catalog) {
-        if (hasLogged(catalog)) {
+    public void login(CatalogDetails catalogDetails) {
+        if (hasLogged(catalogDetails)) {
             return;
         }
-        credentialHandler.login(catalog, this);
+        credentialHandler.login(catalogDetails, this);
         setLogged(true);
     }
 
     @Override
-    public void logout(Catalog catalog) {
-        if (hasLogged(catalog)) {
-            credentialHandler.logout(catalog, this);
+    public void logout(CatalogDetails catalogDetails) {
+        if (hasLogged(catalogDetails)) {
+            credentialHandler.logout(catalogDetails, this);
             setLogged(false);
         }
     }

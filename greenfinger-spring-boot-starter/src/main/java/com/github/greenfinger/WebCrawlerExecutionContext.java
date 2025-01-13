@@ -1,6 +1,7 @@
 package com.github.greenfinger;
 
 import java.util.List;
+import com.github.doodler.common.context.ManagedBeanLifeCycle;
 import com.github.doodler.common.transmitter.Packet;
 import com.github.greenfinger.components.Dashboard;
 import com.github.greenfinger.components.ExistingUrlPathFilter;
@@ -15,7 +16,7 @@ import com.github.greenfinger.components.UrlPathAcceptor;
  * @Date: 12/01/2025
  * @Version 1.0.0
  */
-public interface WebCrawlerExecutionContext {
+public interface WebCrawlerExecutionContext extends ManagedBeanLifeCycle {
 
     CatalogDetails getCatalogDetails();
 

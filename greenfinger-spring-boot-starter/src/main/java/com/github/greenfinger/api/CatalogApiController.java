@@ -71,8 +71,9 @@ public class CatalogApiController {
     }
 
     @PostMapping("/{id}/update")
-    public ApiResult<String> update(@PathVariable("id") Long catalogId) throws Exception {
-        webCrawlerService.update(catalogId, true);
+    public ApiResult<String> update(@PathVariable("id") Long catalogId,
+            @RequestParam("referencePath") String referencePath) throws Exception {
+        webCrawlerService.update(catalogId, referencePath, true);
         return ApiResult.ok("Crawling Task will be triggered soon.");
     }
 

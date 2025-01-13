@@ -1,6 +1,6 @@
 package com.github.greenfinger.components;
 
-import com.github.greenfinger.model.Catalog;
+import com.github.greenfinger.CatalogDetails;
 
 /**
  * 
@@ -11,8 +11,8 @@ import com.github.greenfinger.model.Catalog;
  */
 public interface ExtractorCredentialHandler<T> {
 
-    void login(Catalog catalog, WebClientHolder<T> holder);
+    void login(CatalogDetails catalogDetails, WebClientHolder<T> holder);
 
-    default void logout(Catalog catalog, WebClientHolder<T> holder) {}
+    default void logout(CatalogDetails catalogDetails, WebClientHolder<T> holder) {}
 
 }
