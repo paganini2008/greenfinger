@@ -28,7 +28,7 @@ import com.github.greenfinger.model.Catalog;
  * @Date: 31/12/2024
  * @Version 1.0.0
  */
-@RequestMapping("/api/catalog")
+@RequestMapping("/v1/catalog")
 @RestController
 public class CatalogApiController {
 

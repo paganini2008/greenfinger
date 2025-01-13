@@ -27,8 +27,8 @@ public class Resource implements Serializable {
     private Long catalogId;
 
     public String toString() {
-        return "[Resource] id: " + id + ", title: " + title + ", url: " + url + ", version: "
-                + version;
+        return "[Resource] id: " + id + ", title: " + title + ", url: " + url + ", cat: " + cat
+                + ", version: " + version;
     }
 
 }

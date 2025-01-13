@@ -18,24 +18,24 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * 
- * @Description: CatalogRobotRuleFilter
+ * @Description: RobotRuleUrlPathAcceptor
  * @Author: Fred Feng
  * @Date: 30/12/2024
  * @Version 1.0.0
  */
 @Slf4j
 @RequiredArgsConstructor
-public class CatalogRobotRuleFilter implements UrlPathAcceptor, Ordered, InitializingBean {
+public class RobotRuleUrlPathAcceptor implements UrlPathAcceptor, Ordered, InitializingBean {
 
     private final URL robotsTxtUrl;
 
     @SneakyThrows
-    public CatalogRobotRuleFilter(CatalogDetails catalogDetails) {
+    public RobotRuleUrlPathAcceptor(CatalogDetails catalogDetails) {
         robotsTxtUrl = UrlUtils.toURL(new URL(catalogDetails.getUrl()), "robots.txt");
     }
 
     @SneakyThrows
-    public CatalogRobotRuleFilter(String url) {
+    public RobotRuleUrlPathAcceptor(String url) {
         robotsTxtUrl = new URL(url);
     }
 
@@ -73,14 +73,13 @@ public class CatalogRobotRuleFilter implements UrlPathAcceptor, Ordered, Initial
 
     public static void main(String[] args) throws Exception {
         Catalog catalog = new Catalog();
-        catalog.setUrl("https://www.delish.com");
-        CatalogRobotRuleFilter robotRuleFilter =
-                new CatalogRobotRuleFilter("https://www.delish.com");
+        catalog.setUrl("https://m.meishichina.com");
+        RobotRuleUrlPathAcceptor robotRuleFilter =
+                new RobotRuleUrlPathAcceptor("https://m.meishichina.com");
         robotRuleFilter.afterPropertiesSet();
         for (int i = 0; i < 10; i++) {
             boolean result = robotRuleFilter.accept(null, null,
-                    "https://www.delish.com/cooking/menus/g63274018/best-recipes-for-in-between-christmas-nye/",
-                    null);
+                    "https://m.meishichina.com/recipe/637783/", null);
             System.out.println(result);
         }
     }

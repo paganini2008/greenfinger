@@ -1,5 +1,5 @@
 server:
-  port: 6120
+  port: 6121
 spring:
   application:
     name: greenfinger-console-service

@@ -9,12 +9,12 @@ import com.github.greenfinger.CatalogDetails;
 
 /**
  * 
- * @Description: CatalogPatternUrlPathAcceptor
+ * @Description: PathMatcherUrlPathAcceptor
  * @Author: Fred Feng
  * @Date: 30/12/2024
  * @Version 1.0.0
  */
-public class CatalogPatternUrlPathAcceptor implements UrlPathAcceptor {
+public class PathMatcherUrlPathAcceptor implements UrlPathAcceptor {
 
     private final PathMatcher pathMather = new AntPathMatcher();
 

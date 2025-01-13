@@ -69,8 +69,8 @@ public class DefaultWebCrawlerComponentFactory implements WebCrawlerComponentFac
 
             }).filter(o -> o != null && o instanceof UrlPathAcceptor).toList());
         }
-        all.addAll(List.of(new CatalogRobotRuleFilter(catalogDetails), new DepthUrlPathAcceptor(),
-                new CatalogPatternUrlPathAcceptor()));
+        all.addAll(List.of(new RobotRuleUrlPathAcceptor(catalogDetails), new MaxFetchDepthUrlPathAcceptor(),
+                new PathMatcherUrlPathAcceptor()));
         return Collections.unmodifiableList(all);
     }
 

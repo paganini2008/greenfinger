@@ -5,12 +5,12 @@ import com.github.greenfinger.CatalogDetails;
 
 /**
  * 
- * @Description: DepthUrlPathAcceptor
+ * @Description: MaxFetchDepthUrlPathAcceptor
  * @Author: Fred Feng
  * @Date: 31/12/2024
  * @Version 1.0.0
  */
-public class DepthUrlPathAcceptor implements UrlPathAcceptor {
+public class MaxFetchDepthUrlPathAcceptor implements UrlPathAcceptor {
 
     @Override
     public boolean accept(CatalogDetails catalogDetails, String referUrl, String url,

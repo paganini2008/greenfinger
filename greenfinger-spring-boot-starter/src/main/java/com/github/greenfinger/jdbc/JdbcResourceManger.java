@@ -24,6 +24,7 @@ import com.github.doodler.common.id.IdGenerator;
 import com.github.doodler.common.page.PageReader;
 import com.github.doodler.common.page.PageRequest;
 import com.github.doodler.common.page.PageResponse;
+import com.github.doodler.common.utils.UrlUtils;
 import com.github.greenfinger.ResourceManager;
 import com.github.greenfinger.api.CatalogInfo;
 import com.github.greenfinger.model.Catalog;
@@ -97,11 +98,13 @@ public class JdbcResourceManger implements ResourceManager {
         if (source.getId() != null) {
             catalog = getCatalog(source.getId());
             BeanUtils.copyProperties(source, catalog);
+            setDefaultValueOfCatalog(catalog);
             catalog.setLastModified(now);
             catalogDao.updateCatalog(catalog);
         } else {
             catalog = source;
             catalog.setId(idGenerator.getNextId());
+            setDefaultValueOfCatalog(catalog);
             catalog.setLastModified(now);
             catalogDao.saveCatalog(catalog);
 
@@ -113,6 +116,18 @@ public class JdbcResourceManger implements ResourceManager {
             catalogIndexDao.saveCatalogIndex(catalogIndex);
         }
         return catalog.getId();
+    }
+
+    private void setDefaultValueOfCatalog(Catalog catalog) {
+        if (StringUtils.isBlank(catalog.getName())) {
+            catalog.setName(UrlUtils.getDomainName(catalog.getUrl()));
+        }
+        if (StringUtils.isBlank(catalog.getPathPattern())) {
+            String defaultPathPattern =
+                    String.format("%s://**.%s.**/**", UrlUtils.getProtocol(catalog.getUrl()),
+                            UrlUtils.getDomainName(catalog.getUrl()));
+            catalog.setPathPattern(defaultPathPattern);
+        }
     }
 
     @Override
