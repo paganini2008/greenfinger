@@ -45,7 +45,7 @@ public class JdbcResourceManger implements ResourceManager {
     public static final String SQL_CATALOG_INSERT =
             "insert into crawler_catalog (id,name,url,path_pattern,excluded_path_pattern,cat,page_encoding,max_fetch_size,duration,interval,depth,last_modified) values (:id,:name,:url,:pathPattern,:excludedPathPattern,:cat,:pageEncoding,:maxFetchSize,:duration,:interval,:depth,:lastModified)";
     public static final String SQL_CATALOG_UPDATE =
-            "update crawler_catalog set name=:name,cat=:cat,url=:url,path_pattern=:pathPattern,excluded_path_pattern=:excludedPathPattern,max_fetch_size=:maxFetchSize,duration=:duration,interval=:interval,depth=:depth,last_modified=:lastModified where id=:id";
+            "update crawler_catalog set name=:name,cat=:cat,url=:url,path_pattern=:pathPattern,excluded_path_pattern=:excludedPathPattern,max_fetch_size=:maxFetchSize,duration=:duration,interval=:interval,depth=:depth,counting_type=:countingType,max_retry_count=:maxRetryCount,url_path_acceptor=:urlPathAcceptor,url_path_filter=:urlPathFilter,extractor=:extractor,credential_handler=:credentialHandler,last_modified=:lastModified where id=:id";
     public static final String SQL_CATALOG_INDEX_INSERT =
             "insert into crawler_catalog_index (id,catalog_id,version,last_modified) values (:id,:catalogId,:version,:lastModified)";
     public static final String SQL_CATALOG_INDEX_UPDATE =

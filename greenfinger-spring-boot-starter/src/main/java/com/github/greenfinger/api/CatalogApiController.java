@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.github.doodler.common.ApiResult;
-import com.github.doodler.common.page.PageBean;
+import com.github.doodler.common.PageVo;
 import com.github.doodler.common.page.PageResponse;
 import com.github.greenfinger.CatalogAdminService;
 import com.github.greenfinger.ResourceManager;
@@ -105,13 +105,13 @@ public class CatalogApiController {
     }
 
     @PostMapping("/list")
-    public ApiResult<PageBean<CatalogInfo>> selectForCatalog(@RequestBody Catalog example,
+    public ApiResult<PageVo<CatalogInfo>> selectForCatalog(@RequestBody Catalog example,
             @RequestParam(value = "page", defaultValue = "1", required = false) int page,
             @CookieValue(value = "DATA_LIST_SIZE", required = false, defaultValue = "10") int size)
             throws Exception {
         PageResponse<CatalogInfo> pageResponse =
                 resourceManager.pageForCatalog(example, page, size);
-        return ApiResult.ok(PageBean.wrap(pageResponse));
+        return ApiResult.ok(PageVo.wrap(pageResponse));
     }
 
 }

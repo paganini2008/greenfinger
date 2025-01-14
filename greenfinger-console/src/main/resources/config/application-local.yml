@@ -11,7 +11,7 @@ spring:
       read-timeout: 60000
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://localhost:5432/db_webanchor?characterEncoding=utf8&allowMultiQueries=true&useSSL=false&stringtype=unspecified
+    url: jdbc:postgresql://localhost:5432/test?characterEncoding=utf8&allowMultiQueries=true&useSSL=false&stringtype=unspecified
     username: fengy
     password: 123456
 
