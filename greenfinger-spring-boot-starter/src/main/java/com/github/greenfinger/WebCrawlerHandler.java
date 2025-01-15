@@ -160,6 +160,7 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
         WebCrawlerExecutionContext executionContext =
                 WebCrawlerExecutionContextUtils.get(catalogId);
         if (executionContext.isCompleted()) {
+
             return;
         }
 

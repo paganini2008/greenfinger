@@ -18,7 +18,7 @@ import com.github.greenfinger.CatalogAdminService;
 import com.github.greenfinger.ResourceManager;
 import com.github.greenfinger.WebCrawlerExecutionContext;
 import com.github.greenfinger.WebCrawlerExecutionContextUtils;
-import com.github.greenfinger.WebCrawlerService;
+import com.github.greenfinger.WebCrawlerJobService;
 import com.github.greenfinger.model.Catalog;
 
 /**
@@ -33,7 +33,7 @@ import com.github.greenfinger.model.Catalog;
 public class CatalogApiController {
 
     @Autowired
-    private WebCrawlerService webCrawlerService;
+    private WebCrawlerJobService webCrawlerJobService;
 
     @Autowired
     private ResourceManager resourceManager;
@@ -60,21 +60,26 @@ public class CatalogApiController {
 
     @PostMapping("/{id}/rebuild")
     public ApiResult<String> rebuild(@PathVariable("id") Long catalogId) throws Exception {
-        webCrawlerService.rebuild(catalogId);
+        webCrawlerJobService.rebuild(catalogId);
         return ApiResult.ok("Crawling Task will be triggered soon.");
     }
 
     @PostMapping("/{id}/crawl")
     public ApiResult<String> crawl(@PathVariable("id") Long catalogId) throws Exception {
-        webCrawlerService.crawl(catalogId, true);
+        webCrawlerJobService.crawl(catalogId);
         return ApiResult.ok("Crawling Task will be triggered soon.");
     }
 
     @PostMapping("/{id}/update")
-    public ApiResult<String> update(@PathVariable("id") Long catalogId,
-            @RequestParam("referencePath") String referencePath) throws Exception {
-        webCrawlerService.update(catalogId, referencePath, true);
+    public ApiResult<String> update(@PathVariable("id") Long catalogId) throws Exception {
+        webCrawlerJobService.update(catalogId);
         return ApiResult.ok("Crawling Task will be triggered soon.");
+    }
+
+    @PostMapping("/{id}/finish")
+    public ApiResult<String> finish(@PathVariable("id") Long catalogId) throws Exception {
+        webCrawlerJobService.finish(catalogId);
+        return ApiResult.ok("Crawling Task will be finish soon.");
     }
 
     @PostMapping("/save")

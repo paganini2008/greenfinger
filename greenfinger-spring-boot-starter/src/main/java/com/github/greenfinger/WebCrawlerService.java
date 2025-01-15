@@ -1,15 +1,25 @@
 package com.github.greenfinger;
 
+import java.net.SocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Marker;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import com.github.doodler.common.cloud.ApplicationInfo;
+import com.github.doodler.common.cloud.ApplicationInfoHolder;
+import com.github.doodler.common.events.GlobalApplicationEventListener;
+import com.github.doodler.common.transmitter.ChannelSwitcher;
 import com.github.doodler.common.transmitter.NioClient;
 import com.github.doodler.common.transmitter.Packet;
 import com.github.doodler.common.transmitter.Partitioner;
+import com.github.doodler.common.transmitter.TransmitterConstants;
 import com.github.doodler.common.utils.DateUtils;
+import com.github.doodler.common.utils.MapUtils;
+import com.github.doodler.common.utils.NetUtils;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -21,7 +31,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Service
-public final class WebCrawlerService {
+public class WebCrawlerService implements GlobalApplicationEventListener<WebCrawlerNewJoinerEvent> {
 
     @Autowired
     private NioClient nioClient;
@@ -38,74 +48,102 @@ public final class WebCrawlerService {
     @Autowired
     private CatalogDetailsService catalogDetailsService;
 
-    public void rebuild(long catalogId) throws Exception {
+    @Autowired
+    private ChannelSwitcher channelSwitcher;
+
+    @Autowired
+    private ApplicationInfoHolder applicationInfoHolder;
+
+    @Autowired
+    private Marker marker;
+
+    public void rebuild(long catalogId) throws WebCrawlerException {
         catalogAdminService.cleanCatalog(catalogId, false);
         resourceManager.incrementCatalogIndexVersion(catalogId);
-        WebCrawlerExecutionContext executionContext =
-                WebCrawlerExecutionContextUtils.remove(catalogId);
-        executionContext.destroy();
-        crawl(catalogId, true);
+        crawl(catalogId);
     }
 
-    public void crawl(long catalogId, boolean indexEnabled) throws WebCrawlerException {
-        CatalogDetails catalog = catalogDetailsService.loadCatalogDetails(catalogId);
-
+    @Async
+    public void crawl(long catalogId) throws WebCrawlerException {
+        CatalogDetails catalogDetails = catalogDetailsService.loadCatalogDetails(catalogId);
+        WebCrawlerExecutionContextUtils.remove(catalogId);
         WebCrawlerExecutionContext executionContext =
-                WebCrawlerExecutionContextUtils.createFrom(catalog);
+                WebCrawlerExecutionContextUtils.get(catalogId);
         executionContext.getDashboard().reset(
-                DateUtils.convertToMillis(catalog.getFetchDuration(), TimeUnit.MINUTES), true);
+                DateUtils.convertToMillis(catalogDetails.getFetchDuration(), TimeUnit.MINUTES),
+                true);
+        channelSwitcher.toggle(false);
 
         Map<String, Object> data = new HashMap<String, Object>();
         data.put("partitioner", "hash");
         data.put("action", "crawl");
-        data.put("catalogId", catalog.getId());
-        data.put("refer", catalog.getUrl());
-        data.put("path", catalog.getUrl());
-        data.put("cat", catalog.getCategory());
-        data.put("pageEncoding", catalog.getPageEncoding());
-        data.put("maxFetchSize", catalog.getMaxFetchSize());
-        data.put("duration", catalog.getFetchDuration());
-        data.put("depth", catalog.getMaxFetchDepth());
-        data.put("interval", catalog.getFetchInterval());
-        data.put("version", catalog.getVersion() != null ? catalog.getVersion() : 0);
-        data.put("indexEnabled", indexEnabled);
-        log.info("Initializing Catalog Config: {}", data);
+        data.put("catalogId", catalogDetails.getId());
+        data.put("refer", catalogDetails.getUrl());
+        data.put("path", catalogDetails.getUrl());
+        data.put("cat", catalogDetails.getCategory());
+        data.put("pageEncoding", catalogDetails.getPageEncoding());
+        data.put("maxFetchSize", catalogDetails.getMaxFetchSize());
+        data.put("duration", catalogDetails.getFetchDuration());
+        data.put("depth", catalogDetails.getMaxFetchDepth());
+        data.put("interval", catalogDetails.getFetchInterval());
+        data.put("version", catalogDetails.getVersion() != null ? catalogDetails.getVersion() : 0);
+        data.put("indexEnabled", catalogDetails.getIndexed());
+        log.info(marker, "Crawling catalog by config: {}", data);
 
         nioClient.send(Packet.wrap(data), partitioner);
     }
 
-    public void update(long catalogId, String referencePath, boolean indexEnabled)
-            throws WebCrawlerException {
-        CatalogDetails catalog = catalogDetailsService.loadCatalogDetails(catalogId);
+    @Async
+    public void update(long catalogId, String referencePath) throws WebCrawlerException {
+        CatalogDetails catalogDetails = catalogDetailsService.loadCatalogDetails(catalogId);
 
         WebCrawlerExecutionContext executionContext =
                 WebCrawlerExecutionContextUtils.get(catalogId);
         executionContext.getDashboard().reset(
-                DateUtils.convertToMillis(catalog.getFetchDuration(), TimeUnit.MINUTES), false);
+                DateUtils.convertToMillis(catalogDetails.getFetchDuration(), TimeUnit.MINUTES),
+                false);
         if (StringUtils.isBlank(referencePath)) {
-            referencePath = getLatestReferencePath(catalog.getId());
+            referencePath = getLatestReferencePath(catalogDetails.getId());
         }
 
         Map<String, Object> data = new HashMap<String, Object>();
         data.put("partitioner", "hash");
         data.put("action", "update");
-        data.put("catalogId", catalog.getId());
-        data.put("refer", catalog.getUrl());
+        data.put("catalogId", catalogDetails.getId());
+        data.put("refer", catalogDetails.getUrl());
         data.put("path", referencePath);
-        data.put("cat", catalog.getCategory());
-        data.put("pageEncoding", catalog.getPageEncoding());
-        data.put("maxFetchSize", catalog.getMaxFetchSize());
-        data.put("duration", catalog.getFetchDuration());
-        data.put("depth", catalog.getMaxFetchDepth());
-        data.put("interval", catalog.getFetchInterval());
-        data.put("version", catalog.getVersion() != null ? catalog.getVersion() : 0);
-        data.put("indexEnabled", indexEnabled);
-        log.info("Initializing Catalog Config: {}", data);
+        data.put("cat", catalogDetails.getCategory());
+        data.put("pageEncoding", catalogDetails.getPageEncoding());
+        data.put("maxFetchSize", catalogDetails.getMaxFetchSize());
+        data.put("duration", catalogDetails.getFetchDuration());
+        data.put("depth", catalogDetails.getMaxFetchDepth());
+        data.put("interval", catalogDetails.getFetchInterval());
+        data.put("version", catalogDetails.getVersion() != null ? catalogDetails.getVersion() : 0);
+        data.put("indexEnabled", catalogDetails.getIndexed());
+        log.info(marker, "Updating catalog by config: {}", data);
 
         nioClient.send(Packet.wrap(data), partitioner);
     }
 
     private String getLatestReferencePath(long catalogId) {
         return resourceManager.getLatestReferencePath(catalogId);
+    }
+
+    @Override
+    public void onGlobalApplicationEvent(WebCrawlerNewJoinerEvent event) {
+        if (!applicationInfoHolder.isPrimary()) {
+            return;
+        }
+        ApplicationInfo applicationInfo = (ApplicationInfo) event.getSource();
+        Map<String, String> metadata = applicationInfo.getMetadata();
+        if (MapUtils.isEmpty(metadata)) {
+            return;
+        }
+        String serviceLocation = metadata.get(TransmitterConstants.TRANSMITTER_SERVER_LOCATION);
+        if (StringUtils.isNotBlank(serviceLocation)) {
+            SocketAddress remoteAddr = NetUtils.parse(serviceLocation);
+            channelSwitcher.enableExternalChannel(remoteAddr, true);
+            log.info(marker, "Joined channel to '{}'", remoteAddr);
+        }
     }
 }

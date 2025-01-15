@@ -37,6 +37,8 @@ public class Catalog implements Serializable {
     private String urlPathFilter;
     private String extractor;
     private String credentialHandler;
+    private String runningState;
+    private Boolean indexed;
     private Date lastModified;
 
 }

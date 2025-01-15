@@ -117,13 +117,13 @@ public class CatalogController {
 
     @PostMapping("/{id}/crawl")
     public String crawl(@PathVariable("id") Long catalogId) throws Exception {
-        webCrawlerService.crawl(catalogId, true);
+        webCrawlerService.crawl(catalogId);
         return "redirect:/catalog/";
     }
 
     @PostMapping("/{id}/update")
     public String update(@PathVariable("id") Long catalogId) throws Exception {
-        webCrawlerService.update(catalogId, null, true);
+        webCrawlerService.update(catalogId, null);
         return "redirect:/catalog/";
     }
 

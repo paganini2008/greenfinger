@@ -16,7 +16,9 @@ create table crawler_catalog(
     url_path_acceptor varchar(2000),
     url_path_filter varchar(45) default 'redission-bloomfilter',
     extractor varchar(45) default 'resttemplate',
-    credential_handler varchar(1000)
+    credential_handler varchar(1000),
+    running_state varchar(45),
+    indexed boolean default true,
 	last_modified timestamp without time zone
 );
 

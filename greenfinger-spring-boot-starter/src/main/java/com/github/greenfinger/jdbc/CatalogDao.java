@@ -5,6 +5,8 @@ import static com.github.greenfinger.jdbc.JdbcResourceManger.SQL_CATALOG_DELETE;
 import static com.github.greenfinger.jdbc.JdbcResourceManger.SQL_CATALOG_INSERT;
 import static com.github.greenfinger.jdbc.JdbcResourceManger.SQL_CATALOG_SELECT_ALL;
 import static com.github.greenfinger.jdbc.JdbcResourceManger.SQL_CATALOG_SELECT_ONE;
+import static com.github.greenfinger.jdbc.JdbcResourceManger.SQL_CATALOG_SELECT_RUNNING;
+import static com.github.greenfinger.jdbc.JdbcResourceManger.SQL_CATALOG_SET_RUNNING_STATE;
 import static com.github.greenfinger.jdbc.JdbcResourceManger.SQL_CATALOG_UPDATE;
 import java.util.List;
 import com.github.doodler.common.jdbc.annotations.Arg;
@@ -46,5 +48,11 @@ public interface CatalogDao {
 
     @Query(value = SQL_CATALOG_CAT_SELECT, singleColumn = true)
     List<String> selectAllCats();
+
+    @Update(SQL_CATALOG_SET_RUNNING_STATE)
+    int setRunningState(@Arg("catalogId") long catalogId, @Arg("runningState") String runningState);
+
+    @Query(value = SQL_CATALOG_SELECT_RUNNING)
+    List<Catalog> selectRunningCatalogs();
 
 }

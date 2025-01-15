@@ -6,7 +6,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.builder.ReflectionToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.github.doodler.common.utils.JacksonUtils;
 import com.github.greenfinger.components.CountingType;
@@ -157,13 +159,24 @@ public class CatalogDetailsImpl implements CatalogDetails {
     }
 
     @Override
+    public String getRunningState() {
+        return catalog.getRunningState();
+    }
+
+    @Override
+    public Boolean getIndexed() {
+        return catalog.getIndexed();
+    }
+
+    @Override
     public CatalogCredentials[] getCatalogCredentials() {
         return catalogCredentials;
     }
 
     @Override
     public String toString() {
-        return ToStringBuilder.reflectionToString(this);
+        return new ReflectionToStringBuilder(this, ToStringStyle.JSON_STYLE)
+                .setExcludeFieldNames("catalog", "catalogIndex", "webCrawlerProperties").toString();
     }
 
     /**

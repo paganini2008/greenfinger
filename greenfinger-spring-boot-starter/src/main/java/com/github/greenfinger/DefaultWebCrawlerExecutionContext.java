@@ -1,8 +1,11 @@
 package com.github.greenfinger;
 
+import java.util.Arrays;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Scope;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
+import org.springframework.stereotype.Component;
 import com.github.doodler.common.context.BeanLifeCycleUtils;
 import com.github.doodler.common.transmitter.Packet;
 import com.github.doodler.common.utils.SerializableTaskTimer;
@@ -23,15 +26,20 @@ import lombok.extern.slf4j.Slf4j;
  * @Version 1.0.0
  */
 @Slf4j
+@Scope("prototype")
+@Component
 public class DefaultWebCrawlerExecutionContext implements WebCrawlerExecutionContext, Runnable {
 
-    private final CatalogDetails catalogDetails;
+    @Autowired
+    private CatalogDetailsService catalogDetailsService;
 
     @Autowired
     private WebCrawlerComponentFactory webCrawlerComponentFactory;
 
     @Autowired
     private SerializableTaskTimer taskTimer;
+
+    private CatalogDetails catalogDetails;
 
     private List<InterruptionChecker> interruptionCheckers;
 
@@ -42,10 +50,6 @@ public class DefaultWebCrawlerExecutionContext implements WebCrawlerExecutionCon
     private ExistingUrlPathFilter existingUrlPathFilter;
 
     private Dashboard dashboard;
-
-    DefaultWebCrawlerExecutionContext(CatalogDetails catalogDetails) {
-        this.catalogDetails = catalogDetails;
-    }
 
     @Override
     public CatalogDetails getCatalogDetails() {
@@ -79,8 +83,10 @@ public class DefaultWebCrawlerExecutionContext implements WebCrawlerExecutionCon
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        log.info("Initializing WebCrawler ExecutionContext for catalog '{}'",
-                catalogDetails.toString());
+        CatalogDetails catalogDetails = catalogDetailsService.loadRunningCatalogDetails();
+        this.catalogDetails = catalogDetails;
+        log.info("Initializing WebCrawler ExecutionContext to {} catalog '{}'",
+                catalogDetails.getRunningState(), catalogDetails.toString());
 
         interruptionCheckers = webCrawlerComponentFactory.getInterruptionCheckers(catalogDetails);
         AnnotationAwareOrderComparator.sort(interruptionCheckers);
@@ -107,11 +113,12 @@ public class DefaultWebCrawlerExecutionContext implements WebCrawlerExecutionCon
 
         if (extractor instanceof StatefulExtractor) {
             ((StatefulExtractor<?>) extractor).login(catalogDetails);
+            log.info("User Login: {}", Arrays.toString(catalogDetails.getCatalogCredentials()));
         }
 
         taskTimer.addBatch(this);
-        log.info("Initialized WebCrawler ExecutionContext for catalog '{}' successfully.",
-                catalogDetails.toString());
+        log.info("Initialized WebCrawler ExecutionContext to {} catalog '{}' successfully.",
+                catalogDetails.getRunningState(), catalogDetails.toString());
     }
 
     @Override

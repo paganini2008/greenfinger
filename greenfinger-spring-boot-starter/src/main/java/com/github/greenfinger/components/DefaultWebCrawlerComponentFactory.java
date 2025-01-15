@@ -1,7 +1,6 @@
 package com.github.greenfinger.components;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -46,7 +45,8 @@ public class DefaultWebCrawlerComponentFactory implements WebCrawlerComponentFac
 
     @Override
     public List<InterruptionChecker> getInterruptionCheckers(CatalogDetails catalogDetails) {
-        return List.of(new FetchDurationInterruptionChecker(), new MaxFetchSizeInterruptionChecker());
+        return new ArrayList<>(List.of(new FetchDurationInterruptionChecker(),
+                new MaxFetchSizeInterruptionChecker()));
     }
 
     @Override
@@ -69,9 +69,9 @@ public class DefaultWebCrawlerComponentFactory implements WebCrawlerComponentFac
 
             }).filter(o -> o != null && o instanceof UrlPathAcceptor).toList());
         }
-        all.addAll(List.of(new RobotRuleUrlPathAcceptor(catalogDetails), new MaxFetchDepthUrlPathAcceptor(),
-                new PathMatcherUrlPathAcceptor()));
-        return Collections.unmodifiableList(all);
+        all.addAll(List.of(new RobotRuleUrlPathAcceptor(catalogDetails),
+                new MaxFetchDepthUrlPathAcceptor(), new PathMatcherUrlPathAcceptor()));
+        return all;
     }
 
     @Override

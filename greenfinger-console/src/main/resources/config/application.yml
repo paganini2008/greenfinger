@@ -1,10 +1,12 @@
 server:
-  port: 6121
+  port: 6120
 spring:
   application:
     name: greenfinger-console-service
   profiles:
     active: local
+  scheduler:
+    run-mode: variable
   redis:
     lettuce:
       pool:

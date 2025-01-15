@@ -88,6 +88,11 @@
 		</dependency>
 		
 		<dependency>
+			<groupId>com.github.paganini2008.doodler</groupId>
+			<artifactId>doodler-common-scheduler</artifactId>
+		</dependency>
+		
+		<dependency>
 		    <groupId>org.apache.commons</groupId>
 		    <artifactId>commons-pool2</artifactId>
 		</dependency>

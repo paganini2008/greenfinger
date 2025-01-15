@@ -22,6 +22,10 @@ public interface ResourceManager {
 
     Catalog getCatalog(long id);
 
+    List<Catalog> selectRunningCatalogs();
+
+    int setRunningState(long id, String state);
+
     PageResponse<CatalogInfo> pageForCatalog(Catalog example, int page, int size);
 
     List<String> selectAllCats();

@@ -79,6 +79,11 @@ public class JdbcResourceManger implements ResourceManager {
     public static final String SQL_RESOURCE_VERSION_UPDATE =
             "update crawler_resource set version=:version where catalog_id=:catalogId and version<:version";
 
+    public static final String SQL_CATALOG_SELECT_RUNNING =
+            "select * from crawler_catalog where running_state is not null and running_state!='none'";
+    public static final String SQL_CATALOG_SET_RUNNING_STATE =
+            "update crawler_catalog set running_state=:runningState where id=:catalogId";
+
     @Autowired
     private CatalogDao catalogDao;
 
@@ -230,6 +235,16 @@ public class JdbcResourceManger implements ResourceManager {
     @Override
     public String getLatestReferencePath(long catalogId) {
         return resourceDao.getLatestReferencePath(catalogId);
+    }
+
+    @Override
+    public List<Catalog> selectRunningCatalogs() {
+        return catalogDao.selectRunningCatalogs();
+    }
+
+    @Override
+    public int setRunningState(long catalogId, String state) {
+        return catalogDao.setRunningState(catalogId, state);
     }
 
 }

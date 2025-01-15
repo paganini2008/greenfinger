@@ -53,6 +53,10 @@ public interface CatalogDetails {
 
     Integer getVersion();
 
+    String getRunningState();
+
+    Boolean getIndexed();
+
     default CatalogCredentials[] getCatalogCredentials() {
         return new CatalogCredentials[0];
     }

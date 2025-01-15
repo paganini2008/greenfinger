@@ -11,6 +11,8 @@ import java.io.Serializable;
  */
 public interface CatalogDetailsService {
 
+    CatalogDetails loadRunningCatalogDetails() throws WebCrawlerException;
+
     CatalogDetails loadCatalogDetails(Serializable id) throws CatalogDetailsNotFoundException;
 
 }

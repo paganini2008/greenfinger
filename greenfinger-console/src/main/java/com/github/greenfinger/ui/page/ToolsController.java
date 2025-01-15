@@ -37,9 +37,10 @@ public class ToolsController {
     private RedissonClient redissonClient;
 
     @GetMapping("/exists")
-    public ApiResult<String> testExists(@RequestParam("url") String url) {
+    public ApiResult<String> testExists(@RequestParam("url") String url) throws Exception {
         RedissionBloomUrlPathFilter redissionBloomUrlPathFilter =
                 new RedissionBloomUrlPathFilter("test:bloomfilter", redissonClient);
+        redissionBloomUrlPathFilter.afterPropertiesSet();
         return ApiResult
                 .ok(redissionBloomUrlPathFilter.mightExist(url) ? "existed" : "not existed");
     }

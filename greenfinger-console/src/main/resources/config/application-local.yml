@@ -21,6 +21,3 @@ doodler:
       selection: netty
       server:
         bindHostName: 192.168.159.1
-    event:
-      logging:
-        enabled: true
