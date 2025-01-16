@@ -2,7 +2,7 @@ package com.github.greenfinger;
 
 import java.util.List;
 import com.github.doodler.common.page.PageResponse;
-import com.github.greenfinger.api.CatalogInfo;
+import com.github.greenfinger.api.pojo.CatalogInfo;
 import com.github.greenfinger.model.Catalog;
 import com.github.greenfinger.model.CatalogIndex;
 import com.github.greenfinger.model.Resource;

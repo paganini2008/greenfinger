@@ -21,7 +21,7 @@ import com.github.greenfinger.es.SearchResult;
  * @Date: 30/12/2024
  * @Version 1.0.0
  */
-@RequestMapping("/api/index/")
+@RequestMapping("/v1/index/")
 @RestController
 public class IndexApiController {
 

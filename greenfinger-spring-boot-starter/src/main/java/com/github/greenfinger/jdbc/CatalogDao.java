@@ -18,7 +18,7 @@ import com.github.doodler.common.jdbc.annotations.Query;
 import com.github.doodler.common.jdbc.annotations.Sql;
 import com.github.doodler.common.jdbc.annotations.Update;
 import com.github.doodler.common.page.PageReader;
-import com.github.greenfinger.api.CatalogInfo;
+import com.github.greenfinger.api.pojo.CatalogInfo;
 import com.github.greenfinger.model.Catalog;
 
 /**

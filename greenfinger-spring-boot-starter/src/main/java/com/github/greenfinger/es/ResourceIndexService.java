@@ -21,7 +21,7 @@ import com.github.greenfinger.CatalogDetails;
 import com.github.greenfinger.CatalogDetailsService;
 import com.github.greenfinger.ResourceManager;
 import com.github.greenfinger.WebCrawlerException;
-import com.github.greenfinger.api.CatalogInfo;
+import com.github.greenfinger.api.pojo.CatalogInfo;
 import com.github.greenfinger.model.Catalog;
 import com.github.greenfinger.model.Resource;
 import lombok.extern.slf4j.Slf4j;

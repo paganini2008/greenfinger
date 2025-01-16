@@ -19,6 +19,8 @@ import com.github.greenfinger.ResourceManager;
 import com.github.greenfinger.WebCrawlerExecutionContext;
 import com.github.greenfinger.WebCrawlerExecutionContextUtils;
 import com.github.greenfinger.WebCrawlerJobService;
+import com.github.greenfinger.api.pojo.CatalogInfo;
+import com.github.greenfinger.api.pojo.CatalogSummary;
 import com.github.greenfinger.model.Catalog;
 
 /**

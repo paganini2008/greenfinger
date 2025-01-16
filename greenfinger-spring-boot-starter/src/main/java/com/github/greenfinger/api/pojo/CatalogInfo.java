@@ -1,4 +1,4 @@
-package com.github.greenfinger.api;
+package com.github.greenfinger.api.pojo;
 
 import java.util.Date;
 import com.github.greenfinger.model.Catalog;

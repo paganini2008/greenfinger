@@ -1,4 +1,4 @@
-package com.github.greenfinger.api;
+package com.github.greenfinger.api.pojo;
 
 import java.util.Date;
 import org.apache.commons.lang3.time.DurationFormatUtils;

@@ -26,7 +26,7 @@ import com.github.doodler.common.page.PageRequest;
 import com.github.doodler.common.page.PageResponse;
 import com.github.doodler.common.utils.UrlUtils;
 import com.github.greenfinger.ResourceManager;
-import com.github.greenfinger.api.CatalogInfo;
+import com.github.greenfinger.api.pojo.CatalogInfo;
 import com.github.greenfinger.model.Catalog;
 import com.github.greenfinger.model.CatalogIndex;
 import com.github.greenfinger.model.Resource;
