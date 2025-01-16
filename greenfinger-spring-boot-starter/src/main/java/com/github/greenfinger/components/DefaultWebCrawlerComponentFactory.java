@@ -137,6 +137,9 @@ public class DefaultWebCrawlerComponentFactory implements WebCrawlerComponentFac
     public ExistingUrlPathFilter getExistingUrlPathFilter(CatalogDetails catalogDetails) {
         String urlPathFilterType = catalogDetails.getUrlPathFilter();
         switch (urlPathFilterType.toLowerCase()) {
+            case "rocksdb":
+                return new RocksDbUrlPathFilter(catalogDetails.getId(),
+                        catalogDetails.getVersion());
             case "redis":
                 return new RedisUrlPathFilter(catalogDetails.getId(), catalogDetails.getVersion(),
                         redisConnectionFactory);

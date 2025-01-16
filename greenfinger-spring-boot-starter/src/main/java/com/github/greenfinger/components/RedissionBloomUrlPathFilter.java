@@ -11,7 +11,7 @@ import org.springframework.beans.factory.InitializingBean;
  * @Date: 01/01/2025
  * @Version 1.0.0
  */
-public class RedissionBloomUrlPathFilter extends RedisBasedExistingUrlPathFilter
+public class RedissionBloomUrlPathFilter extends RedisBasedUrlPathFilter
         implements InitializingBean {
 
     private static final int MAX_EXPECTED_INSERTIONS = 100_000_000;

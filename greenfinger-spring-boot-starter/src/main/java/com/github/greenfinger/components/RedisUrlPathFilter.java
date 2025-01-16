@@ -1,6 +1,7 @@
 package com.github.greenfinger.components;
 
 import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import lombok.extern.slf4j.Slf4j;
 
@@ -12,7 +13,7 @@ import lombok.extern.slf4j.Slf4j;
  * @Version 1.0.0
  */
 @Slf4j
-public class RedisUrlPathFilter extends RedisBasedExistingUrlPathFilter {
+public class RedisUrlPathFilter extends RedisBasedUrlPathFilter {
 
     private final StringRedisTemplate redisTemplate;
 
@@ -44,6 +45,26 @@ public class RedisUrlPathFilter extends RedisBasedExistingUrlPathFilter {
     @Override
     public long size() {
         return redisTemplate.opsForSet().size(key);
+    }
+
+    @Override
+    public int export(UrlPathFilterExporter exporter, boolean deleted) throws Exception {
+        Cursor<String> cursor = redisTemplate.opsForSet().scan(key, null);
+        String item;
+        int n = 0;
+        while (cursor.hasNext()) {
+            item = cursor.next();
+            if (exporter != null) {
+                if (exporter.doExport(n++, item)) {
+                    if (deleted) {
+                        redisTemplate.opsForSet().remove(key, item);
+                    }
+                } else {
+                    break;
+                }
+            }
+        }
+        return n;
     }
 
 }

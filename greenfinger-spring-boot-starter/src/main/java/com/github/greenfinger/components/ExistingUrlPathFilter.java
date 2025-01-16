@@ -9,14 +9,16 @@ package com.github.greenfinger.components;
  */
 public interface ExistingUrlPathFilter extends WebCrawlerComponent {
 
-    String NAMESPACE_PATTERN = "greenfinger:url-path-filter:%s:%s";
-
     boolean mightExist(String path);
 
-    default void clean() {}
+    default void clean() throws Exception {}
 
-    default long size() {
+    default long size() throws Exception {
         return -1;
+    }
+
+    default int export(UrlPathFilterExporter exporter, boolean deleted) throws Exception {
+        throw new UnsupportedOperationException("export");
     }
 
 }

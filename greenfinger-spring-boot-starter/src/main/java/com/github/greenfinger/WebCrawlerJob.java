@@ -93,6 +93,7 @@ public class WebCrawlerJob implements GlobalApplicationEventPublisherAware {
             if (!semaphore.acquire()) {
                 return;
             }
+            WebCrawlerExecutionContextUtils.remove(catalogDetails.getId());
             WebCrawlerExecutionContextUtils.get(catalogDetails.getId());
             channelSwitcher.toggle(true);
 

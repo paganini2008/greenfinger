@@ -133,13 +133,14 @@ public class DefaultWebCrawlerExecutionContext implements WebCrawlerExecutionCon
 
         if (extractor instanceof StatefulExtractor) {
             ((StatefulExtractor<?>) extractor).logout(catalogDetails);
+            log.info("User logout.");
         }
 
-        BeanLifeCycleUtils.destroy(interruptionCheckers);
-        BeanLifeCycleUtils.destroy(urlPathAcceptors);
-        BeanLifeCycleUtils.destroy(existingUrlPathFilter);
-        BeanLifeCycleUtils.destroy(extractor);
-        BeanLifeCycleUtils.destroy(dashboard);
+        BeanLifeCycleUtils.destroyQuietly(interruptionCheckers);
+        BeanLifeCycleUtils.destroyQuietly(urlPathAcceptors);
+        BeanLifeCycleUtils.destroyQuietly(existingUrlPathFilter);
+        BeanLifeCycleUtils.destroyQuietly(extractor);
+        BeanLifeCycleUtils.destroyQuietly(dashboard);
 
         log.info("Destroyed WebCrawler ExecutionContext successfully.");
     }
@@ -151,6 +152,9 @@ public class DefaultWebCrawlerExecutionContext implements WebCrawlerExecutionCon
         }
         for (UrlPathAcceptor urlPathAcceptor : urlPathAcceptors) {
             if (!urlPathAcceptor.accept(catalogDetails, referUrl, path, packet)) {
+                if (log.isTraceEnabled()) {
+                    log.trace("Filter url by: {}", urlPathAcceptor.getDescription());
+                }
                 return false;
             }
         }

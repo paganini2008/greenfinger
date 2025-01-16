@@ -14,7 +14,7 @@ import lombok.extern.slf4j.Slf4j;
  * @Version 1.0.0
  */
 @Slf4j
-public class RedisBloomUrlPathFilter extends RedisBasedExistingUrlPathFilter
+public class RedisBloomUrlPathFilter extends RedisBasedUrlPathFilter
         implements InitializingBean {
 
     private static final int MAX_EXPECTED_INSERTIONS = 100_000_000;
