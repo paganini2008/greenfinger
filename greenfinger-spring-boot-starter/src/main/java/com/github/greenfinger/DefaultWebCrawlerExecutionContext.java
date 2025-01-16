@@ -39,6 +39,12 @@ public class DefaultWebCrawlerExecutionContext implements WebCrawlerExecutionCon
     @Autowired
     private SerializableTaskTimer taskTimer;
 
+    @Autowired
+    private ResourceManager resourceManager;
+
+    @Autowired
+    private WebCrawlerSemaphore semaphore;
+
     private CatalogDetails catalogDetails;
 
     private List<InterruptionChecker> interruptionCheckers;
@@ -173,8 +179,10 @@ public class DefaultWebCrawlerExecutionContext implements WebCrawlerExecutionCon
     public void run() {
         if (shouldInterrupt()) {
             taskTimer.removeBatch(this);
+            resourceManager.setRunningState(catalogDetails.getId(), "none");
+            semaphore.release();
 
-            log.info("{}", dashboard.toString());
+            log.info("WebCrawlerJob is done. Info: {}", dashboard.toString());
         }
     }
 

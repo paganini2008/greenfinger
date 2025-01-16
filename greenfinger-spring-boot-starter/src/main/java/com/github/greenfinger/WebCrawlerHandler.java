@@ -160,7 +160,6 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
         WebCrawlerExecutionContext executionContext =
                 WebCrawlerExecutionContextUtils.get(catalogId);
         if (executionContext.isCompleted()) {
-
             return;
         }
 
@@ -238,7 +237,8 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
                 }
                 if (StringUtils.isNotBlank(href)
                         && isUrlAcceptable(catalogId, refer, href, packet, executionContext)) {
-                    updateRecursively(action, catalogId, refer, href, version, packet);
+                    updateRecursively(action, catalogId, refer, href, version, packet,
+                            executionContext);
                 }
             }
         }
@@ -264,7 +264,13 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
     }
 
     private void updateRecursively(String action, long catalogId, String refer, String path,
-            int version, Packet current) {
+            int version, Packet current, WebCrawlerExecutionContext context) {
+        // String pathIdentifier =
+        // String.format(UNIQUE_PATH_IDENTIFIER, catalogId, refer, path, version);
+        // if (context.getExistingUrlPathFilter().mightExist(pathIdentifier)) {
+        // context.getDashboard().incrementCount(CountingType.EXISTING_URL_COUNT);
+        // return;
+        // }
         Packet packet = new Packet();
         packet.setField("partitioner", "hash");
         packet.setField("action", action);
@@ -283,12 +289,7 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
 
     private void crawlRecursively(String action, long catalogId, String refer, String path,
             int version, Packet current, WebCrawlerExecutionContext context) {
-        String pathIdentifier =
-                String.format(UNIQUE_PATH_IDENTIFIER, catalogId, refer, path, version);
-        if (context.getExistingUrlPathFilter().mightExist(pathIdentifier)) {
-            context.getDashboard().incrementCount(CountingType.EXISTING_URL_COUNT);
-            return;
-        }
+
         Packet packet = new Packet();
         packet.setField("partitioner", "hash");
         packet.setField("action", action);

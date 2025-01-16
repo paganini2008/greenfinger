@@ -41,8 +41,10 @@ public class ToolsController {
         RedissionBloomUrlPathFilter redissionBloomUrlPathFilter =
                 new RedissionBloomUrlPathFilter("test:bloomfilter", redissonClient);
         redissionBloomUrlPathFilter.afterPropertiesSet();
+        String path =
+                "139562187486920207||https://www.meishichina.com||https://home.meishichina.com/recipe.html||3";
         return ApiResult
-                .ok(redissionBloomUrlPathFilter.mightExist(url) ? "existed" : "not existed");
+                .ok(redissionBloomUrlPathFilter.mightExist(path) ? "existed" : "not existed");
     }
 
 }

@@ -1,6 +1,5 @@
 package com.github.greenfinger;
 
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -36,15 +35,15 @@ public class WebCrawlerJob implements GlobalApplicationEventPublisherAware {
     @Autowired
     private ApplicationInfoHolder applicationInfoHolder;
 
-    private AtomicBoolean primaryRunning = new AtomicBoolean(false);
-    private AtomicBoolean secondaryRunning = new AtomicBoolean(false);
+    @Autowired
+    private WebCrawlerSemaphore semaphore;
 
     @Scheduled(cron = "0 */1 * * * ?")
     public void run() {}
 
     @RunAsPrimary
     public void runAsPrimary() throws Exception {
-        if (primaryRunning.get()) {
+        if (semaphore.isOccupied()) {
             return;
         }
         try {
@@ -52,7 +51,9 @@ public class WebCrawlerJob implements GlobalApplicationEventPublisherAware {
             if (catalogDetails == null) {
                 return;
             }
-            primaryRunning.set(true);
+            if (!semaphore.acquire()) {
+                return;
+            }
             String runningState = catalogDetails.getRunningState();
             if (StringUtils.isNotBlank(runningState)) {
                 switch (runningState) {
@@ -71,7 +72,7 @@ public class WebCrawlerJob implements GlobalApplicationEventPublisherAware {
                 }
             }
         } catch (Exception e) {
-            primaryRunning.set(false);
+            semaphore.release();
             if (log.isErrorEnabled()) {
                 log.error(e.getMessage(), e);
             }
@@ -81,7 +82,7 @@ public class WebCrawlerJob implements GlobalApplicationEventPublisherAware {
 
     @RunAsSecondary
     public void runAsSecondary() throws Exception {
-        if (secondaryRunning.get()) {
+        if (semaphore.isOccupied()) {
             return;
         }
         CatalogDetails catalogDetails = catalogDetailsService.loadRunningCatalogDetails();
@@ -89,14 +90,16 @@ public class WebCrawlerJob implements GlobalApplicationEventPublisherAware {
             return;
         }
         try {
-            secondaryRunning.set(true);
+            if (!semaphore.acquire()) {
+                return;
+            }
             WebCrawlerExecutionContextUtils.get(catalogDetails.getId());
             channelSwitcher.toggle(true);
 
             globalApplicationEventPublisher
                     .publishEvent(new WebCrawlerNewJoinerEvent(applicationInfoHolder.get()));
         } catch (Exception e) {
-            secondaryRunning.set(false);
+            semaphore.release();
             if (log.isErrorEnabled()) {
                 log.error(e.getMessage(), e);
             }

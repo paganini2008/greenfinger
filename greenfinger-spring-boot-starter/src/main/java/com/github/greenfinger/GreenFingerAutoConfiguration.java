@@ -49,4 +49,9 @@ public class GreenFingerAutoConfiguration {
         return new DefaultWebCrawlerComponentFactory();
     }
 
+    @Bean
+    public WebCrawlerSemaphore webCrawlerSemaphore() {
+        return new WebCrawlerSemaphore();
+    }
+
 }

@@ -1,9 +1,7 @@
 package com.github.greenfinger;
 
-import java.util.Date;
 import org.springframework.stereotype.Service;
 import com.github.greenfinger.es.ResourceIndexService;
-import com.github.greenfinger.model.CatalogIndex;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -23,8 +21,8 @@ public class CatalogAdminService {
     public void cleanCatalog(long catalogId, boolean retainIndex) {
         resourceManager.deleteResourceByCatalogId(catalogId);
         if (!retainIndex) {
-            resourceIndexService.deleteResource(catalogId, 0);
-            resourceManager.updateCatalogIndex(new CatalogIndex(catalogId, 0, new Date()));
+            resourceIndexService.deleteResource(catalogId, -1);
+            // resourceManager.updateCatalogIndex(new CatalogIndex(catalogId, 0, new Date()));
         }
     }
 
@@ -32,7 +30,7 @@ public class CatalogAdminService {
         resourceManager.deleteResourceByCatalogId(catalogId);
         resourceManager.deleteCatalog(catalogId);
         if (!retainIndex) {
-            resourceIndexService.deleteResource(catalogId, 0);
+            resourceIndexService.deleteResource(catalogId, -1);
         }
     }
 

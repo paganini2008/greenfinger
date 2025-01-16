@@ -96,7 +96,7 @@ public class WebCrawlerService implements GlobalApplicationEventListener<WebCraw
     @Async
     public void update(long catalogId, String referencePath) throws WebCrawlerException {
         CatalogDetails catalogDetails = catalogDetailsService.loadCatalogDetails(catalogId);
-
+        WebCrawlerExecutionContextUtils.remove(catalogId);
         WebCrawlerExecutionContext executionContext =
                 WebCrawlerExecutionContextUtils.get(catalogId);
         executionContext.getDashboard().reset(

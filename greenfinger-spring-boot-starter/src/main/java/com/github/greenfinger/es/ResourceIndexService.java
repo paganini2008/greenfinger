@@ -62,7 +62,7 @@ public class ResourceIndexService {
         NativeSearchQueryBuilder searchQueryBuilder = new NativeSearchQueryBuilder();
         BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery()
                 .must(QueryBuilders.termQuery(SEARCH_FIELD_CATALOG, catalog.getName()));
-        if (version > 0) {
+        if (version >= 0) {
             boolQueryBuilder =
                     boolQueryBuilder.must(QueryBuilders.termQuery(SEARCH_FIELD_VERSION, version));
         }
