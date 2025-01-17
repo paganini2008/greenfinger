@@ -2,6 +2,7 @@ package com.github.greenfinger;
 
 import java.util.List;
 import com.github.doodler.common.page.PageResponse;
+import com.github.doodler.common.page.PageVo;
 import com.github.greenfinger.api.pojo.CatalogInfo;
 import com.github.greenfinger.model.Catalog;
 import com.github.greenfinger.model.CatalogIndex;
@@ -26,7 +27,9 @@ public interface ResourceManager {
 
     int setRunningState(long id, String state);
 
-    PageResponse<CatalogInfo> pageForCatalog(Catalog example, int page, int size);
+    PageVo<CatalogInfo> pageForCatalog(Catalog example, int page, int size);
+
+    PageResponse<CatalogInfo> pageForCatalog2(Catalog example, int page, int size);
 
     List<String> selectAllCats();
 

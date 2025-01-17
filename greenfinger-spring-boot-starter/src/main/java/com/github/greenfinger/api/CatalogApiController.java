@@ -3,7 +3,6 @@ package com.github.greenfinger.api;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,8 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.github.doodler.common.ApiResult;
-import com.github.doodler.common.PageVo;
-import com.github.doodler.common.page.PageResponse;
+import com.github.doodler.common.page.PageVo;
 import com.github.greenfinger.CatalogAdminService;
 import com.github.greenfinger.ResourceManager;
 import com.github.greenfinger.WebCrawlerExecutionContext;
@@ -47,6 +45,13 @@ public class CatalogApiController {
     public ApiResult<List<String>> getCatList() {
         return ApiResult.ok(resourceManager.selectAllCats());
     }
+
+    @GetMapping("/{id}")
+    public ApiResult<Catalog> getCatalog(@PathVariable("id") Long catalogId) {
+        Catalog catalog = resourceManager.getCatalog(catalogId);
+        return ApiResult.ok(catalog);
+    }
+
 
     @PostMapping("/{id}/delete")
     public ApiResult<String> deleteCatalog(@PathVariable("id") Long catalogId) {
@@ -114,11 +119,10 @@ public class CatalogApiController {
     @PostMapping("/list")
     public ApiResult<PageVo<CatalogInfo>> selectForCatalog(@RequestBody Catalog example,
             @RequestParam(value = "page", defaultValue = "1", required = false) int page,
-            @CookieValue(value = "DATA_LIST_SIZE", required = false, defaultValue = "10") int size)
+            @RequestParam(value = "pageSize", required = false, defaultValue = "10") int pageSize)
             throws Exception {
-        PageResponse<CatalogInfo> pageResponse =
-                resourceManager.pageForCatalog(example, page, size);
-        return ApiResult.ok(PageVo.wrap(pageResponse));
+        PageVo<CatalogInfo> pageVo = resourceManager.pageForCatalog(example, page, pageSize);
+        return ApiResult.ok(pageVo);
     }
 
 }

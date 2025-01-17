@@ -41,4 +41,9 @@ public class Catalog implements Serializable {
     private Boolean indexed;
     private Date lastModified;
 
+    public String getDisplayId() {
+        return id != null ? String.valueOf(id) : "";
+    }
+
+
 }

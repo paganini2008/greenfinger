@@ -18,6 +18,7 @@ import com.github.doodler.common.jdbc.annotations.Query;
 import com.github.doodler.common.jdbc.annotations.Sql;
 import com.github.doodler.common.jdbc.annotations.Update;
 import com.github.doodler.common.page.PageReader;
+import com.github.doodler.common.page.PageVo;
 import com.github.greenfinger.api.pojo.CatalogInfo;
 import com.github.greenfinger.model.Catalog;
 
@@ -42,6 +43,10 @@ public interface CatalogDao {
 
     @Get(SQL_CATALOG_SELECT_ONE)
     Catalog getCatalog(@Arg("id") long id);
+
+    @PageQuery(SQL_CATALOG_SELECT_ALL)
+    PageVo<CatalogInfo> pageForCatalog(@Sql String whereClause, @Example Catalog example,
+            @Arg("page") int page, @Arg("pageSize") int pageSize);
 
     @PageQuery(SQL_CATALOG_SELECT_ALL)
     PageReader<CatalogInfo> pageForCatalog(@Sql String whereClause, @Example Catalog example);

@@ -15,7 +15,7 @@ import lombok.ToString;
  */
 @Getter
 @Setter
-@ToString
+@ToString(callSuper = true)
 public class CatalogInfo extends Catalog {
 
     private static final long serialVersionUID = -4801844866936776180L;

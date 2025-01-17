@@ -24,6 +24,7 @@ import com.github.doodler.common.id.IdGenerator;
 import com.github.doodler.common.page.PageReader;
 import com.github.doodler.common.page.PageRequest;
 import com.github.doodler.common.page.PageResponse;
+import com.github.doodler.common.page.PageVo;
 import com.github.doodler.common.utils.UrlUtils;
 import com.github.greenfinger.ResourceManager;
 import com.github.greenfinger.api.pojo.CatalogInfo;
@@ -151,7 +152,28 @@ public class JdbcResourceManger implements ResourceManager {
     }
 
     @Override
-    public PageResponse<CatalogInfo> pageForCatalog(Catalog example, int page, int size) {
+    public PageVo<CatalogInfo> pageForCatalog(Catalog example, int page, int size) {
+        StringBuilder whereClause = new StringBuilder();
+        if (example != null) {
+            if (StringUtils.isNotBlank(example.getName())) {
+                example.setName("%" + example.getName() + "%");
+                whereClause.append(" and a.name like :name");
+            }
+            if (StringUtils.isNotBlank(example.getCat())) {
+                whereClause.append(" and a.cat=:cat");
+            }
+            if (StringUtils.isNotBlank(example.getUrl())) {
+                example.setUrl("%" + example.getUrl() + "%");
+                whereClause.append(" and a.url like :url");
+            }
+        }
+        return catalogDao.pageForCatalog(whereClause.toString(), example, page, size);
+    }
+
+
+
+    @Override
+    public PageResponse<CatalogInfo> pageForCatalog2(Catalog example, int page, int size) {
         StringBuilder whereClause = new StringBuilder();
         if (example != null) {
             if (StringUtils.isNotBlank(example.getName())) {

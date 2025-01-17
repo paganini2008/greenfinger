@@ -25,8 +25,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import com.github.doodler.common.page.PageBean;
-import com.github.doodler.common.page.PageResponse;
+import com.github.doodler.common.page.PageVo;
 import com.github.greenfinger.CatalogAdminService;
 import com.github.greenfinger.ResourceManager;
 import com.github.greenfinger.WebCrawlerExecutionContext;
@@ -76,24 +75,26 @@ public class CatalogController {
         return "redirect:/catalog/";
     }
 
-    @SuppressWarnings("unchecked")
     @PostMapping("/list")
     public String queryForCatalog(@ModelAttribute Catalog example,
             @RequestParam(value = "page", defaultValue = "1", required = false) int page,
             @CookieValue(value = "DATA_LIST_SIZE", required = false, defaultValue = "10") int size,
             Model ui) throws Exception {
-        PageResponse<CatalogInfo> pageResponse =
-                resourceManager.pageForCatalog(example, page, size);
-        PageBean<CatalogInfo> pageBean = PageBean.wrap(pageResponse);
+        PageVo<CatalogInfo> pageVo = resourceManager.pageForCatalog(example, page, size);
         List<CatalogSummary> dataList = new ArrayList<CatalogSummary>(size);
-        for (CatalogInfo catalogInfo : pageBean.getResults()) {
+        for (CatalogInfo catalogInfo : pageVo.getContent()) {
             WebCrawlerExecutionContext context =
                     WebCrawlerExecutionContextUtils.get(catalogInfo.getId());
             dataList.add(new CatalogSummary(catalogInfo, context.getDashboard()));
         }
-        PageBean<CatalogSummary> newPageBean = (PageBean<CatalogSummary>) pageBean.clone();
-        newPageBean.setResults(dataList);
-        ui.addAttribute("page", newPageBean);
+        PageVo<CatalogSummary> newPageVo = new PageVo<>();
+        newPageVo.setNextPage(pageVo.isNextPage());
+        newPageVo.setNextToken(pageVo.getNextToken());
+        newPageVo.setPage(pageVo.getPage());
+        newPageVo.setPageSize(pageVo.getPageSize());
+        newPageVo.setTotalRecords(pageVo.getTotalRecords());
+        newPageVo.setContent(dataList);
+        ui.addAttribute("page", newPageVo);
         return "catalog_list";
     }
 

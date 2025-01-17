@@ -86,7 +86,7 @@ public class ResourceIndexService {
     public void upgradeCatalogIndex() throws WebCrawlerException {
         final StopWatch stopWatch = new StopWatch();
         int page = 1;
-        PageResponse<CatalogInfo> pageResponse = resourceManager.pageForCatalog(null, page, 10);
+        PageResponse<CatalogInfo> pageResponse = resourceManager.pageForCatalog2(null, page, 10);
         for (EachPage<CatalogInfo> eachPage : pageResponse) {
             for (CatalogInfo catalog : eachPage.getContent()) {
                 stopWatch.start(String.format("[%s<%s>]", catalog.getName(), catalog.getUrl()));
@@ -100,7 +100,7 @@ public class ResourceIndexService {
     public void indexCatalogIndex() throws WebCrawlerException {
         final StopWatch stopWatch = new StopWatch();
         int page = 1;
-        PageResponse<CatalogInfo> pageResponse = resourceManager.pageForCatalog(null, page, 10);
+        PageResponse<CatalogInfo> pageResponse = resourceManager.pageForCatalog2(null, page, 10);
         for (EachPage<CatalogInfo> current : pageResponse) {
             for (CatalogInfo catalog : current.getContent()) {
                 stopWatch.start(String.format("[%s<%s>]", catalog.getName(), catalog.getUrl()));
