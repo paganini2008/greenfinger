@@ -11,14 +11,16 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.github.greenfinger.es;
+package com.github.greenfinger.searcher;
 
-import static com.github.greenfinger.es.SearchResult.SEARCH_FIELD_CAT;
-import static com.github.greenfinger.es.SearchResult.SEARCH_FIELD_CONTENT;
-import static com.github.greenfinger.es.SearchResult.SEARCH_FIELD_TITLE;
-import static com.github.greenfinger.es.SearchResult.SEARCH_FIELD_VERSION;
+import static com.github.greenfinger.searcher.SearchResult.SEARCH_FIELD_CAT;
+import static com.github.greenfinger.searcher.SearchResult.SEARCH_FIELD_CONTENT;
+import static com.github.greenfinger.searcher.SearchResult.SEARCH_FIELD_TITLE;
+import static com.github.greenfinger.searcher.SearchResult.SEARCH_FIELD_VERSION;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -33,22 +35,23 @@ import com.github.doodler.common.page.DefaultPageContent;
 import com.github.doodler.common.page.PageContent;
 import com.github.doodler.common.page.PageReader;
 import com.github.doodler.common.utils.BeanCopyUtils;
+import com.github.doodler.common.utils.MapUtils;
 
 /**
  * 
- * @Description: ElasticsearchTemplateResultSlice
+ * @Description: ElasticsearchTemplatePaginator
  * @Author: Fred Feng
  * @Date: 30/12/2024
  * @Version 1.0.0
  */
-public class ElasticsearchTemplateResultSlice implements PageReader<SearchResult> {
+public class ElasticsearchTemplatePaginator implements PageReader<SearchResult> {
 
     private final String cat;
     private final String keyword;
     private final int version;
     private final ElasticsearchRestTemplate elasticsearchRestTemplate;
 
-    public ElasticsearchTemplateResultSlice(String cat, String keyword, int version,
+    public ElasticsearchTemplatePaginator(String cat, String keyword, int version,
             ElasticsearchRestTemplate elasticsearchRestTemplate) {
         this.cat = cat;
         this.keyword = keyword;
@@ -92,8 +95,8 @@ public class ElasticsearchTemplateResultSlice implements PageReader<SearchResult
                 .withHighlightFields(new HighlightBuilder.Field(SEARCH_FIELD_TITLE),
                         new HighlightBuilder.Field(SEARCH_FIELD_CONTENT))
                 .withHighlightBuilder(new HighlightBuilder()
-                        .preTags("<font class=\"search-keyword\" color=\"#FF0000\">")
-                        .postTags("</font>").fragmentSize(120).numOfFragments(3).noMatchSize(100));
+                        .preTags("<font color='red' class='searchKeyword'>").postTags("</font>")
+                        .fragmentSize(120).numOfFragments(5).noMatchSize(120));
         if (limit > 0) {
             searchQueryBuilder =
                     searchQueryBuilder.withPageable(PageRequest.of(pageNumber - 1, limit));
@@ -105,9 +108,29 @@ public class ElasticsearchTemplateResultSlice implements PageReader<SearchResult
         }
         List<SearchResult> dataList = new ArrayList<SearchResult>();
         for (SearchHit<IndexedResource> hit : hits.getSearchHits()) {
-            dataList.add(BeanCopyUtils.copyBean(hit.getContent(), SearchResult.class));
+            dataList.add(convertValueObject(hit));
         }
         return new DefaultPageContent<>(dataList, null);
+    }
+
+    private SearchResult convertValueObject(SearchHit<IndexedResource> hit) {
+        SearchResult searchResult = BeanCopyUtils.copyBean(hit.getContent(), SearchResult.class);
+        Map<String, List<String>> map = hit.getHighlightFields();
+        if (MapUtils.isEmpty(map)) {
+            return searchResult;
+        }
+        String propertyName;
+        List<String> fragments;
+        for (Map.Entry<String, List<String>> entry : map.entrySet()) {
+            propertyName = entry.getKey();
+            fragments = entry.getValue();
+            try {
+                PropertyUtils.setProperty(searchResult, propertyName,
+                        String.join(" ", fragments.toArray(new String[0])));
+            } catch (Exception ingored) {
+            }
+        }
+        return searchResult;
     }
 
 }

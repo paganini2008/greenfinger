@@ -17,8 +17,8 @@ import com.github.doodler.common.transmitter.Partitioner;
 import com.github.doodler.common.utils.CharsetUtils;
 import com.github.greenfinger.components.CountingType;
 import com.github.greenfinger.components.ExistingUrlPathFilter;
-import com.github.greenfinger.es.ResourceIndexService;
 import com.github.greenfinger.model.Resource;
+import com.github.greenfinger.searcher.ResourceIndexService;
 import lombok.extern.slf4j.Slf4j;
 
 /**

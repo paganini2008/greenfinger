@@ -21,7 +21,7 @@ import com.github.greenfinger.components.WebCrawlerComponentFactory;
  * @Date: 31/12/2024
  * @Version 1.0.0
  */
-@EnableElasticsearchRepositories("com.github.greenfinger.es")
+@EnableElasticsearchRepositories("com.github.greenfinger.searcher")
 @ComponentScan("com.github.greenfinger")
 @EnableConfigurationProperties({WebCrawlerProperties.class, WebCrawlerExtractorProperties.class})
 @Configuration(proxyBeanMethods = false)

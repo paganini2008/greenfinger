@@ -1,4 +1,4 @@
-package com.github.greenfinger.es;
+package com.github.greenfinger.searcher;
 
 import java.io.Serializable;
 import java.util.Date;

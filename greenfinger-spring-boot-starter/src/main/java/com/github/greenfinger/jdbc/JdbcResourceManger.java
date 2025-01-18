@@ -70,7 +70,7 @@ public class JdbcResourceManger implements ResourceManager {
     public static final String SQL_RESOURCE_INSERT =
             "insert into crawler_resource (id,title,html,url,cat,create_time,version,catalog_id) values (:id,:title,:html,:url,:cat,:createTime,:version,:catalogId)";
     public static final String SQL_RESOURCE_SELECT_FOR_INDEX =
-            "select * from crawler_resource where catalog_id=:catalogId and version<(select version from crawler_catalog_index where catalog_id=:catalogId)";
+            "select * from crawler_resource where catalog_id=:catalogId and version<=(select version from crawler_catalog_index where catalog_id=:catalogId)";
     public static final String SQL_RESOURCE_SELECT_ONE =
             "select * from crawler_resource where id=:id limit 1";
     public static final String SQL_RESOURCE_LATEST_REFERENCE_PATH =

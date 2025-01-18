@@ -1,4 +1,4 @@
-package com.github.greenfinger.es;
+package com.github.greenfinger.searcher;
 
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
 import org.springframework.stereotype.Component;

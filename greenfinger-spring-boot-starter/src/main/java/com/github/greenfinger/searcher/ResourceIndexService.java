@@ -1,7 +1,7 @@
-package com.github.greenfinger.es;
+package com.github.greenfinger.searcher;
 
-import static com.github.greenfinger.es.SearchResult.SEARCH_FIELD_CATALOG;
-import static com.github.greenfinger.es.SearchResult.SEARCH_FIELD_VERSION;
+import static com.github.greenfinger.searcher.SearchResult.SEARCH_FIELD_CATALOG;
+import static com.github.greenfinger.searcher.SearchResult.SEARCH_FIELD_VERSION;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.jsoup.Jsoup;
@@ -166,7 +166,7 @@ public class ResourceIndexService {
         if (version == null || version < 1) {
             version = resourceManager.maximumVersionOfCatalogIndex(cat);
         }
-        return new ElasticsearchTemplateResultSlice(cat, keyword, version, elasticsearchTemplate);
+        return new ElasticsearchTemplatePaginator(cat, keyword, version, elasticsearchTemplate);
     }
 
 }

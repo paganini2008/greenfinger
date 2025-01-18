@@ -1,7 +1,7 @@
 package com.github.greenfinger;
 
 import org.springframework.stereotype.Service;
-import com.github.greenfinger.es.ResourceIndexService;
+import com.github.greenfinger.searcher.ResourceIndexService;
 import lombok.RequiredArgsConstructor;
 
 /**

@@ -1,4 +1,4 @@
-package com.github.greenfinger.es;
+package com.github.greenfinger.searcher;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.Document;
