@@ -44,6 +44,7 @@ public class WebCrawlerJob implements GlobalApplicationEventPublisherAware {
     @RunAsPrimary
     public void runAsPrimary() throws Exception {
         if (semaphore.isOccupied()) {
+            log.info("Waiting for next round ...");
             return;
         }
         try {
@@ -83,6 +84,7 @@ public class WebCrawlerJob implements GlobalApplicationEventPublisherAware {
     @RunAsSecondary
     public void runAsSecondary() throws Exception {
         if (semaphore.isOccupied()) {
+            log.info("Waiting for next round ...");
             return;
         }
         CatalogDetails catalogDetails = catalogDetailsService.loadRunningCatalogDetails();

@@ -78,8 +78,14 @@ public class WebCrawlerService implements GlobalApplicationEventListener<WebCraw
         data.put("partitioner", "hash");
         data.put("action", "crawl");
         data.put("catalogId", catalogDetails.getId());
+
         data.put("refer", catalogDetails.getUrl());
-        data.put("path", catalogDetails.getUrl());
+        String startUrl = catalogDetails.getStartUrl();
+        if (StringUtils.isNotBlank(startUrl)) {
+            data.put("path", startUrl);
+        } else {
+            data.put("path", catalogDetails.getUrl());
+        }
         data.put("cat", catalogDetails.getCategory());
         data.put("pageEncoding", catalogDetails.getPageEncoding());
         data.put("maxFetchSize", catalogDetails.getMaxFetchSize());
@@ -103,7 +109,9 @@ public class WebCrawlerService implements GlobalApplicationEventListener<WebCraw
                 DateUtils.convertToMillis(catalogDetails.getFetchDuration(), TimeUnit.MINUTES),
                 false);
         if (StringUtils.isBlank(referencePath)) {
-            referencePath = getLatestReferencePath(catalogDetails.getId());
+            referencePath = StringUtils.isNotBlank(catalogDetails.getStartUrl())
+                    ? catalogDetails.getStartUrl()
+                    : getLatestReferencePath(catalogDetails.getId());
         }
 
         Map<String, Object> data = new HashMap<String, Object>();

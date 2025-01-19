@@ -2,7 +2,7 @@ package com.github.greenfinger.api;
 
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.github.doodler.common.ApiResult;
 import com.github.doodler.common.page.PageVo;
 import com.github.greenfinger.CatalogAdminService;
+import com.github.greenfinger.CatalogDetails;
+import com.github.greenfinger.CatalogDetailsService;
 import com.github.greenfinger.ResourceManager;
 import com.github.greenfinger.WebCrawlerExecutionContext;
 import com.github.greenfinger.WebCrawlerExecutionContextUtils;
@@ -41,6 +43,9 @@ public class CatalogApiController {
     @Autowired
     private CatalogAdminService catalogAdminService;
 
+    @Autowired
+    private CatalogDetailsService catalogDetailsService;
+
     @GetMapping("/all/cats")
     public ApiResult<List<String>> getCatList() {
         return ApiResult.ok(resourceManager.selectAllCats());
@@ -53,13 +58,13 @@ public class CatalogApiController {
     }
 
 
-    @PostMapping("/{id}/delete")
+    @DeleteMapping("/{id}")
     public ApiResult<String> deleteCatalog(@PathVariable("id") Long catalogId) {
         catalogAdminService.deleteCatalog(catalogId, false);
         return ApiResult.ok("Waiting for delete operation completion.");
     }
 
-    @PostMapping("/{id}/clean")
+    @DeleteMapping("/{id}/clean")
     public ApiResult<String> cleanCatalog(@PathVariable("id") Long catalogId) {
         catalogAdminService.cleanCatalog(catalogId, false);
         return ApiResult.ok("Waiting for clean operation completion.");
@@ -96,24 +101,31 @@ public class CatalogApiController {
     }
 
     @PostMapping("/{id}/summary")
-    public ApiResult<CatalogSummary> summary(@PathVariable("id") Long catalogId) {
-        Catalog catalog = resourceManager.getCatalog(catalogId);
+    public ApiResult<CatalogSummary> summary(@PathVariable("id") Long catalogId) throws Exception {
+        CatalogDetails catalogDetails = catalogDetailsService.loadCatalogDetails(catalogId);
         WebCrawlerExecutionContext executionContext =
-                WebCrawlerExecutionContextUtils.get(catalogId);
-        return ApiResult.ok(new CatalogSummary(catalog, executionContext.getDashboard()));
+                WebCrawlerExecutionContextUtils.get(catalogId, false);
+        if (executionContext == null) {
+            return ApiResult.ok();
+        }
+        return ApiResult.ok(new CatalogSummary(catalogDetails, executionContext.getDashboard()));
     }
 
-    @PostMapping("/{id}/run")
+    @PostMapping("/{id}/running")
     public ApiResult<Boolean> isRunning(@PathVariable("id") Long catalogId) {
         WebCrawlerExecutionContext context = WebCrawlerExecutionContextUtils.get(catalogId);
-        return ApiResult.ok(!context.getDashboard().isCompleted());
+        return context != null ? ApiResult.ok(!context.getDashboard().isCompleted())
+                : ApiResult.ok(false);
     }
 
     @PostMapping("/{id}/stop")
-    public ApiResult<String> stop(@PathVariable("id") Long catalogId, Model ui) {
-        WebCrawlerExecutionContext context = WebCrawlerExecutionContextUtils.get(catalogId);
-        context.getDashboard().setCompleted(true);
-        return ApiResult.ok("Stop Successfully");
+    public ApiResult<Boolean> stop(@PathVariable("id") Long catalogId) {
+        WebCrawlerExecutionContext context = WebCrawlerExecutionContextUtils.get(catalogId, false);
+        if (context != null) {
+            context.getDashboard().setCompleted(true);
+            return ApiResult.ok(context.getDashboard().isCompleted());
+        }
+        return ApiResult.ok();
     }
 
     @PostMapping("/list")

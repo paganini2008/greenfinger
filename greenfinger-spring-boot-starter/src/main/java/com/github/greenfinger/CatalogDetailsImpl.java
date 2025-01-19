@@ -71,6 +71,11 @@ public class CatalogDetailsImpl implements CatalogDetails {
     }
 
     @Override
+    public String getStartUrl() {
+        return catalog.getStartUrl();
+    }
+
+    @Override
     public String getCategory() {
         return catalog.getCat();
     }

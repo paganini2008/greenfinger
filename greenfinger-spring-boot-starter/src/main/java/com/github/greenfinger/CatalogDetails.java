@@ -21,6 +21,8 @@ public interface CatalogDetails {
 
     String getUrl();
 
+    String getStartUrl();
+
     String getCategory();
 
     List<String> getPathPatterns();

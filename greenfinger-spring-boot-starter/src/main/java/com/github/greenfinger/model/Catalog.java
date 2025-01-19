@@ -24,6 +24,7 @@ public class Catalog implements Serializable {
     private String name;
     private String cat;
     private String url;
+    private String startUrl;
     private String pageEncoding;
     private String pathPattern;
     private String excludedPathPattern;
@@ -44,6 +45,4 @@ public class Catalog implements Serializable {
     public String getDisplayId() {
         return id != null ? String.valueOf(id) : "";
     }
-
-
 }

@@ -27,6 +27,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import com.github.doodler.common.page.PageVo;
 import com.github.greenfinger.CatalogAdminService;
+import com.github.greenfinger.CatalogDetails;
+import com.github.greenfinger.CatalogDetailsService;
 import com.github.greenfinger.ResourceManager;
 import com.github.greenfinger.WebCrawlerExecutionContext;
 import com.github.greenfinger.WebCrawlerExecutionContextUtils;
@@ -54,6 +56,9 @@ public class CatalogController {
 
     @Autowired
     private CatalogAdminService catalogAdminService;
+
+    @Autowired
+    private CatalogDetailsService catalogDetailsService;
 
     @GetMapping("/")
     public String index(Model ui) {
@@ -85,7 +90,7 @@ public class CatalogController {
         for (CatalogInfo catalogInfo : pageVo.getContent()) {
             WebCrawlerExecutionContext context =
                     WebCrawlerExecutionContextUtils.get(catalogInfo.getId());
-            dataList.add(new CatalogSummary(catalogInfo, context.getDashboard()));
+            dataList.add(new CatalogSummary(null, context.getDashboard()));
         }
         PageVo<CatalogSummary> newPageVo = new PageVo<>();
         newPageVo.setNextPage(pageVo.isNextPage());
@@ -135,10 +140,10 @@ public class CatalogController {
     }
 
     @PostMapping("/{id}/summary/content")
-    public String summaryContent(@PathVariable("id") Long catalogId, Model ui) {
-        Catalog catalog = resourceManager.getCatalog(catalogId);
+    public String summaryContent(@PathVariable("id") Long catalogId, Model ui) throws Exception {
+        CatalogDetails catalogDetails = catalogDetailsService.loadCatalogDetails(catalogId);
         WebCrawlerExecutionContext context = WebCrawlerExecutionContextUtils.get(catalogId);
-        ui.addAttribute("summary", new CatalogSummary(catalog, context.getDashboard()));
+        ui.addAttribute("summary", new CatalogSummary(catalogDetails, context.getDashboard()));
         return "catalog_index_summary";
     }
 

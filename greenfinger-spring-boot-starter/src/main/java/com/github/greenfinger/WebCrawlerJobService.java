@@ -1,5 +1,6 @@
 package com.github.greenfinger;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -21,7 +22,12 @@ public class WebCrawlerJobService {
     }
 
     public void crawl(long catalogId) {
-        resourceManager.setRunningState(catalogId, "crawl");
+        String path = resourceManager.getLatestReferencePath(catalogId);
+        if (StringUtils.isNotBlank(path)) {
+            resourceManager.setRunningState(catalogId, "update");
+        } else {
+            resourceManager.setRunningState(catalogId, "crawl");
+        }
     }
 
     public void update(long catalogId) {

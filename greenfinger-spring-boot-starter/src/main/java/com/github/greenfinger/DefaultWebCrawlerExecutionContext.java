@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.stereotype.Component;
 import com.github.doodler.common.context.BeanLifeCycleUtils;
+import com.github.doodler.common.transmitter.ChannelSwitcher;
 import com.github.doodler.common.transmitter.Packet;
 import com.github.doodler.common.utils.SerializableTaskTimer;
 import com.github.greenfinger.components.Dashboard;
@@ -44,6 +45,9 @@ public class DefaultWebCrawlerExecutionContext implements WebCrawlerExecutionCon
 
     @Autowired
     private WebCrawlerSemaphore semaphore;
+
+    @Autowired
+    private ChannelSwitcher channelSwitcher;
 
     private CatalogDetails catalogDetails;
 
@@ -182,10 +186,11 @@ public class DefaultWebCrawlerExecutionContext implements WebCrawlerExecutionCon
     @Override
     public void run() {
         if (shouldInterrupt()) {
+
             taskTimer.removeBatch(this);
+            channelSwitcher.toggle(false);
             resourceManager.setRunningState(catalogDetails.getId(), "none");
             semaphore.release();
-
             log.info("WebCrawlerJob is done. Info: {}", dashboard.toString());
         }
     }
