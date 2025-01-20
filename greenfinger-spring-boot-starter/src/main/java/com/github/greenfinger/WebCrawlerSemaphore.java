@@ -14,6 +14,16 @@ public final class WebCrawlerSemaphore {
 
     private final Semaphore semaphore = new Semaphore(1);
 
+    private long catalogId;
+
+    public long getCatalogId() {
+        return catalogId;
+    }
+
+    public void setCatalogId(long catalogId) {
+        this.catalogId = catalogId;
+    }
+
     public boolean acquire() {
         try {
             return semaphore.tryAcquire(3, TimeUnit.SECONDS);

@@ -19,8 +19,10 @@ doodler:
   transmitter:
     nio:
       selection: netty
+      defaultExternalChannelAccessable: false
       server:
         bindHostName: 192.168.159.1
-#    event:
-#      logging:
-#        enabled: true
+    event:
+      bufferCleanerEnabled: false
+      #logging:
+      #  enabled: true

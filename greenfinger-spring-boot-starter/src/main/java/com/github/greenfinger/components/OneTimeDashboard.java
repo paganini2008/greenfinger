@@ -56,17 +56,15 @@ public class OneTimeDashboard implements Dashboard {
     }
 
     @Override
-    public void reset(long durationInMs, boolean includingCount) {
+    public void reset(long durationInMs) {
         startTime.set(System.currentTimeMillis());
         endTime.set(startTime.get() + durationInMs);
-        if (includingCount) {
-            totalUrlCount.set(0);
-            invalidUrlCount.set(0);
-            existingUrlCount.set(0);
-            filteredUrlCount.set(0);
-            savedResourceCount.set(0);
-            indexedResourceCount.set(0);
-        }
+        totalUrlCount.set(0);
+        invalidUrlCount.set(0);
+        existingUrlCount.set(0);
+        filteredUrlCount.set(0);
+        savedResourceCount.set(0);
+        indexedResourceCount.set(0);
         completed.set(false);
         timestamp = System.currentTimeMillis();
     }

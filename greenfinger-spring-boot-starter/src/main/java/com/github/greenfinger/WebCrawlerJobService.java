@@ -18,13 +18,28 @@ import lombok.extern.slf4j.Slf4j;
 public class WebCrawlerJobService {
 
     @Autowired
+    private WebCrawlerSemaphore semaphore;
+
+    @Autowired
+    private CatalogDetailsService catalogDetailsService;
+
+    @Autowired
     private ResourceManager resourceManager;
 
     public void rebuild(long catalogId) {
         resourceManager.setRunningState(catalogId, "rebuild");
     }
 
-    public void crawl(long catalogId) {
+    public void crawl(long catalogId) throws WebCrawlerException {
+        if (semaphore.isOccupied()) {
+            throw new WebCrawlerRunningException(
+                    "Catalog '" + semaphore.getCatalogId() + "' is running!");
+        }
+        CatalogDetails catalogDetails = catalogDetailsService.loadRunningCatalogDetails();
+        if (catalogDetails != null) {
+            throw new WebCrawlerRunningException(
+                    "Catalog '" + catalogDetails.getId() + "' is running!");
+        }
         String path;
         try {
             path = resourceManager.getLatestReferencePath(catalogId);
@@ -41,10 +56,6 @@ public class WebCrawlerJobService {
         } else {
             resourceManager.setRunningState(catalogId, "crawl");
         }
-    }
-
-    public void update(long catalogId) {
-        resourceManager.setRunningState(catalogId, "update");
     }
 
     public void finish(long catalogId) {

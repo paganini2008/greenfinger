@@ -12,7 +12,7 @@ public interface Dashboard extends WebCrawlerComponent {
 
     String NAMESPACE_PATTERN = "greenfinger:dashboard:%s:%s:%s";
 
-    void reset(long durationInMs, boolean includingCount);
+    void reset(long durationInMs);
 
     boolean isCompleted();
 

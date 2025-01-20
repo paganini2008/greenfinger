@@ -98,7 +98,7 @@ public class ElasticsearchTemplatePaginator implements PageReader<SearchResult> 
                         new HighlightBuilder.Field(SEARCH_FIELD_CONTENT))
                 .withHighlightBuilder(new HighlightBuilder()
                         .preTags("<font color='red' class='searchKeyword'>").postTags("</font>")
-                        .fragmentSize(120).numOfFragments(5).noMatchSize(120));
+                        .fragmentSize(120).numOfFragments(3).noMatchSize(120));
         if (limit > 0) {
             searchQueryBuilder =
                     searchQueryBuilder.withPageable(PageRequest.of(pageNumber - 1, limit));

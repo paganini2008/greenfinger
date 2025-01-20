@@ -1,5 +1,6 @@
 package com.github.greenfinger;
 
+import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -10,6 +11,7 @@ import com.github.doodler.common.events.GlobalApplicationEventPublisherAware;
 import com.github.doodler.common.scheduler.RunAsPrimary;
 import com.github.doodler.common.scheduler.RunAsSecondary;
 import com.github.doodler.common.transmitter.ChannelSwitcher;
+import com.github.doodler.common.utils.DateUtils;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -39,22 +41,32 @@ public class WebCrawlerJob implements GlobalApplicationEventPublisherAware {
     private WebCrawlerSemaphore semaphore;
 
     @Scheduled(cron = "0 */1 * * * ?")
-    public void run() {}
+    public void run() {
+        log.info("WebCrawlerJob start running.");
+    }
 
     @RunAsPrimary
     public void runAsPrimary() throws Exception {
         if (semaphore.isOccupied()) {
-            log.info("Waiting for next round ...");
+            return;
+        }
+        CatalogDetails catalogDetails = catalogDetailsService.loadRunningCatalogDetails();
+        if (catalogDetails == null) {
             return;
         }
         try {
-            CatalogDetails catalogDetails = catalogDetailsService.loadRunningCatalogDetails();
-            if (catalogDetails == null) {
-                return;
-            }
             if (!semaphore.acquire()) {
                 return;
             }
+            final long catalogId = catalogDetails.getId();
+            semaphore.setCatalogId(catalogId);
+            WebCrawlerExecutionContextUtils.remove(catalogId);
+            WebCrawlerExecutionContext executionContext =
+                    WebCrawlerExecutionContextUtils.get(catalogId);
+            executionContext.getDashboard().reset(
+                    DateUtils.convertToMillis(catalogDetails.getFetchDuration(), TimeUnit.MINUTES));
+            channelSwitcher.toggle(false);
+
             String runningState = catalogDetails.getRunningState();
             if (StringUtils.isNotBlank(runningState)) {
                 switch (runningState) {
@@ -68,15 +80,17 @@ public class WebCrawlerJob implements GlobalApplicationEventPublisherAware {
                         webCrawlerService.update(catalogDetails.getId(), null);
                         break;
                     default:
-                        log.warn("Unknown running state: {}", runningState);
-                        break;
+                        throw new UnsupportedOperationException(
+                                "Unknown catalog running state: " + runningState);
                 }
             }
         } catch (Exception e) {
-            semaphore.release();
             if (log.isErrorEnabled()) {
                 log.error(e.getMessage(), e);
             }
+            channelSwitcher.toggle(false);
+            WebCrawlerExecutionContextUtils.remove(catalogDetails.getId());
+            semaphore.release();
         }
 
     }
@@ -84,7 +98,6 @@ public class WebCrawlerJob implements GlobalApplicationEventPublisherAware {
     @RunAsSecondary
     public void runAsSecondary() throws Exception {
         if (semaphore.isOccupied()) {
-            log.info("Waiting for next round ...");
             return;
         }
         CatalogDetails catalogDetails = catalogDetailsService.loadRunningCatalogDetails();
@@ -95,6 +108,7 @@ public class WebCrawlerJob implements GlobalApplicationEventPublisherAware {
             if (!semaphore.acquire()) {
                 return;
             }
+            semaphore.setCatalogId(catalogDetails.getId());
             WebCrawlerExecutionContextUtils.remove(catalogDetails.getId());
             WebCrawlerExecutionContextUtils.get(catalogDetails.getId());
             channelSwitcher.toggle(true);
@@ -102,10 +116,13 @@ public class WebCrawlerJob implements GlobalApplicationEventPublisherAware {
             globalApplicationEventPublisher
                     .publishEvent(new WebCrawlerNewJoinerEvent(applicationInfoHolder.get()));
         } catch (Exception e) {
-            semaphore.release();
             if (log.isErrorEnabled()) {
                 log.error(e.getMessage(), e);
             }
+            channelSwitcher.toggle(false);
+            WebCrawlerExecutionContextUtils.remove(catalogDetails.getId());
+            semaphore.release();
+
         }
     }
 

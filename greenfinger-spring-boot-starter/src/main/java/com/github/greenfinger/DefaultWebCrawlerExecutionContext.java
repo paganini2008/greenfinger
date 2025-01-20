@@ -186,7 +186,6 @@ public class DefaultWebCrawlerExecutionContext implements WebCrawlerExecutionCon
     @Override
     public void run() {
         if (shouldInterrupt()) {
-
             taskTimer.removeBatch(this);
             channelSwitcher.toggle(false);
             resourceManager.setRunningState(catalogDetails.getId(), "none");

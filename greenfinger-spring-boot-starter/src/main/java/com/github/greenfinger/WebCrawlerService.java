@@ -3,7 +3,6 @@ package com.github.greenfinger;
 import java.net.SocketAddress;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Marker;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +16,6 @@ import com.github.doodler.common.transmitter.NioClient;
 import com.github.doodler.common.transmitter.Packet;
 import com.github.doodler.common.transmitter.Partitioner;
 import com.github.doodler.common.transmitter.TransmitterConstants;
-import com.github.doodler.common.utils.DateUtils;
 import com.github.doodler.common.utils.MapUtils;
 import com.github.doodler.common.utils.NetUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -66,14 +64,6 @@ public class WebCrawlerService implements GlobalApplicationEventListener<WebCraw
     @Async
     public void crawl(long catalogId) throws WebCrawlerException {
         CatalogDetails catalogDetails = catalogDetailsService.loadCatalogDetails(catalogId);
-        WebCrawlerExecutionContextUtils.remove(catalogId);
-        WebCrawlerExecutionContext executionContext =
-                WebCrawlerExecutionContextUtils.get(catalogId);
-        executionContext.getDashboard().reset(
-                DateUtils.convertToMillis(catalogDetails.getFetchDuration(), TimeUnit.MINUTES),
-                true);
-        channelSwitcher.toggle(false);
-
         Map<String, Object> data = new HashMap<String, Object>();
         data.put("partitioner", "hash");
         data.put("action", "crawl");
@@ -102,18 +92,12 @@ public class WebCrawlerService implements GlobalApplicationEventListener<WebCraw
     @Async
     public void update(long catalogId, String referencePath) throws WebCrawlerException {
         CatalogDetails catalogDetails = catalogDetailsService.loadCatalogDetails(catalogId);
-        WebCrawlerExecutionContextUtils.remove(catalogId);
-        WebCrawlerExecutionContext executionContext =
-                WebCrawlerExecutionContextUtils.get(catalogId);
-        executionContext.getDashboard().reset(
-                DateUtils.convertToMillis(catalogDetails.getFetchDuration(), TimeUnit.MINUTES),
-                true);
         if (StringUtils.isBlank(referencePath)) {
             referencePath = StringUtils.isNotBlank(catalogDetails.getStartUrl())
                     ? catalogDetails.getStartUrl()
                     : getLatestReferencePath(catalogDetails.getId());
         }
-        channelSwitcher.toggle(false);
+
         Map<String, Object> data = new HashMap<String, Object>();
         data.put("partitioner", "hash");
         data.put("action", "update");
