@@ -107,13 +107,13 @@ public class WebCrawlerService implements GlobalApplicationEventListener<WebCraw
                 WebCrawlerExecutionContextUtils.get(catalogId);
         executionContext.getDashboard().reset(
                 DateUtils.convertToMillis(catalogDetails.getFetchDuration(), TimeUnit.MINUTES),
-                false);
+                true);
         if (StringUtils.isBlank(referencePath)) {
             referencePath = StringUtils.isNotBlank(catalogDetails.getStartUrl())
                     ? catalogDetails.getStartUrl()
                     : getLatestReferencePath(catalogDetails.getId());
         }
-
+        channelSwitcher.toggle(false);
         Map<String, Object> data = new HashMap<String, Object>();
         data.put("partitioner", "hash");
         data.put("action", "update");

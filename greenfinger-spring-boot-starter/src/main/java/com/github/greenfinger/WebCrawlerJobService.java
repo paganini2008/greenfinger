@@ -2,7 +2,9 @@ package com.github.greenfinger;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 
@@ -11,6 +13,7 @@ import org.springframework.stereotype.Service;
  * @Date: 15/01/2025
  * @Version 1.0.0
  */
+@Slf4j
 @Service
 public class WebCrawlerJobService {
 
@@ -22,7 +25,17 @@ public class WebCrawlerJobService {
     }
 
     public void crawl(long catalogId) {
-        String path = resourceManager.getLatestReferencePath(catalogId);
+        String path;
+        try {
+            path = resourceManager.getLatestReferencePath(catalogId);
+        } catch (DataAccessException e) {
+            if (log.isErrorEnabled()) {
+                log.error(e.getMessage(), e);
+            }
+            path = "";
+        } catch (Exception e) {
+            throw e;
+        }
         if (StringUtils.isNotBlank(path)) {
             resourceManager.setRunningState(catalogId, "update");
         } else {

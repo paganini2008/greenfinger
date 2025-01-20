@@ -163,7 +163,7 @@ public class ResourceIndexService {
     }
 
     public PageReader<SearchResult> search(String cat, String keyword, Integer version) {
-        if (version == null || version < 1) {
+        if (version == null) {
             version = resourceManager.maximumVersionOfCatalogIndex(cat);
         }
         return new ElasticsearchTemplatePaginator(cat, keyword, version, elasticsearchTemplate);

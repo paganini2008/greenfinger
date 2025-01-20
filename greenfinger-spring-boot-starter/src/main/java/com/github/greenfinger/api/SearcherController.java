@@ -29,7 +29,7 @@ public class SearcherController {
     @GetMapping("/")
     public ApiResult<PageVo<SearchResult>> search(@RequestParam("q") String keyword,
             @RequestParam(name = "c", required = false) String cat,
-            @RequestParam(name = "v", required = false) Integer version,
+            @RequestParam(name = "v", required = false, defaultValue = "-1") Integer version,
             @RequestParam(value = "page", defaultValue = "1", required = false) int page,
             @RequestParam(value = "pageSize", required = false, defaultValue = "10") int size,
             Model ui) throws Exception {
