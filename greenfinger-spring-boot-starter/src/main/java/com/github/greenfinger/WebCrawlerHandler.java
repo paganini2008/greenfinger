@@ -46,6 +46,7 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
     @Autowired
     private ResourceIndexService indexService;
 
+    @Override
     public void consume(Packet packet) {
         final String action = (String) packet.getField("action");
         if (StringUtils.isNotBlank(action)) {
@@ -203,6 +204,7 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
         if (executionContext.getExistingUrlPathFilter().mightExist(pathIdentifier)) {
             executionContext.getDashboard().incrementCount(CountingType.EXISTING_URL_COUNT);
         } else {
+
             try {
                 Resource resource = new Resource();
                 resource.setTitle(document.title());

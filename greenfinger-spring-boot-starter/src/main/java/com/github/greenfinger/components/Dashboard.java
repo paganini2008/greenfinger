@@ -8,19 +8,9 @@ package com.github.greenfinger.components;
  * @Date: 11/01/2025
  * @Version 1.0.0
  */
-public interface Dashboard extends WebCrawlerComponent {
+public interface Dashboard extends DashboardManager, WebCrawlerComponent {
 
     String NAMESPACE_PATTERN = "greenfinger:dashboard:%s:%s:%s";
-
-    void reset(long durationInMs);
-
-    boolean isCompleted();
-
-    void setCompleted(boolean completed);
-
-    long incrementCount(CountingType countingType);
-
-    long incrementCount(CountingType countingType, int delta);
 
     long getTotalUrlCount();
 

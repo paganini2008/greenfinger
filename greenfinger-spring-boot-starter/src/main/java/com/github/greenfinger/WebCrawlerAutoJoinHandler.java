@@ -41,29 +41,30 @@ public class WebCrawlerAutoJoinHandler implements GlobalApplicationEventPublishe
     @EventListener({ApplicationReadyEvent.class})
     public void autoJoin() throws Exception {
         CatalogDetails catalogDetails = catalogDetailsService.loadRunningCatalogDetails();
-        if (catalogDetails == null) {
-            return;
-        }
-        try {
-            if (!semaphore.acquire()) {
-                return;
-            }
-            semaphore.setCatalogId(catalogDetails.getId());
-            WebCrawlerExecutionContextUtils.remove(catalogDetails.getId());
-            WebCrawlerExecutionContextUtils.get(catalogDetails.getId());
-            channelSwitcher.toggle(true);
-            globalApplicationEventPublisher
-                    .publishEvent(new WebCrawlerNewJoinerEvent(applicationInfoHolder.get()));
+        if (catalogDetails != null) {
+            try {
+                if (!semaphore.acquire()) {
+                    return;
+                }
+                semaphore.setCatalogId(catalogDetails.getId());
+                WebCrawlerExecutionContextUtils.remove(catalogDetails.getId());
+                WebCrawlerExecutionContextUtils.get(catalogDetails.getId());
+                channelSwitcher.toggle(true);
+                globalApplicationEventPublisher
+                        .publishEvent(new WebCrawlerNewJoinerEvent(applicationInfoHolder.get()));
 
-            eventPublisher.enableBufferCleaner(true);
-        } catch (Exception e) {
-            if (log.isErrorEnabled()) {
-                log.error(e.getMessage(), e);
+            } catch (Exception e) {
+                if (log.isErrorEnabled()) {
+                    log.error(e.getMessage(), e);
+                }
+                channelSwitcher.toggle(false);
+                WebCrawlerExecutionContextUtils.remove(catalogDetails.getId());
+                semaphore.release();
             }
-            channelSwitcher.toggle(false);
-            WebCrawlerExecutionContextUtils.remove(catalogDetails.getId());
-            semaphore.release();
+        } else {
+
         }
+        eventPublisher.enableBufferCleaner(true);
     }
 
     private GlobalApplicationEventPublisher globalApplicationEventPublisher;
