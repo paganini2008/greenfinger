@@ -163,7 +163,10 @@ public class OneTimeDashboard implements Dashboard {
 
     @Override
     public long getElapsedTime() {
-        return startTime.get() > 0 ? System.currentTimeMillis() - startTime.get() : 0;
+        return getStartTime() > 0
+                ? isCompleted() ? getEndTime() - getStartTime()
+                        : System.currentTimeMillis() - getStartTime()
+                : 0;
     }
 
     @Override

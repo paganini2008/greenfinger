@@ -3,6 +3,8 @@ package com.github.greenfinger;
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.context.annotation.Scope;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.stereotype.Component;
@@ -17,6 +19,7 @@ import com.github.greenfinger.components.InterruptionChecker;
 import com.github.greenfinger.components.StatefulExtractor;
 import com.github.greenfinger.components.UrlPathAcceptor;
 import com.github.greenfinger.components.WebCrawlerComponentFactory;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -29,7 +32,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Scope("prototype")
 @Component
-public class DefaultWebCrawlerExecutionContext implements WebCrawlerExecutionContext, Runnable {
+public class DefaultWebCrawlerExecutionContext
+        implements WebCrawlerExecutionContext, Runnable, ApplicationEventPublisherAware {
 
     @Autowired
     private CatalogDetailsService catalogDetailsService;
@@ -60,6 +64,9 @@ public class DefaultWebCrawlerExecutionContext implements WebCrawlerExecutionCon
     private ExistingUrlPathFilter existingUrlPathFilter;
 
     private Dashboard dashboard;
+
+    @Setter
+    private ApplicationEventPublisher applicationEventPublisher;
 
     @Override
     public CatalogDetails getCatalogDetails() {
@@ -187,9 +194,11 @@ public class DefaultWebCrawlerExecutionContext implements WebCrawlerExecutionCon
     public void run() {
         if (shouldInterrupt()) {
             taskTimer.removeBatch(this);
-            channelSwitcher.toggle(false);
+            channelSwitcher.setEnabled(false);
             resourceManager.setRunningState(catalogDetails.getId(), "none");
             semaphore.release();
+            applicationEventPublisher.publishEvent(new WebCrawlerCompletionEvent(this,
+                    catalogDetails.getId(), catalogDetails.getVersion()));
             log.info("WebCrawlerJob is done. Info: {}", dashboard.toString());
         }
     }

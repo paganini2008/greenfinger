@@ -1,6 +1,5 @@
 package com.github.greenfinger;
 
-import java.net.SocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
@@ -8,16 +7,9 @@ import org.slf4j.Marker;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import com.github.doodler.common.cloud.ApplicationInfo;
-import com.github.doodler.common.cloud.ApplicationInfoHolder;
-import com.github.doodler.common.events.GlobalApplicationEventListener;
-import com.github.doodler.common.transmitter.ChannelSwitcher;
 import com.github.doodler.common.transmitter.NioClient;
 import com.github.doodler.common.transmitter.Packet;
 import com.github.doodler.common.transmitter.Partitioner;
-import com.github.doodler.common.transmitter.TransmitterConstants;
-import com.github.doodler.common.utils.MapUtils;
-import com.github.doodler.common.utils.NetUtils;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -29,7 +21,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Service
-public class WebCrawlerService implements GlobalApplicationEventListener<WebCrawlerNewJoinerEvent> {
+public class WebCrawlerService {
 
     @Autowired
     private NioClient nioClient;
@@ -45,12 +37,6 @@ public class WebCrawlerService implements GlobalApplicationEventListener<WebCraw
 
     @Autowired
     private CatalogDetailsService catalogDetailsService;
-
-    @Autowired
-    private ChannelSwitcher channelSwitcher;
-
-    @Autowired
-    private ApplicationInfoHolder applicationInfoHolder;
 
     @Autowired
     private Marker marker;
@@ -121,21 +107,4 @@ public class WebCrawlerService implements GlobalApplicationEventListener<WebCraw
         return resourceManager.getLatestReferencePath(catalogId);
     }
 
-    @Override
-    public void onGlobalApplicationEvent(WebCrawlerNewJoinerEvent event) {
-        if (!applicationInfoHolder.isPrimary()) {
-            return;
-        }
-        ApplicationInfo applicationInfo = (ApplicationInfo) event.getSource();
-        Map<String, String> metadata = applicationInfo.getMetadata();
-        if (MapUtils.isEmpty(metadata)) {
-            return;
-        }
-        String serviceLocation = metadata.get(TransmitterConstants.TRANSMITTER_SERVER_LOCATION);
-        if (StringUtils.isNotBlank(serviceLocation)) {
-            SocketAddress remoteAddr = NetUtils.parse(serviceLocation);
-            channelSwitcher.enableExternalChannel(remoteAddr, true);
-            log.info(marker, "Joined channel to '{}'", remoteAddr);
-        }
-    }
 }

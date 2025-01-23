@@ -6,11 +6,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import com.github.doodler.common.cloud.ApplicationInfoHolder;
-import com.github.doodler.common.events.GlobalApplicationEventPublisher;
-import com.github.doodler.common.events.GlobalApplicationEventPublisherAware;
+import com.github.doodler.common.events.EventPublisher;
 import com.github.doodler.common.scheduler.RunAsPrimary;
 import com.github.doodler.common.scheduler.RunAsSecondary;
 import com.github.doodler.common.transmitter.ChannelSwitcher;
+import com.github.doodler.common.transmitter.Packet;
 import com.github.doodler.common.utils.DateUtils;
 import lombok.extern.slf4j.Slf4j;
 
@@ -23,7 +23,10 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Component
-public class WebCrawlerJob implements GlobalApplicationEventPublisherAware {
+public class WebCrawlerJob {
+
+    @Autowired
+    private EventPublisher<Packet> eventPublisher;
 
     @Autowired
     private CatalogDetailsService catalogDetailsService;
@@ -65,7 +68,6 @@ public class WebCrawlerJob implements GlobalApplicationEventPublisherAware {
                     WebCrawlerExecutionContextUtils.get(catalogId);
             executionContext.getDashboard().reset(
                     DateUtils.convertToMillis(catalogDetails.getFetchDuration(), TimeUnit.MINUTES));
-            channelSwitcher.toggle(false);
 
             String runningState = catalogDetails.getRunningState();
             if (StringUtils.isNotBlank(runningState)) {
@@ -83,15 +85,17 @@ public class WebCrawlerJob implements GlobalApplicationEventPublisherAware {
                         throw new UnsupportedOperationException(
                                 "Unknown catalog running state: " + runningState);
                 }
+                channelSwitcher.setEnabled(true);
             }
         } catch (Exception e) {
             if (log.isErrorEnabled()) {
                 log.error(e.getMessage(), e);
             }
-            channelSwitcher.toggle(false);
+            channelSwitcher.setEnabled(false);
             WebCrawlerExecutionContextUtils.remove(catalogDetails.getId());
             semaphore.release();
         }
+        eventPublisher.enableBufferCleaner(true);
 
     }
 
@@ -111,27 +115,15 @@ public class WebCrawlerJob implements GlobalApplicationEventPublisherAware {
             semaphore.setCatalogId(catalogDetails.getId());
             WebCrawlerExecutionContextUtils.remove(catalogDetails.getId());
             WebCrawlerExecutionContextUtils.get(catalogDetails.getId());
-            channelSwitcher.toggle(true);
-
-            globalApplicationEventPublisher
-                    .publishEvent(new WebCrawlerNewJoinerEvent(applicationInfoHolder.get()));
+            channelSwitcher.setEnabled(true);
         } catch (Exception e) {
             if (log.isErrorEnabled()) {
                 log.error(e.getMessage(), e);
             }
-            channelSwitcher.toggle(false);
+            channelSwitcher.setEnabled(false);
             WebCrawlerExecutionContextUtils.remove(catalogDetails.getId());
             semaphore.release();
-
         }
+        eventPublisher.enableBufferCleaner(true);
     }
-
-    private GlobalApplicationEventPublisher globalApplicationEventPublisher;
-
-    @Override
-    public void setGlobalApplicationEventPublisher(
-            GlobalApplicationEventPublisher globalApplicationEventPublisher) {
-        this.globalApplicationEventPublisher = globalApplicationEventPublisher;
-    }
-
 }

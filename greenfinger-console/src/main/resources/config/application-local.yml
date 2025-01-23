@@ -18,11 +18,11 @@ spring:
 doodler:
   transmitter:
     nio:
-      selection: netty
-      defaultExternalChannelAccessable: false
+   #   selection: netty
+   #   defaultExternalChannelAccessable: false
       server:
         bindHostName: 192.168.159.1
-    event:
-      bufferCleanerEnabled: false
+   # event:
+   #   bufferCleanerEnabled: false
       #logging:
       #  enabled: true

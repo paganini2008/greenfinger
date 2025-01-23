@@ -61,8 +61,10 @@ public class ElasticsearchTemplatePaginator implements PageReader<SearchResult> 
 
     @Override
     public long rowCount() {
-        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery()
-                .must(QueryBuilders.termQuery(SEARCH_FIELD_VERSION, version));
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+        if (version >= 0) {
+            boolQueryBuilder.must(QueryBuilders.termQuery(SEARCH_FIELD_VERSION, version));
+        }
         if (StringUtils.isNotBlank(cat)) {
             boolQueryBuilder =
                     boolQueryBuilder.must(QueryBuilders.termQuery(SEARCH_FIELD_CAT, cat));

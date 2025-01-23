@@ -1,7 +1,9 @@
 package com.github.greenfinger;
 
+import javax.annotation.PostConstruct;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.event.EventListener;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
@@ -18,49 +20,72 @@ import lombok.extern.slf4j.Slf4j;
 public class WebCrawlerJobService {
 
     @Autowired
-    private WebCrawlerSemaphore semaphore;
-
-    @Autowired
     private CatalogDetailsService catalogDetailsService;
 
     @Autowired
     private ResourceManager resourceManager;
 
-    public void rebuild(long catalogId) {
-        resourceManager.setRunningState(catalogId, "rebuild");
+    private CatalogDelayQueue catalogDelayQueue;
+
+    @PostConstruct
+    public void configure() {
+        catalogDelayQueue = new CatalogDelayQueue(action -> {
+            try {
+                if ("rebuild".equals(action.getAction())) {
+                    rebuild(action.getCatalogId());
+                } else {
+                    crawl(action.getCatalogId());
+                }
+            } catch (Exception e) {
+                if (log.isErrorEnabled()) {
+                    log.error(e.getMessage(), e);
+                }
+            }
+            return null;
+        });
+    }
+
+    public void rebuild(long catalogId) throws WebCrawlerException {
+        CatalogDetails catalogDetails = catalogDetailsService.loadRunningCatalogDetails();
+        if (catalogDetails != null) {
+            catalogDelayQueue.rebuild(catalogId);
+        } else {
+            resourceManager.setRunningState(catalogId, "rebuild");
+        }
     }
 
     public void crawl(long catalogId) throws WebCrawlerException {
-        if (semaphore.isOccupied()) {
-            throw new WebCrawlerRunningException(
-                    "Catalog '" + semaphore.getCatalogId() + "' is running!");
-        }
         CatalogDetails catalogDetails = catalogDetailsService.loadRunningCatalogDetails();
         if (catalogDetails != null) {
-            throw new WebCrawlerRunningException(
-                    "Catalog '" + catalogDetails.getId() + "' is running!");
-        }
-        String path;
-        try {
-            path = resourceManager.getLatestReferencePath(catalogId);
-        } catch (DataAccessException e) {
-            if (log.isErrorEnabled()) {
-                log.error(e.getMessage(), e);
-            }
-            path = "";
-        } catch (Exception e) {
-            throw e;
-        }
-        if (StringUtils.isNotBlank(path)) {
-            resourceManager.setRunningState(catalogId, "update");
+            catalogDelayQueue.crawl(catalogId);
         } else {
-            resourceManager.setRunningState(catalogId, "crawl");
+            String path;
+            try {
+                path = resourceManager.getLatestReferencePath(catalogId);
+            } catch (DataAccessException e) {
+                if (log.isErrorEnabled()) {
+                    log.error(e.getMessage(), e);
+                }
+                path = "";
+            } catch (Exception e) {
+                throw e;
+            }
+            if (StringUtils.isNotBlank(path)) {
+                resourceManager.setRunningState(catalogId, "update");
+            } else {
+                resourceManager.setRunningState(catalogId, "crawl");
+            }
         }
     }
 
     public void finish(long catalogId) {
         WebCrawlerExecutionContextUtils.remove(catalogId);
         resourceManager.setRunningState(catalogId, "none");
+    }
+
+    @EventListener({WebCrawlerCompletionEvent.class})
+    public void onWebCrawlerCompletion() {
+        catalogDelayQueue.runNext();
     }
 
 }
