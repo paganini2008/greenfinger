@@ -1,8 +1,13 @@
 package com.github.greenfinger.components;
 
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.support.atomic.RedisAtomicLong;
+import com.github.doodler.common.utils.DateUtils;
+import com.github.greenfinger.CatalogDetails;
 
 /**
  * 
@@ -11,8 +16,10 @@ import org.springframework.data.redis.support.atomic.RedisAtomicLong;
  * @Date: 31/12/2024
  * @Version 1.0.0
  */
-public class OneTimeDashboard implements Dashboard {
+public class OneTimeDashboard implements Dashboard, InitializingBean {
 
+    private final CatalogDetails catalogDetails;
+    private final RedisGenericDataType<String> members;
     private final RedisAtomicLong totalUrlCount;
     private final RedisAtomicLong invalidUrlCount;
     private final RedisAtomicLong existingUrlCount;
@@ -24,8 +31,13 @@ public class OneTimeDashboard implements Dashboard {
     private final RedisGenericDataType<Boolean> completed;
     private long timestamp;
 
-    public OneTimeDashboard(long catalogId, int version,
+    public OneTimeDashboard(CatalogDetails catalogDetails,
             RedisConnectionFactory redisConnectionFactory) {
+        long catalogId = catalogDetails.getId();
+        int version = catalogDetails.getVersion();
+        members = new RedisGenericDataType<String>(
+                String.format(NAMESPACE_PATTERN, catalogId, version, "members"), String.class,
+                redisConnectionFactory);
         startTime = new RedisGenericDataType<Long>(
                 String.format(NAMESPACE_PATTERN, catalogId, version, "startTime"), Long.class,
                 redisConnectionFactory, System.currentTimeMillis());
@@ -53,12 +65,15 @@ public class OneTimeDashboard implements Dashboard {
         completed = new RedisGenericDataType<Boolean>(
                 String.format(NAMESPACE_PATTERN, catalogId, version, "completed"), Boolean.class,
                 redisConnectionFactory, true);
+        this.catalogDetails = catalogDetails;
     }
 
     @Override
-    public void reset(long durationInMs) {
+    public void afterPropertiesSet() throws Exception {
+        members.delete();
         startTime.set(System.currentTimeMillis());
-        endTime.set(startTime.get() + durationInMs);
+        endTime.set(startTime.get()
+                + DateUtils.convertToMillis(catalogDetails.getFetchDuration(), TimeUnit.MINUTES));
         totalUrlCount.set(0);
         invalidUrlCount.set(0);
         existingUrlCount.set(0);
@@ -67,6 +82,16 @@ public class OneTimeDashboard implements Dashboard {
         indexedResourceCount.set(0);
         completed.set(false);
         timestamp = System.currentTimeMillis();
+    }
+
+    @Override
+    public void addMember(String instanceId) {
+        members.leftPush(instanceId);
+    }
+
+    @Override
+    public List<String> getMembers() {
+        return members.list(0, members.sizeOfList());
     }
 
     @Override
@@ -174,6 +199,12 @@ public class OneTimeDashboard implements Dashboard {
         return timestamp;
     }
 
+
+    @Override
+    public CatalogDetails getCatalogDetails() {
+        return catalogDetails;
+    }
+
     @Override
     public String getDescription() {
         return "OneTimeDashboard";
@@ -183,4 +214,6 @@ public class OneTimeDashboard implements Dashboard {
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
     }
+
+
 }

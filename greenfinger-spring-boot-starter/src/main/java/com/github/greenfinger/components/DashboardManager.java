@@ -1,5 +1,7 @@
 package com.github.greenfinger.components;
 
+import java.util.List;
+
 /**
  * 
  * @Description: DashboardManager
@@ -9,7 +11,9 @@ package com.github.greenfinger.components;
  */
 public interface DashboardManager {
 
-    void reset(long durationInMs);
+    void addMember(String instanceId);
+
+    List<String> getMembers();
 
     boolean isCompleted();
 

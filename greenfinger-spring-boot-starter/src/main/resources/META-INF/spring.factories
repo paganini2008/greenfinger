@@ -1,2 +1,2 @@
 org.springframework.boot.env.EnvironmentPostProcessor=\
-  com.github.greenfinger.ImmutableSettingsEnvironmentPostProcessor
+  com.github.greenfinger.ImmutableSettings

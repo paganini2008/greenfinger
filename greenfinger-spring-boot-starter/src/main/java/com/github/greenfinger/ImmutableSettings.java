@@ -6,12 +6,12 @@ import org.springframework.core.env.ConfigurableEnvironment;
 
 /**
  * 
- * @Description: ImmutableSettingsEnvironmentPostProcessor
+ * @Description: ImmutableSettings
  * @Author: Fred Feng
  * @Date: 23/01/2025
  * @Version 1.0.0
  */
-public class ImmutableSettingsEnvironmentPostProcessor implements EnvironmentPostProcessor {
+public class ImmutableSettings implements EnvironmentPostProcessor {
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment,

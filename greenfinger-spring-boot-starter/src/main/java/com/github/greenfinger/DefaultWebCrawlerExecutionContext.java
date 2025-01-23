@@ -193,8 +193,8 @@ public class DefaultWebCrawlerExecutionContext
     @Override
     public void run() {
         if (shouldInterrupt()) {
+            channelSwitcher.enableExternalChannels(false);
             taskTimer.removeBatch(this);
-            channelSwitcher.setEnabled(false);
             resourceManager.setRunningState(catalogDetails.getId(), "none");
             semaphore.release();
             applicationEventPublisher.publishEvent(new WebCrawlerCompletionEvent(this,

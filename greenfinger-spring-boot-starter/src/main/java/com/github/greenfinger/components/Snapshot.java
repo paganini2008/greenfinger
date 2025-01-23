@@ -1,7 +1,8 @@
-package com.github.greenfinger;
+package com.github.greenfinger.components;
 
-import com.github.greenfinger.components.CountingType;
-import com.github.greenfinger.components.Dashboard;
+import java.util.Collections;
+import java.util.List;
+import com.github.greenfinger.CatalogDetails;
 
 /**
  * 
@@ -12,6 +13,7 @@ import com.github.greenfinger.components.Dashboard;
  */
 public class Snapshot implements Dashboard {
 
+    private final CatalogDetails catalogDetails;
     private final long totalUrlCount;
     private final long invalidUrlCount;
     private final long existingUrlCount;
@@ -23,6 +25,7 @@ public class Snapshot implements Dashboard {
     private final long elapsedTime;
 
     public Snapshot(Dashboard dashboard) {
+        this.catalogDetails = dashboard.getCatalogDetails();
         this.totalUrlCount = dashboard.getTotalUrlCount();
         this.invalidUrlCount = dashboard.getInvalidUrlCount();
         this.existingUrlCount = dashboard.getExistingUrlCount();
@@ -35,8 +38,18 @@ public class Snapshot implements Dashboard {
     }
 
     @Override
-    public void reset(long durationInMs) {
+    public void addMember(String serviceLocation) {
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public List<String> getMembers() {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public CatalogDetails getCatalogDetails() {
+        return catalogDetails;
     }
 
     @Override

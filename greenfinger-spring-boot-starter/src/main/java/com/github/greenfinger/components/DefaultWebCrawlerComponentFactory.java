@@ -157,8 +157,7 @@ public class DefaultWebCrawlerComponentFactory implements WebCrawlerComponentFac
 
     @Override
     public Dashboard getDashboard(CatalogDetails catalogDetails) {
-        return new OneTimeDashboard(catalogDetails.getId(), catalogDetails.getVersion(),
-                redisConnectionFactory);
+        return new OneTimeDashboard(catalogDetails, redisConnectionFactory);
     }
 
 }

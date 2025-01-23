@@ -1,5 +1,6 @@
 package com.github.greenfinger.components;
 
+import com.github.greenfinger.CatalogDetails;
 
 /**
  * 
@@ -31,5 +32,7 @@ public interface Dashboard extends DashboardManager, WebCrawlerComponent {
     long getElapsedTime();
 
     long getTimestamp();
+
+    CatalogDetails getCatalogDetails();
 
 }

@@ -20,13 +20,13 @@ import com.github.greenfinger.CatalogAdminService;
 import com.github.greenfinger.CatalogDetails;
 import com.github.greenfinger.CatalogDetailsService;
 import com.github.greenfinger.ResourceManager;
-import com.github.greenfinger.Snapshot;
 import com.github.greenfinger.WebCrawlerExecutionContext;
 import com.github.greenfinger.WebCrawlerExecutionContextUtils;
 import com.github.greenfinger.WebCrawlerJobService;
 import com.github.greenfinger.api.pojo.CatalogInfo;
 import com.github.greenfinger.api.pojo.CatalogSummary;
 import com.github.greenfinger.components.OneTimeDashboard;
+import com.github.greenfinger.components.Snapshot;
 import com.github.greenfinger.model.Catalog;
 
 /**
@@ -124,8 +124,7 @@ public class CatalogApiController {
                     .ok(new CatalogSummary(catalogDetails, executionContext.getDashboard()));
         }
         Snapshot snapshot = MapUtils.getOrCreate(snapshotCache, catalogDetails.getId(),
-                () -> new Snapshot(new OneTimeDashboard(catalogDetails.getId(),
-                        catalogDetails.getVersion(), redisConnectionFactory)));
+                () -> new Snapshot(new OneTimeDashboard(catalogDetails, redisConnectionFactory)));
         return ApiResult.ok(new CatalogSummary(catalogDetails, snapshot));
     }
 

@@ -1,17 +1,15 @@
 package com.github.greenfinger;
 
-import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import com.github.doodler.common.cloud.ApplicationInfoHolder;
+import com.github.doodler.common.context.InstanceId;
 import com.github.doodler.common.events.EventPublisher;
 import com.github.doodler.common.scheduler.RunAsPrimary;
 import com.github.doodler.common.scheduler.RunAsSecondary;
 import com.github.doodler.common.transmitter.ChannelSwitcher;
 import com.github.doodler.common.transmitter.Packet;
-import com.github.doodler.common.utils.DateUtils;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -26,6 +24,10 @@ import lombok.extern.slf4j.Slf4j;
 public class WebCrawlerJob {
 
     @Autowired
+    private InstanceId instanceId;
+
+
+    @Autowired
     private EventPublisher<Packet> eventPublisher;
 
     @Autowired
@@ -36,9 +38,6 @@ public class WebCrawlerJob {
 
     @Autowired
     private ChannelSwitcher channelSwitcher;
-
-    @Autowired
-    private ApplicationInfoHolder applicationInfoHolder;
 
     @Autowired
     private WebCrawlerSemaphore semaphore;
@@ -61,14 +60,11 @@ public class WebCrawlerJob {
             if (!semaphore.acquire()) {
                 return;
             }
-            final long catalogId = catalogDetails.getId();
-            semaphore.setCatalogId(catalogId);
-            WebCrawlerExecutionContextUtils.remove(catalogId);
-            WebCrawlerExecutionContext executionContext =
-                    WebCrawlerExecutionContextUtils.get(catalogId);
-            executionContext.getDashboard().reset(
-                    DateUtils.convertToMillis(catalogDetails.getFetchDuration(), TimeUnit.MINUTES));
-
+            channelSwitcher.enableExternalChannels(false);
+            semaphore.setCatalogId(catalogDetails.getId());
+            WebCrawlerExecutionContextUtils.remove(catalogDetails.getId());
+            WebCrawlerExecutionContext context =
+                    WebCrawlerExecutionContextUtils.get(catalogDetails.getId());
             String runningState = catalogDetails.getRunningState();
             if (StringUtils.isNotBlank(runningState)) {
                 switch (runningState) {
@@ -85,13 +81,14 @@ public class WebCrawlerJob {
                         throw new UnsupportedOperationException(
                                 "Unknown catalog running state: " + runningState);
                 }
-                channelSwitcher.setEnabled(true);
+                context.getDashboard().addMember(instanceId.get());
+            } else {
+                throw new WebCrawlerException("Null running state!");
             }
         } catch (Exception e) {
             if (log.isErrorEnabled()) {
                 log.error(e.getMessage(), e);
             }
-            channelSwitcher.setEnabled(false);
             WebCrawlerExecutionContextUtils.remove(catalogDetails.getId());
             semaphore.release();
         }
@@ -112,15 +109,16 @@ public class WebCrawlerJob {
             if (!semaphore.acquire()) {
                 return;
             }
+            channelSwitcher.enableExternalChannels(false);
             semaphore.setCatalogId(catalogDetails.getId());
             WebCrawlerExecutionContextUtils.remove(catalogDetails.getId());
-            WebCrawlerExecutionContextUtils.get(catalogDetails.getId());
-            channelSwitcher.setEnabled(true);
+            WebCrawlerExecutionContext context =
+                    WebCrawlerExecutionContextUtils.get(catalogDetails.getId());
+            context.getDashboard().addMember(instanceId.get());
         } catch (Exception e) {
             if (log.isErrorEnabled()) {
                 log.error(e.getMessage(), e);
             }
-            channelSwitcher.setEnabled(false);
             WebCrawlerExecutionContextUtils.remove(catalogDetails.getId());
             semaphore.release();
         }

@@ -50,6 +50,10 @@ public class RedisGenericDataType<T> {
         redisTemplate.opsForValue().set(key, value);
     }
 
+    public void delete() {
+        redisTemplate.delete(key);
+    }
+
     public void setIfAbsent(T value) {
         redisTemplate.opsForValue().setIfAbsent(key, value);
     }
@@ -98,7 +102,7 @@ public class RedisGenericDataType<T> {
         return redisTemplate.opsForList().remove(key, count, value);
     }
 
-    public List<T> rangeOfList(long start, long end) {
+    public List<T> list(long start, long end) {
         return redisTemplate.opsForList().range(key, start, end);
     }
 
