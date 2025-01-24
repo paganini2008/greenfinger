@@ -28,6 +28,9 @@ public class ChannelSwitcherJob {
     private String applicationName;
 
     @Autowired
+    private WebCrawlerSemaphore semaphore;
+
+    @Autowired
     private DiscoveryClient discoveryClient;
 
     @Autowired
@@ -39,6 +42,9 @@ public class ChannelSwitcherJob {
     @Default
     @Scheduled(cron = "*/10 * * * * ?")
     public void run() throws Exception {
+        if (!semaphore.isOccupied()) {
+            return;
+        }
         CatalogDetails catalogDetails = catalogDetailsService.loadRunningCatalogDetails();
         if (catalogDetails == null) {
             return;

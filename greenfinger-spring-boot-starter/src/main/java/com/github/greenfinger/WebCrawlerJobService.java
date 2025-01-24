@@ -5,6 +5,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.core.RedisOperations;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
 
@@ -20,6 +21,9 @@ import lombok.extern.slf4j.Slf4j;
 public class WebCrawlerJobService {
 
     @Autowired
+    private RedisOperations<String, Object> redisOperations;
+
+    @Autowired
     private CatalogDetailsService catalogDetailsService;
 
     @Autowired
@@ -29,7 +33,7 @@ public class WebCrawlerJobService {
 
     @PostConstruct
     public void configure() {
-        catalogDelayQueue = new CatalogDelayQueue(action -> {
+        catalogDelayQueue = new CatalogDelayQueue(redisOperations, action -> {
             try {
                 if ("rebuild".equals(action.getAction())) {
                     rebuild(action.getCatalogId());

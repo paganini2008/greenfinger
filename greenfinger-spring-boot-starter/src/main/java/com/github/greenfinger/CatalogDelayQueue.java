@@ -1,11 +1,11 @@
 package com.github.greenfinger;
 
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Function;
+import org.springframework.data.redis.core.RedisOperations;
 import com.github.doodler.common.utils.SingleObservable;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * 
@@ -16,11 +16,12 @@ import lombok.Data;
  */
 public class CatalogDelayQueue {
 
-    private static final String NAME = "crawler";
-    private final Queue<Action> actions = new ConcurrentLinkedQueue<>();
+    private static final String NAME = "greenfinger:catalog:queue";
+    private final RedisOperations<String, Object> redisOperations;
     private final SingleObservable observable = new SingleObservable(true);
 
-    CatalogDelayQueue(Function<Action, Void> f) {
+    CatalogDelayQueue(RedisOperations<String, Object> redisOperations, Function<Action, Void> f) {
+        this.redisOperations = redisOperations;
         observable.addObserver(NAME, (ob, arg) -> {
             f.apply((Action) arg);
         });
@@ -28,28 +29,25 @@ public class CatalogDelayQueue {
 
     public void rebuild(long catalogId) {
         Action action = new Action(catalogId, "rebuild");
-        if (!actions.contains(action)) {
-            actions.add(action);
-        }
+        redisOperations.opsForList().leftPush(NAME, action);
     }
 
     public void crawl(long catalogId) {
         Action action = new Action(catalogId, "crawl");
-        if (!actions.contains(action)) {
-            actions.add(action);
-        }
+        redisOperations.opsForList().leftPush(NAME, action);
     }
 
     public void runNext() {
-        Action nextAction = actions.poll();
+        Action nextAction = (Action) redisOperations.opsForList().rightPop(NAME);
         if (nextAction != null) {
             observable.notifyObservers(NAME, nextAction);
         }
     }
 
     @Data
+    @NoArgsConstructor
     @AllArgsConstructor
-    static class Action {
+    public static class Action {
 
         private long catalogId;
         private String action;
