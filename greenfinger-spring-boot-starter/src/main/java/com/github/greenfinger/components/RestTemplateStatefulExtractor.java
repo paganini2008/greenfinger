@@ -20,6 +20,7 @@ import com.github.doodler.common.utils.RandomUtils;
 import com.github.doodler.common.utils.ThreadUtils;
 import com.github.greenfinger.CatalogDetails;
 import com.github.greenfinger.WebCrawlerConstants;
+import com.github.greenfinger.WebCrawlerException;
 import com.github.greenfinger.WebCrawlerExtractorProperties;
 
 /**
@@ -85,7 +86,7 @@ public class RestTemplateStatefulExtractor extends StatefulExtractor<RestTemplat
     }
 
     private String doRequestUrl(RestTemplate restTemplate, String referUrl, String url,
-            Charset pageEncoding, Packet packet) {
+            Charset pageEncoding, Packet packet) throws WebCrawlerException {
         WebCrawlerExtractorProperties.Default config = extractorProperties.getRestTemplate();
         HttpHeaders headers = mergeHttpHeaders();
         ResponseEntity<String> responseEntity;

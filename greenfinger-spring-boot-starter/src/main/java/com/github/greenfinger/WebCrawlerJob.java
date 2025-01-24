@@ -5,11 +5,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import com.github.doodler.common.context.InstanceId;
-import com.github.doodler.common.events.EventPublisher;
 import com.github.doodler.common.scheduler.RunAsPrimary;
 import com.github.doodler.common.scheduler.RunAsSecondary;
 import com.github.doodler.common.transmitter.ChannelSwitcher;
-import com.github.doodler.common.transmitter.Packet;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -25,10 +23,6 @@ public class WebCrawlerJob {
 
     @Autowired
     private InstanceId instanceId;
-
-
-    @Autowired
-    private EventPublisher<Packet> eventPublisher;
 
     @Autowired
     private CatalogDetailsService catalogDetailsService;
@@ -56,10 +50,10 @@ public class WebCrawlerJob {
         if (catalogDetails == null) {
             return;
         }
+        if (!semaphore.acquire()) {
+            return;
+        }
         try {
-            if (!semaphore.acquire()) {
-                return;
-            }
             channelSwitcher.enableExternalChannels(false);
             semaphore.setCatalogId(catalogDetails.getId());
             WebCrawlerExecutionContextUtils.remove(catalogDetails.getId());
@@ -92,8 +86,6 @@ public class WebCrawlerJob {
             WebCrawlerExecutionContextUtils.remove(catalogDetails.getId());
             semaphore.release();
         }
-        eventPublisher.enableBufferCleaner(true);
-
     }
 
     @RunAsSecondary
@@ -105,10 +97,10 @@ public class WebCrawlerJob {
         if (catalogDetails == null) {
             return;
         }
+        if (!semaphore.acquire()) {
+            return;
+        }
         try {
-            if (!semaphore.acquire()) {
-                return;
-            }
             channelSwitcher.enableExternalChannels(false);
             semaphore.setCatalogId(catalogDetails.getId());
             WebCrawlerExecutionContextUtils.remove(catalogDetails.getId());
@@ -122,6 +114,5 @@ public class WebCrawlerJob {
             WebCrawlerExecutionContextUtils.remove(catalogDetails.getId());
             semaphore.release();
         }
-        eventPublisher.enableBufferCleaner(true);
     }
 }

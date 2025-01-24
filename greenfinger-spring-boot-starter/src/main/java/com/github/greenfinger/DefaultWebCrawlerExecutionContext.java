@@ -9,7 +9,6 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.stereotype.Component;
 import com.github.doodler.common.context.BeanLifeCycleUtils;
-import com.github.doodler.common.transmitter.ChannelSwitcher;
 import com.github.doodler.common.transmitter.Packet;
 import com.github.doodler.common.utils.SerializableTaskTimer;
 import com.github.greenfinger.components.Dashboard;
@@ -19,7 +18,6 @@ import com.github.greenfinger.components.InterruptionChecker;
 import com.github.greenfinger.components.StatefulExtractor;
 import com.github.greenfinger.components.UrlPathAcceptor;
 import com.github.greenfinger.components.WebCrawlerComponentFactory;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -44,15 +42,6 @@ public class DefaultWebCrawlerExecutionContext
     @Autowired
     private SerializableTaskTimer taskTimer;
 
-    @Autowired
-    private ResourceManager resourceManager;
-
-    @Autowired
-    private WebCrawlerSemaphore semaphore;
-
-    @Autowired
-    private ChannelSwitcher channelSwitcher;
-
     private CatalogDetails catalogDetails;
 
     private List<InterruptionChecker> interruptionCheckers;
@@ -65,8 +54,12 @@ public class DefaultWebCrawlerExecutionContext
 
     private Dashboard dashboard;
 
-    @Setter
     private ApplicationEventPublisher applicationEventPublisher;
+
+    @Override
+    public void setApplicationEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
+        this.applicationEventPublisher = applicationEventPublisher;
+    }
 
     @Override
     public CatalogDetails getCatalogDetails() {
@@ -193,13 +186,9 @@ public class DefaultWebCrawlerExecutionContext
     @Override
     public void run() {
         if (shouldInterrupt()) {
-            channelSwitcher.enableExternalChannels(false);
-            taskTimer.removeBatch(this);
-            resourceManager.setRunningState(catalogDetails.getId(), "none");
-            semaphore.release();
-            applicationEventPublisher.publishEvent(new WebCrawlerCompletionEvent(this,
-                    catalogDetails.getId(), catalogDetails.getVersion()));
-            log.info("WebCrawlerJob is done. Info: {}", dashboard.toString());
+            applicationEventPublisher
+                    .publishEvent(new WebCrawlerInterruptEvent(this, catalogDetails));
+            log.info("WebCrawlerJob is interrupted. Current Info: {}", dashboard.toString());
         }
     }
 

@@ -29,7 +29,7 @@ public class OneTimeDashboard implements Dashboard, InitializingBean {
     private final RedisGenericDataType<Long> startTime;
     private final RedisGenericDataType<Long> endTime;
     private final RedisGenericDataType<Boolean> completed;
-    private long timestamp;
+    private long lastModified;
 
     public OneTimeDashboard(CatalogDetails catalogDetails,
             RedisConnectionFactory redisConnectionFactory) {
@@ -81,7 +81,7 @@ public class OneTimeDashboard implements Dashboard, InitializingBean {
         savedResourceCount.set(0);
         indexedResourceCount.set(0);
         completed.set(false);
-        timestamp = System.currentTimeMillis();
+        lastModified = System.currentTimeMillis();
     }
 
     @Override
@@ -102,7 +102,7 @@ public class OneTimeDashboard implements Dashboard, InitializingBean {
     @Override
     public void setCompleted(boolean completed) {
         this.completed.set(completed);
-        this.timestamp = System.currentTimeMillis();
+        this.lastModified = System.currentTimeMillis();
     }
 
     @Override
@@ -142,7 +142,7 @@ public class OneTimeDashboard implements Dashboard, InitializingBean {
             }
             return longCounter.addAndGet(delta);
         } finally {
-            this.timestamp = System.currentTimeMillis();
+            this.lastModified = System.currentTimeMillis();
         }
     }
 
@@ -195,10 +195,9 @@ public class OneTimeDashboard implements Dashboard, InitializingBean {
     }
 
     @Override
-    public long getTimestamp() {
-        return timestamp;
+    public long getLastModified() {
+        return lastModified;
     }
-
 
     @Override
     public CatalogDetails getCatalogDetails() {

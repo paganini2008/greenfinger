@@ -31,7 +31,7 @@ public interface Dashboard extends DashboardManager, WebCrawlerComponent {
 
     long getElapsedTime();
 
-    long getTimestamp();
+    long getLastModified();
 
     CatalogDetails getCatalogDetails();
 

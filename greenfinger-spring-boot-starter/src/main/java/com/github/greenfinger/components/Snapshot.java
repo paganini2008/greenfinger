@@ -1,6 +1,5 @@
 package com.github.greenfinger.components;
 
-import java.util.Collections;
 import java.util.List;
 import com.github.greenfinger.CatalogDetails;
 
@@ -14,6 +13,7 @@ import com.github.greenfinger.CatalogDetails;
 public class Snapshot implements Dashboard {
 
     private final CatalogDetails catalogDetails;
+    private final List<String> members;
     private final long totalUrlCount;
     private final long invalidUrlCount;
     private final long existingUrlCount;
@@ -23,9 +23,11 @@ public class Snapshot implements Dashboard {
     private final long startTime;
     private final long endTime;
     private final long elapsedTime;
+    private final long lastModified;
 
     public Snapshot(Dashboard dashboard) {
         this.catalogDetails = dashboard.getCatalogDetails();
+        this.members = dashboard.getMembers();
         this.totalUrlCount = dashboard.getTotalUrlCount();
         this.invalidUrlCount = dashboard.getInvalidUrlCount();
         this.existingUrlCount = dashboard.getExistingUrlCount();
@@ -35,6 +37,7 @@ public class Snapshot implements Dashboard {
         this.startTime = dashboard.getStartTime();
         this.endTime = dashboard.getEndTime();
         this.elapsedTime = dashboard.getElapsedTime();
+        this.lastModified = dashboard.getLastModified();
     }
 
     @Override
@@ -44,7 +47,7 @@ public class Snapshot implements Dashboard {
 
     @Override
     public List<String> getMembers() {
-        return Collections.emptyList();
+        return members;
     }
 
     @Override
@@ -118,8 +121,8 @@ public class Snapshot implements Dashboard {
     }
 
     @Override
-    public long getTimestamp() {
-        return System.currentTimeMillis();
+    public long getLastModified() {
+        return lastModified;
     }
 
 }
