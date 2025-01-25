@@ -101,29 +101,30 @@ public class DefaultWebCrawlerExecutionContext
         interruptionCheckers = webCrawlerComponentFactory.getInterruptionCheckers(catalogDetails);
         AnnotationAwareOrderComparator.sort(interruptionCheckers);
         BeanLifeCycleUtils.afterPropertiesSet(interruptionCheckers);
-        log.info("Initialized InterruptionChecker Component");
+        log.info("Initialized InterruptionChecker Component: {}", interruptionCheckers);
 
         urlPathAcceptors = webCrawlerComponentFactory.getUrlPathAcceptors(catalogDetails);
         AnnotationAwareOrderComparator.sort(urlPathAcceptors);
         BeanLifeCycleUtils.afterPropertiesSet(urlPathAcceptors);
-        log.info("Initialized UrlPathAcceptor Component");
+        log.info("Initialized UrlPathAcceptor Component: {}", urlPathAcceptors);
 
         existingUrlPathFilter = webCrawlerComponentFactory.getExistingUrlPathFilter(catalogDetails);
         BeanLifeCycleUtils.afterPropertiesSet(existingUrlPathFilter);
-        log.info("Initialized ExistingUrlPathFilter Component {}",
+        log.info("Initialized ExistingUrlPathFilter Component: {}",
                 existingUrlPathFilter.getDescription());
 
         extractor = webCrawlerComponentFactory.getExtractor(catalogDetails);
         BeanLifeCycleUtils.afterPropertiesSet(extractor);
-        log.info("Initialized Extractor Component {}", extractor.getDescription());
+        log.info("Initialized Extractor Component: {}", extractor.getDescription());
 
         dashboard = webCrawlerComponentFactory.getDashboard(catalogDetails);
         BeanLifeCycleUtils.afterPropertiesSet(dashboard);
-        log.info("Initialized Dashboard Component {}", dashboard.getDescription());
+        log.info("Initialized Dashboard Component: {}", dashboard.getDescription());
 
         if (extractor instanceof StatefulExtractor) {
             ((StatefulExtractor<?>) extractor).login(catalogDetails);
-            log.info("User Login: {}", Arrays.toString(catalogDetails.getCatalogCredentials()));
+            log.info("Simulate User Login with authentication {}",
+                    Arrays.toString(catalogDetails.getCatalogCredentials()));
         }
 
         taskTimer.addBatch(this);
@@ -134,17 +135,21 @@ public class DefaultWebCrawlerExecutionContext
     @Override
     public void destroy() throws Exception {
         log.info("Destroying WebCrawler ExecutionContext ...");
-
         if (extractor instanceof StatefulExtractor) {
             ((StatefulExtractor<?>) extractor).logout(catalogDetails);
-            log.info("User logout.");
+            log.info("Simulate User Logout.");
         }
 
         BeanLifeCycleUtils.destroyQuietly(interruptionCheckers);
+        log.info("Destroyed interruptionCheckers");
         BeanLifeCycleUtils.destroyQuietly(urlPathAcceptors);
+        log.info("Destroyed urlPathAcceptors");
         BeanLifeCycleUtils.destroyQuietly(existingUrlPathFilter);
+        log.info("Destroyed existingUrlPathFilter");
         BeanLifeCycleUtils.destroyQuietly(extractor);
+        log.info("Destroyed extractor");
         BeanLifeCycleUtils.destroyQuietly(dashboard);
+        log.info("Destroyed dashboard");
 
         log.info("Destroyed WebCrawler ExecutionContext successfully.");
     }
@@ -188,7 +193,8 @@ public class DefaultWebCrawlerExecutionContext
         if (shouldInterrupt()) {
             applicationEventPublisher
                     .publishEvent(new WebCrawlerInterruptEvent(this, catalogDetails));
-            log.info("WebCrawlerJob is interrupted. Current Info: {}", dashboard.toString());
+            log.trace("Catalog web crawler '{}' is interrupted. Dashboard: {}",
+                    catalogDetails.toString(), dashboard.toString());
         }
     }
 

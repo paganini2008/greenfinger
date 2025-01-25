@@ -53,6 +53,7 @@ public class WebCrawlerJob {
         if (!semaphore.acquire()) {
             return;
         }
+        log.info("Starting Catalog WebCrawler with configuration: {}", catalogDetails);
         try {
             channelSwitcher.enableExternalChannels(false);
             semaphore.setCatalogId(catalogDetails.getId());
@@ -76,6 +77,7 @@ public class WebCrawlerJob {
                                 "Unknown catalog running state: " + runningState);
                 }
                 context.getDashboard().addMember(instanceId.get());
+                log.info("Current Catalog WebCrawler has been initialized.");
             } else {
                 throw new WebCrawlerException("Null running state!");
             }
@@ -100,6 +102,7 @@ public class WebCrawlerJob {
         if (!semaphore.acquire()) {
             return;
         }
+        log.info("Starting Catalog WebCrawler with configuration: {}", catalogDetails);
         try {
             channelSwitcher.enableExternalChannels(false);
             semaphore.setCatalogId(catalogDetails.getId());
@@ -107,6 +110,7 @@ public class WebCrawlerJob {
             WebCrawlerExecutionContext context =
                     WebCrawlerExecutionContextUtils.get(catalogDetails.getId());
             context.getDashboard().addMember(instanceId.get());
+            log.info("Current Catalog WebCrawler has been initialized.");
         } catch (Exception e) {
             if (log.isErrorEnabled()) {
                 log.error(e.getMessage(), e);

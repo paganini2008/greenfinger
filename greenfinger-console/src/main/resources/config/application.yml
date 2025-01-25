@@ -1,5 +1,5 @@
 server:
-  port: 6120
+  port: 6121
   credentials:
     user: admin
     password: admin123
@@ -34,7 +34,7 @@ doodler:
     
 management:
   server:
-    port: 6120
+    port: 6121
   security:
     enabled: false
   endpoint:

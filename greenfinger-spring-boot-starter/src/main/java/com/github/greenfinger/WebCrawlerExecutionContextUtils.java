@@ -38,10 +38,10 @@ public class WebCrawlerExecutionContextUtils implements DisposableBean {
     }
 
     public static void remove(long catalogId) {
-        WebCrawlerExecutionContext crawlerExecutionContext = cache.remove(catalogId);
-        if (crawlerExecutionContext != null) {
+        WebCrawlerExecutionContext executionContext = cache.remove(catalogId);
+        if (executionContext != null) {
             try {
-                crawlerExecutionContext.destroy();
+                executionContext.destroy();
             } catch (Exception e) {
                 if (log.isErrorEnabled()) {
                     log.error(e.getMessage(), e);

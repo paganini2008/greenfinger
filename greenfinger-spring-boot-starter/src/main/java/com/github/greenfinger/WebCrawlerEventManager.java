@@ -13,6 +13,7 @@ import com.github.doodler.common.transmitter.ChannelSwitcher;
 import com.github.doodler.common.transmitter.Packet;
 import com.github.doodler.common.utils.DateUtils;
 import com.github.doodler.common.utils.SerializableTaskTimer;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 
@@ -21,6 +22,7 @@ import com.github.doodler.common.utils.SerializableTaskTimer;
  * @Date: 24/01/2025
  * @Version 1.0.0
  */
+@Slf4j
 @Component
 public class WebCrawlerEventManager implements ApplicationEventPublisherAware {
 
@@ -58,11 +60,13 @@ public class WebCrawlerEventManager implements ApplicationEventPublisherAware {
             return;
         }
         CatalogDetails catalogDetails = event.getCatalogDetails();
+
         channelSwitcher.enableExternalChannels(false);
         taskTimer.removeBatch((Runnable) context);
         resourceManager.setRunningState(catalogDetails.getId(), "none");
         WebCrawlerExecutionContextUtils.remove(catalogDetails.getId());
         semaphore.release();
+        log.info("Catalog web crawler '{}' is completed.", catalogDetails.toString());
         applicationEventPublisher
                 .publishEvent(new WebCrawlerCompletionEvent(event.getSource(), catalogDetails));
     }

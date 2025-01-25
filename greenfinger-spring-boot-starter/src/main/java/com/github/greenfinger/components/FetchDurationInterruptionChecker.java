@@ -16,10 +16,10 @@ import lombok.RequiredArgsConstructor;
 public class FetchDurationInterruptionChecker implements InterruptionChecker {
 
     @Override
-    public boolean shouldInterrupt(CatalogDetails catalogDetails, Dashboard dashboardData) {
+    public boolean shouldInterrupt(CatalogDetails catalogDetails, Dashboard dashboard) {
         long duration = catalogDetails.getFetchDuration();
         long durationInMs = DateUtils.convertToMillis(duration, TimeUnit.MINUTES);
-        return dashboardData.getElapsedTime() > durationInMs;
+        return dashboard.getElapsedTime() > durationInMs;
     }
 
 }

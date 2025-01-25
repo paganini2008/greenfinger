@@ -14,10 +14,10 @@ import lombok.RequiredArgsConstructor;
 public class MaxFetchSizeInterruptionChecker implements InterruptionChecker {
 
     @Override
-    public boolean shouldInterrupt(CatalogDetails catalogDetails, Dashboard dashboardData) {
+    public boolean shouldInterrupt(CatalogDetails catalogDetails, Dashboard dashboard) {
         int maxFetchSize = catalogDetails.getMaxFetchSize();
         CountingType countingType = catalogDetails.getCountingType();
-        return countingType.compare(dashboardData, maxFetchSize);
+        return countingType.compare(dashboard, maxFetchSize);
     }
 
 
