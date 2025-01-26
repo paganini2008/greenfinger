@@ -27,7 +27,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import com.github.doodler.common.page.PageVo;
 import com.github.greenfinger.CatalogAdminService;
-import com.github.greenfinger.CatalogDetails;
 import com.github.greenfinger.CatalogDetailsService;
 import com.github.greenfinger.ResourceManager;
 import com.github.greenfinger.WebCrawlerExecutionContext;
@@ -90,7 +89,7 @@ public class CatalogController {
         for (CatalogInfo catalogInfo : pageVo.getContent()) {
             WebCrawlerExecutionContext context =
                     WebCrawlerExecutionContextUtils.get(catalogInfo.getId());
-            dataList.add(new CatalogSummary(null, context.getDashboard()));
+            dataList.add(new CatalogSummary(context.getGlobalStateManager().getDashboard()));
         }
         PageVo<CatalogSummary> newPageVo = new PageVo<>();
         newPageVo.setNextPage(pageVo.isNextPage());
@@ -141,16 +140,20 @@ public class CatalogController {
 
     @PostMapping("/{id}/summary/content")
     public String summaryContent(@PathVariable("id") Long catalogId, Model ui) throws Exception {
-        CatalogDetails catalogDetails = catalogDetailsService.loadCatalogDetails(catalogId);
-        WebCrawlerExecutionContext context = WebCrawlerExecutionContextUtils.get(catalogId);
-        ui.addAttribute("summary", new CatalogSummary(catalogDetails, context.getDashboard()));
+        WebCrawlerExecutionContext context = WebCrawlerExecutionContextUtils.get(catalogId, false);
+        if (context != null) {
+            ui.addAttribute("summary",
+                    new CatalogSummary(context.getGlobalStateManager().getDashboard()));
+        }
         return "catalog_index_summary";
     }
 
     @PostMapping("/{id}/stop")
     public String stop(@PathVariable("id") Long catalogId, Model ui) {
-        WebCrawlerExecutionContext context = WebCrawlerExecutionContextUtils.get(catalogId);
-        context.getDashboard().setCompleted(true);
+        WebCrawlerExecutionContext context = WebCrawlerExecutionContextUtils.get(catalogId, false);
+        if (context != null) {
+            context.getGlobalStateManager().setCompleted(true);
+        }
         return "redirect:/catalog/";
     }
 
