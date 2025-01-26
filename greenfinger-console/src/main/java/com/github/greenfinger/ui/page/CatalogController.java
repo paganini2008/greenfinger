@@ -27,7 +27,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import com.github.doodler.common.page.PageVo;
 import com.github.greenfinger.CatalogAdminService;
-import com.github.greenfinger.CatalogDetailsService;
 import com.github.greenfinger.ResourceManager;
 import com.github.greenfinger.WebCrawlerExecutionContext;
 import com.github.greenfinger.WebCrawlerExecutionContextUtils;
@@ -55,9 +54,6 @@ public class CatalogController {
 
     @Autowired
     private CatalogAdminService catalogAdminService;
-
-    @Autowired
-    private CatalogDetailsService catalogDetailsService;
 
     @GetMapping("/")
     public String index(Model ui) {

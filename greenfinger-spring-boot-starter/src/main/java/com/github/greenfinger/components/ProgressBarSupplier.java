@@ -100,6 +100,4 @@ public class ProgressBarSupplier implements ManagedBeanLifeCycle, WebCrawlerComp
         }
     }
 
-
-
 }

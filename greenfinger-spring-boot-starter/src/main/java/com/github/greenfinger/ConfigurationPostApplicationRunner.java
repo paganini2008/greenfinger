@@ -40,7 +40,9 @@ public class ConfigurationPostApplicationRunner implements CommandLineRunner {
                 .filter(bean -> Arrays.stream(targetPackageNames).anyMatch(
                         pn -> bean.getInstance().getClass().getPackageName().startsWith(pn)))
                 .forEach(configBean -> {
-                    String logStr = ToStringBuilder.reflectionToString(configBean,
+                    ConfigurationPropertiesBean propertiesBean =
+                            (ConfigurationPropertiesBean) configBean;
+                    String logStr = ToStringBuilder.reflectionToString(propertiesBean.getInstance(),
                             ToStringStyle.MULTI_LINE_STYLE);
                     if (log.isInfoEnabled()) {
                         log.info(logStr);

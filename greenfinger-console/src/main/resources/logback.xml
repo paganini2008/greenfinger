@@ -60,7 +60,7 @@
 	</root>
 	
 	<logger name="org.apache.kafka.clients" level="INFO"></logger>
-    <logger name="com.github.doodler.common.transmitter" level="TRACE"></logger>
-    <logger name="com.github.doodler.common.jdbc" level="TRACE"></logger>
-    <logger name="com.github.greenfinger.jdbc" level="TRACE"></logger>
+    <logger name="com.github.doodler.common.transmitter" level="WARN"></logger>
+    <logger name="com.github.doodler.common.jdbc" level="ERROR"></logger>
+    <logger name="com.github.greenfinger.jdbc" level="ERROR"></logger>
 </configuration>

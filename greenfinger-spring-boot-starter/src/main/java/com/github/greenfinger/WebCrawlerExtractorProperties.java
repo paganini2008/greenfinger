@@ -6,6 +6,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
 
 /**
  * 
@@ -26,6 +27,7 @@ public class WebCrawlerExtractorProperties {
 
     @Getter
     @Setter
+    @ToString
     public static class Base {
 
         private Map<String, String> defaultHttpHeaders = new HashMap<>();
@@ -44,6 +46,7 @@ public class WebCrawlerExtractorProperties {
 
     @Getter
     @Setter
+    @ToString
     public static class Default extends Base {
 
         private int connectionTime = 10000;
@@ -52,6 +55,7 @@ public class WebCrawlerExtractorProperties {
 
     @Getter
     @Setter
+    @ToString
     public static class Playwright extends Base {
 
         private boolean javaScriptEnabled = true;
@@ -60,6 +64,7 @@ public class WebCrawlerExtractorProperties {
 
     @Getter
     @Setter
+    @ToString
     public static class Selenium extends Base {
 
         private String webDriverExecutionPath =
@@ -68,6 +73,7 @@ public class WebCrawlerExtractorProperties {
 
     @Getter
     @Setter
+    @ToString
     public static class HtmlUnit extends Base {
 
         private int timeout = 60 * 1000;

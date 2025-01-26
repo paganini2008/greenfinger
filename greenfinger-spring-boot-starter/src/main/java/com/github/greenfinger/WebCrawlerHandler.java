@@ -8,6 +8,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import com.github.doodler.common.events.Context;
@@ -46,10 +47,10 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
     private Partitioner partitioner;
 
     @Autowired
-    private ResourceIndexService indexService;
+    private ResourceIndexService resourceIndexService;
 
     @Autowired
-    private Acknowledger acknowledger;
+    private ObjectProvider<Acknowledger> acknowledger;
 
     @Override
     public void consume(Packet packet, Context context) {
@@ -66,13 +67,13 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
                     doIndex(packet);
                     break;
             }
-            acknowledger.succeed(packet);
+            acknowledger.getObject().succeed(packet);
         }
     }
 
     @Override
     public void handleError(Packet packet, Throwable e, Context context) {
-        acknowledger.backfill(packet);
+        acknowledger.getObject().backfill(packet);
     }
 
     private void doCrawl(Packet packet) {
@@ -271,7 +272,7 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
         long resourceId = (Long) packet.getField("resourceId");
         int version = (Integer) packet.getField("version");
         Resource resource = resourceManager.getResource(resourceId);
-        indexService.indexResource(context.getCatalogDetails(), resource, version);
+        resourceIndexService.indexResource(context.getCatalogDetails(), resource, version);
         context.getGlobalStateManager().incrementCount(packet.getTimestamp(),
                 CountingType.INDEXED_RESOURCE_COUNT);
     }
