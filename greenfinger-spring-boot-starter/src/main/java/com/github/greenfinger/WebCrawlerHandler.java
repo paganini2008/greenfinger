@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import com.github.doodler.common.events.Context;
 import com.github.doodler.common.events.EventSubscriber;
+import com.github.doodler.common.transmitter.Acknowledger;
 import com.github.doodler.common.transmitter.NioClient;
 import com.github.doodler.common.transmitter.Packet;
 import com.github.doodler.common.transmitter.Partitioner;
@@ -47,6 +48,9 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
     @Autowired
     private ResourceIndexService indexService;
 
+    @Autowired
+    private Acknowledger acknowledger;
+
     @Override
     public void consume(Packet packet, Context context) {
         final String action = (String) packet.getField("action");
@@ -62,7 +66,13 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
                     doIndex(packet);
                     break;
             }
+            acknowledger.succeed(packet);
         }
+    }
+
+    @Override
+    public void handleError(Packet packet, Throwable e, Context context) {
+        acknowledger.backfill(packet);
     }
 
     private void doCrawl(Packet packet) {
