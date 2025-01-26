@@ -160,4 +160,10 @@ public class DefaultWebCrawlerComponentFactory implements WebCrawlerComponentFac
         return new RedisGlobalStateManager(catalogDetails, redisConnectionFactory);
     }
 
+    @Override
+    public ProgressBarSupplier getProgressBarSupplier(CatalogDetails catalogDetails) {
+        return new ProgressBarSupplier(catalogDetails,
+                new RedisDashboard(catalogDetails, redisConnectionFactory));
+    }
+
 }

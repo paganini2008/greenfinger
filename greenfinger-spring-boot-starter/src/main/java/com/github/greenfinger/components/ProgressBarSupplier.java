@@ -26,7 +26,6 @@ public class ProgressBarSupplier implements ManagedBeanLifeCycle, WebCrawlerComp
     private TimeWaitProgressBar maxFetchSizeProgressBar;
     private TimeWaitProgressBar durationProgressBar;
 
-
     @Override
     public void afterPropertiesSet() throws Exception {
         if (maxFetchSizeProgressBar == null) {
@@ -43,7 +42,6 @@ public class ProgressBarSupplier implements ManagedBeanLifeCycle, WebCrawlerComp
             durationProgressBar.afterPropertiesSet();
         }
     }
-
 
     @Override
     public void destroy() throws Exception {

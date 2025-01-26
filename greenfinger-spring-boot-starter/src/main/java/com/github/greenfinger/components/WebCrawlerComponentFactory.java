@@ -22,4 +22,5 @@ public interface WebCrawlerComponentFactory {
 
     GlobalStateManager getGlobalStateManager(CatalogDetails catalogDetails);
 
+    ProgressBarSupplier getProgressBarSupplier(CatalogDetails catalogDetails);
 }

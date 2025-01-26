@@ -126,6 +126,7 @@ public class DefaultWebCrawlerExecutionContext
         BeanLifeCycleUtils.afterPropertiesSet(globalStateManager);
         log.info("Initialized Dashboard Component: {}", globalStateManager.getName());
 
+        progressBarSupplier = webCrawlerComponentFactory.getProgressBarSupplier(catalogDetails);
         BeanLifeCycleUtils.afterPropertiesSet(progressBarSupplier);
         log.info("Initialized ProgressBar Component: {}", progressBarSupplier.getName());
 
@@ -136,7 +137,6 @@ public class DefaultWebCrawlerExecutionContext
         }
 
         taskTimer.addBatch(this);
-
 
         log.info("Initialized WebCrawler ExecutionContext to {} catalog '{}' successfully.",
                 catalogDetails.getRunningState(), catalogDetails.toString());

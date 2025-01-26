@@ -10,6 +10,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import com.github.doodler.common.events.Context;
 import com.github.doodler.common.events.EventSubscriber;
 import com.github.doodler.common.transmitter.NioClient;
 import com.github.doodler.common.transmitter.Packet;
@@ -47,7 +48,7 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
     private ResourceIndexService indexService;
 
     @Override
-    public void consume(Packet packet) {
+    public void consume(Packet packet, Context context) {
         final String action = (String) packet.getField("action");
         if (StringUtils.isNotBlank(action)) {
             switch (action) {
