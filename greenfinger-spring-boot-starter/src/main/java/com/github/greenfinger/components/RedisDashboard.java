@@ -1,12 +1,11 @@
 package com.github.greenfinger.components;
 
 import static com.github.greenfinger.components.RedisGlobalStateManager.NAMESPACE_PATTERN;
+import java.util.Date;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.commons.lang3.builder.ToStringStyle;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.support.atomic.RedisAtomicLong;
@@ -160,7 +159,23 @@ public class RedisDashboard implements Dashboard, InitializingBean {
 
     @Override
     public String toString() {
-        return ToStringBuilder.reflectionToString(this, ToStringStyle.JSON_STYLE);
+        StringBuilder str = new StringBuilder();
+        str.append(
+                "╔══════════════════╦══════════════════╦══════════════════╦══════════════════╦══════════════════╦══════════════════╦══════════════════╦══════════════════╦══════════════════╗\n");
+        str.append(String.format(
+                "║ %-12s ║ %-12s ║ %-12s ║ %-12s ║ %-12s ║ %-12s ║ %-12s ║ %-12s ║ %-12s ║\n",
+                "StartTime", "EndTime", "Completed", "TotalUrls", "InvalidUrls", "ExistingUrls",
+                "FilteredUrls", "SavedResources", "IndexedResources"));
+        str.append(
+                "╠══════════════════╬══════════════════╬══════════════════╬══════════════════╬══════════════════╬══════════════════╬══════════════════╬══════════════════╬══════════════════╣\n");
+        str.append(String.format(
+                "║ %-12s ║ %-12s ║ %-12s ║ %-12s ║ %-12s ║ %-12s ║ %-12s ║ %-12s ║ %-12s ║\n",
+                new Date(startTime.get()), new Date(endTime.get()), isCompleted(),
+                getTotalUrlCount(), getInvalidUrlCount(), getExistingUrlCount(),
+                getFilteredUrlCount(), getSavedResourceCount(), getIndexedResourceCount()));
+        str.append(
+                "╚══════════════════╩══════════════════╩══════════════════╩══════════════════╩══════════════════╩══════════════════╩══════════════════╩══════════════════╩══════════════════╝\n");
+        return str.toString();
     }
 
 }

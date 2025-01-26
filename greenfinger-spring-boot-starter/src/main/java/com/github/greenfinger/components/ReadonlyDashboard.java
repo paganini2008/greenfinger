@@ -23,6 +23,7 @@ public class ReadonlyDashboard implements Dashboard {
     private final long elapsedTime;
     private final double averageExecutionTime;
     private final long lastModified;
+    private final String repr;
 
     public ReadonlyDashboard(Dashboard dashboard) {
         this.catalogDetails = dashboard.getCatalogDetails();
@@ -37,6 +38,7 @@ public class ReadonlyDashboard implements Dashboard {
         this.elapsedTime = dashboard.getElapsedTime();
         this.averageExecutionTime = dashboard.getAverageExecutionTime();
         this.lastModified = dashboard.getLastModified();
+        this.repr = dashboard.toString();
     }
 
     @Override
@@ -102,6 +104,11 @@ public class ReadonlyDashboard implements Dashboard {
     @Override
     public long getLastModified() {
         return lastModified;
+    }
+
+    @Override
+    public String toString() {
+        return repr;
     }
 
 }

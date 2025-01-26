@@ -15,6 +15,7 @@ import com.github.greenfinger.components.ExistingUrlPathFilter;
 import com.github.greenfinger.components.Extractor;
 import com.github.greenfinger.components.GlobalStateManager;
 import com.github.greenfinger.components.InterruptionChecker;
+import com.github.greenfinger.components.ProgressBarSupplier;
 import com.github.greenfinger.components.StatefulExtractor;
 import com.github.greenfinger.components.UrlPathAcceptor;
 import com.github.greenfinger.components.WebCrawlerComponentFactory;
@@ -53,6 +54,8 @@ public class DefaultWebCrawlerExecutionContext
     private ExistingUrlPathFilter existingUrlPathFilter;
 
     private GlobalStateManager globalStateManager;
+
+    private ProgressBarSupplier progressBarSupplier;
 
     private ApplicationEventPublisher applicationEventPublisher;
 
@@ -123,6 +126,9 @@ public class DefaultWebCrawlerExecutionContext
         BeanLifeCycleUtils.afterPropertiesSet(globalStateManager);
         log.info("Initialized Dashboard Component: {}", globalStateManager.getName());
 
+        BeanLifeCycleUtils.afterPropertiesSet(progressBarSupplier);
+        log.info("Initialized ProgressBar Component: {}", progressBarSupplier.getName());
+
         if (extractor instanceof StatefulExtractor) {
             ((StatefulExtractor<?>) extractor).login(catalogDetails);
             log.info("Simulate User Login with authentication {}",
@@ -130,6 +136,8 @@ public class DefaultWebCrawlerExecutionContext
         }
 
         taskTimer.addBatch(this);
+
+
         log.info("Initialized WebCrawler ExecutionContext to {} catalog '{}' successfully.",
                 catalogDetails.getRunningState(), catalogDetails.toString());
     }
@@ -152,6 +160,8 @@ public class DefaultWebCrawlerExecutionContext
         log.info("Destroyed extractor");
         BeanLifeCycleUtils.destroyQuietly(globalStateManager);
         log.info("Destroyed dashboard");
+        BeanLifeCycleUtils.destroyQuietly(progressBarSupplier);
+        log.info("Destroyed ProgressBar Component: {}", progressBarSupplier.getName());
 
         log.info("Destroyed WebCrawler ExecutionContext successfully.");
     }
@@ -164,7 +174,7 @@ public class DefaultWebCrawlerExecutionContext
         for (UrlPathAcceptor urlPathAcceptor : urlPathAcceptors) {
             if (!urlPathAcceptor.accept(catalogDetails, referUrl, path, packet)) {
                 if (log.isTraceEnabled()) {
-                    log.trace("Filter url by: {}", urlPathAcceptor.getName());
+                    log.trace("Filter url '{}' by: {}", path, urlPathAcceptor.getName());
                 }
                 return false;
             }
@@ -194,8 +204,10 @@ public class DefaultWebCrawlerExecutionContext
         if (shouldInterrupt()) {
             applicationEventPublisher
                     .publishEvent(new WebCrawlerInterruptEvent(this, catalogDetails));
-            log.trace("Catalog web crawler '{}' is interrupted. Dashboard: {}",
-                    catalogDetails.toString(), globalStateManager.getDashboard().toString());
+            if (log.isTraceEnabled()) {
+                log.trace("Catalog web crawler '{}' is interrupted. Dashboard: {}",
+                        catalogDetails.toString(), globalStateManager.getDashboard().toString());
+            }
         }
     }
 
