@@ -108,7 +108,7 @@ public class CatalogApiController {
         return ApiResult.ok("Save Successfully.");
     }
 
-    @PostMapping("/{id}/summary")
+    @GetMapping("/{id}/summary")
     public ApiResult<CatalogSummary> summary(@PathVariable("id") Long catalogId) throws Exception {
         CatalogDetails catalogDetails = catalogDetailsService.loadCatalogDetails(catalogId);
         WebCrawlerExecutionContext executionContext =
@@ -121,7 +121,7 @@ public class CatalogApiController {
         return ApiResult.ok(new CatalogSummary(snapshot));
     }
 
-    @PostMapping("/{id}/running")
+    @GetMapping("/{id}/running")
     public ApiResult<Boolean> isRunning(@PathVariable("id") Long catalogId) {
         WebCrawlerExecutionContext context = WebCrawlerExecutionContextUtils.get(catalogId);
         return context != null ? ApiResult.ok(!context.getGlobalStateManager().isCompleted())

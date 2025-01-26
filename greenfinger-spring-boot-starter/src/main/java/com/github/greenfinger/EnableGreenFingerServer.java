@@ -5,6 +5,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.context.annotation.Import;
 import com.github.doodler.common.jdbc.annotations.DaoScan;
 import com.github.doodler.common.transmitter.EnableNioTransmitter;
@@ -21,6 +22,7 @@ import com.github.doodler.common.transmitter.EnableNioTransmitter;
 @Documented
 @DaoScan(basePackages = "com.github.greenfinger.jdbc")
 @EnableNioTransmitter
+@EnableDiscoveryClient
 @Import({GreenFingerAutoConfiguration.class})
 public @interface EnableGreenFingerServer {
 }

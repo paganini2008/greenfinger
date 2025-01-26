@@ -11,6 +11,7 @@ import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
 import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
 import org.springframework.data.elasticsearch.core.query.NativeSearchQuery;
 import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StopWatch;
 import com.github.doodler.common.page.EachPage;
@@ -83,6 +84,7 @@ public class ResourceIndexService {
         return indexedResourceRepository.count();
     }
 
+    @Async
     public void upgradeCatalogIndex() throws WebCrawlerException {
         final StopWatch stopWatch = new StopWatch();
         int page = 1;
@@ -97,26 +99,36 @@ public class ResourceIndexService {
         log.info(stopWatch.prettyPrint());
     }
 
-    public void indexCatalogIndex() throws WebCrawlerException {
+    @Async
+    public void recreateCatalogIndex() throws WebCrawlerException {
         final StopWatch stopWatch = new StopWatch();
         int page = 1;
         PageResponse<CatalogInfo> pageResponse = resourceManager.pageForCatalog2(null, page, 10);
         for (EachPage<CatalogInfo> current : pageResponse) {
             for (CatalogInfo catalog : current.getContent()) {
                 stopWatch.start(String.format("[%s<%s>]", catalog.getName(), catalog.getUrl()));
-                indexCatalogIndex(catalog.getId());
+                recreateCatalogIndex(catalog.getId());
                 stopWatch.stop();
             }
         }
         log.info(stopWatch.prettyPrint());
     }
 
-    public void upgradeCatalogIndex(long catalogId) throws WebCrawlerException {
-        resourceManager.incrementCatalogIndexVersion(catalogId);
-        indexCatalogIndex(catalogId);
+    @Async
+    public void recreateCatalogIndex(long catalogId) throws WebCrawlerException {
+        int version = resourceManager.getCatalogIndexVersion(catalogId);
+        deleteResource(catalogId, version);
+        createCatalogIndex(catalogId);
     }
 
-    public void indexCatalogIndex(long catalogId) throws WebCrawlerException {
+    @Async
+    public void upgradeCatalogIndex(long catalogId) throws WebCrawlerException {
+        resourceManager.incrementCatalogIndexVersion(catalogId);
+        createCatalogIndex(catalogId);
+    }
+
+    @Async
+    public void createCatalogIndex(long catalogId) throws WebCrawlerException {
         long startTime = System.currentTimeMillis();
         CatalogDetails catalogDetails = catalogDetailsService.loadCatalogDetails(catalogId);
         log.info("Start to index catalog '{}' ...", catalogDetails.getName());
@@ -137,6 +149,7 @@ public class ResourceIndexService {
         log.info("Index catalog '{}' completedly. Effected rows: {}, Total time: {}",
                 catalogDetails.getName(), effectedRows, System.currentTimeMillis() - startTime);
     }
+
 
     public void indexResource(CatalogDetails catalogDetails, Resource resource, int version) {
         IndexedResource indexedResource = new IndexedResource();
