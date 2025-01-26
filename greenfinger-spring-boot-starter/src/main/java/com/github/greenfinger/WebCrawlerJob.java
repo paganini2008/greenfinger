@@ -76,7 +76,7 @@ public class WebCrawlerJob {
                         throw new UnsupportedOperationException(
                                 "Unknown catalog running state: " + runningState);
                 }
-                context.getDashboard().addMember(instanceId.get());
+                context.getGlobalStateManager().addMember(instanceId.get());
                 log.info("Current Catalog WebCrawler has been initialized.");
             } else {
                 throw new WebCrawlerException("Null running state!");
@@ -109,7 +109,7 @@ public class WebCrawlerJob {
             WebCrawlerExecutionContextUtils.remove(catalogDetails.getId());
             WebCrawlerExecutionContext context =
                     WebCrawlerExecutionContextUtils.get(catalogDetails.getId());
-            context.getDashboard().addMember(instanceId.get());
+            context.getGlobalStateManager().addMember(instanceId.get());
             log.info("Current Catalog WebCrawler has been initialized.");
         } catch (Exception e) {
             if (log.isErrorEnabled()) {

@@ -20,6 +20,6 @@ public interface WebCrawlerComponentFactory {
 
     ExistingUrlPathFilter getExistingUrlPathFilter(CatalogDetails catalogDetails);
 
-    Dashboard getDashboard(CatalogDetails catalogDetails);
+    GlobalStateManager getGlobalStateManager(CatalogDetails catalogDetails);
 
 }

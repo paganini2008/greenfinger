@@ -11,9 +11,9 @@ import org.springframework.stereotype.Component;
 import com.github.doodler.common.context.BeanLifeCycleUtils;
 import com.github.doodler.common.transmitter.Packet;
 import com.github.doodler.common.utils.SerializableTaskTimer;
-import com.github.greenfinger.components.Dashboard;
 import com.github.greenfinger.components.ExistingUrlPathFilter;
 import com.github.greenfinger.components.Extractor;
+import com.github.greenfinger.components.GlobalStateManager;
 import com.github.greenfinger.components.InterruptionChecker;
 import com.github.greenfinger.components.StatefulExtractor;
 import com.github.greenfinger.components.UrlPathAcceptor;
@@ -52,9 +52,11 @@ public class DefaultWebCrawlerExecutionContext
 
     private ExistingUrlPathFilter existingUrlPathFilter;
 
-    private Dashboard dashboard;
+    private GlobalStateManager globalStateManager;
 
     private ApplicationEventPublisher applicationEventPublisher;
+
+    DefaultWebCrawlerExecutionContext() {}
 
     @Override
     public void setApplicationEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
@@ -87,8 +89,8 @@ public class DefaultWebCrawlerExecutionContext
     }
 
     @Override
-    public Dashboard getDashboard() {
-        return dashboard;
+    public GlobalStateManager getGlobalStateManager() {
+        return globalStateManager;
     }
 
     @Override
@@ -111,15 +113,15 @@ public class DefaultWebCrawlerExecutionContext
         existingUrlPathFilter = webCrawlerComponentFactory.getExistingUrlPathFilter(catalogDetails);
         BeanLifeCycleUtils.afterPropertiesSet(existingUrlPathFilter);
         log.info("Initialized ExistingUrlPathFilter Component: {}",
-                existingUrlPathFilter.getDescription());
+                existingUrlPathFilter.getName());
 
         extractor = webCrawlerComponentFactory.getExtractor(catalogDetails);
         BeanLifeCycleUtils.afterPropertiesSet(extractor);
-        log.info("Initialized Extractor Component: {}", extractor.getDescription());
+        log.info("Initialized Extractor Component: {}", extractor.getName());
 
-        dashboard = webCrawlerComponentFactory.getDashboard(catalogDetails);
-        BeanLifeCycleUtils.afterPropertiesSet(dashboard);
-        log.info("Initialized Dashboard Component: {}", dashboard.getDescription());
+        globalStateManager = webCrawlerComponentFactory.getGlobalStateManager(catalogDetails);
+        BeanLifeCycleUtils.afterPropertiesSet(globalStateManager);
+        log.info("Initialized Dashboard Component: {}", globalStateManager.getName());
 
         if (extractor instanceof StatefulExtractor) {
             ((StatefulExtractor<?>) extractor).login(catalogDetails);
@@ -148,7 +150,7 @@ public class DefaultWebCrawlerExecutionContext
         log.info("Destroyed existingUrlPathFilter");
         BeanLifeCycleUtils.destroyQuietly(extractor);
         log.info("Destroyed extractor");
-        BeanLifeCycleUtils.destroyQuietly(dashboard);
+        BeanLifeCycleUtils.destroyQuietly(globalStateManager);
         log.info("Destroyed dashboard");
 
         log.info("Destroyed WebCrawler ExecutionContext successfully.");
@@ -162,7 +164,7 @@ public class DefaultWebCrawlerExecutionContext
         for (UrlPathAcceptor urlPathAcceptor : urlPathAcceptors) {
             if (!urlPathAcceptor.accept(catalogDetails, referUrl, path, packet)) {
                 if (log.isTraceEnabled()) {
-                    log.trace("Filter url by: {}", urlPathAcceptor.getDescription());
+                    log.trace("Filter url by: {}", urlPathAcceptor.getName());
                 }
                 return false;
             }
@@ -172,16 +174,15 @@ public class DefaultWebCrawlerExecutionContext
 
     @Override
     public boolean isCompleted() {
-        return dashboard != null && dashboard.isCompleted();
+        return globalStateManager.isCompleted();
     }
 
     @Override
     public boolean shouldInterrupt() {
         for (InterruptionChecker interruptionChecker : interruptionCheckers) {
-            if (interruptionChecker.shouldInterrupt(catalogDetails, dashboard)) {
-                if (dashboard != null) {
-                    dashboard.setCompleted(true);
-                }
+            if (interruptionChecker.shouldInterrupt(catalogDetails,
+                    globalStateManager.getDashboard())) {
+                globalStateManager.setCompleted(true);
                 break;
             }
         }
@@ -194,7 +195,7 @@ public class DefaultWebCrawlerExecutionContext
             applicationEventPublisher
                     .publishEvent(new WebCrawlerInterruptEvent(this, catalogDetails));
             log.trace("Catalog web crawler '{}' is interrupted. Dashboard: {}",
-                    catalogDetails.toString(), dashboard.toString());
+                    catalogDetails.toString(), globalStateManager.getDashboard().toString());
         }
     }
 

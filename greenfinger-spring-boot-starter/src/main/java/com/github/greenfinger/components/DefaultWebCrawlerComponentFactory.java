@@ -156,8 +156,8 @@ public class DefaultWebCrawlerComponentFactory implements WebCrawlerComponentFac
     }
 
     @Override
-    public Dashboard getDashboard(CatalogDetails catalogDetails) {
-        return new OneTimeDashboard(catalogDetails, redisConnectionFactory);
+    public GlobalStateManager getGlobalStateManager(CatalogDetails catalogDetails) {
+        return new RedisGlobalStateManager(catalogDetails, redisConnectionFactory);
     }
 
 }

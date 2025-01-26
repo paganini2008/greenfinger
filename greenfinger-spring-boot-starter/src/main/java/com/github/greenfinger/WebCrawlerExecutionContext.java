@@ -3,9 +3,9 @@ package com.github.greenfinger;
 import java.util.List;
 import com.github.doodler.common.context.ManagedBeanLifeCycle;
 import com.github.doodler.common.transmitter.Packet;
-import com.github.greenfinger.components.Dashboard;
 import com.github.greenfinger.components.ExistingUrlPathFilter;
 import com.github.greenfinger.components.Extractor;
+import com.github.greenfinger.components.GlobalStateManager;
 import com.github.greenfinger.components.InterruptionChecker;
 import com.github.greenfinger.components.UrlPathAcceptor;
 
@@ -28,7 +28,7 @@ public interface WebCrawlerExecutionContext extends ManagedBeanLifeCycle {
 
     ExistingUrlPathFilter getExistingUrlPathFilter();
 
-    Dashboard getDashboard();
+    GlobalStateManager getGlobalStateManager();
 
     boolean isUrlAcceptable(String referUrl, String path, Packet packet);
 

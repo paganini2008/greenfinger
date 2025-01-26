@@ -22,8 +22,8 @@ public class CatalogSummary {
 
     private final CatalogDetails catalogDetails;
 
-    public CatalogSummary(CatalogDetails catalogDetails, Dashboard dashboard) {
-        this.catalogDetails = catalogDetails;
+    public CatalogSummary(Dashboard dashboard) {
+        this.catalogDetails = dashboard.getCatalogDetails();
         this.startTime = new Date(dashboard.getStartTime());
         this.endTime = new Date(dashboard.getEndTime());
         this.completed = dashboard.isCompleted();

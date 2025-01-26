@@ -1,8 +1,12 @@
 package com.github.greenfinger.components;
 
+import static com.github.greenfinger.components.RedisGlobalStateManager.NAMESPACE_PATTERN;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.support.atomic.RedisAtomicLong;
@@ -11,39 +15,26 @@ import com.github.greenfinger.CatalogDetails;
 
 /**
  * 
- * @Description: OneTimeDashboard
+ * @Description: RedisDashboard
  * @Author: Fred Feng
- * @Date: 31/12/2024
+ * @Date: 26/01/2025
  * @Version 1.0.0
  */
-public class OneTimeDashboard implements Dashboard, InitializingBean {
+public class RedisDashboard implements Dashboard, InitializingBean {
 
-    private final CatalogDetails catalogDetails;
-    private final RedisGenericDataType<String> members;
-    private final RedisAtomicLong totalUrlCount;
-    private final RedisAtomicLong invalidUrlCount;
-    private final RedisAtomicLong existingUrlCount;
-    private final RedisAtomicLong filteredUrlCount;
-    private final RedisAtomicLong savedResourceCount;
-    private final RedisAtomicLong indexedResourceCount;
-    private final RedisGenericDataType<Long> startTime;
-    private final RedisGenericDataType<Long> endTime;
-    private final RedisGenericDataType<Boolean> completed;
-    private long lastModified;
-
-    public OneTimeDashboard(CatalogDetails catalogDetails,
+    public RedisDashboard(CatalogDetails catalogDetails,
             RedisConnectionFactory redisConnectionFactory) {
         long catalogId = catalogDetails.getId();
         int version = catalogDetails.getVersion();
-        members = new RedisGenericDataType<String>(
-                String.format(NAMESPACE_PATTERN, catalogId, version, "members"), String.class,
-                redisConnectionFactory);
         startTime = new RedisGenericDataType<Long>(
                 String.format(NAMESPACE_PATTERN, catalogId, version, "startTime"), Long.class,
                 redisConnectionFactory, System.currentTimeMillis());
         endTime = new RedisGenericDataType<Long>(
                 String.format(NAMESPACE_PATTERN, catalogId, version, "endTime"), Long.class,
                 redisConnectionFactory);
+        completed = new RedisGenericDataType<Boolean>(
+                String.format(NAMESPACE_PATTERN, catalogId, version, "completed"), Boolean.class,
+                redisConnectionFactory, true);
         totalUrlCount = new RedisAtomicLong(
                 String.format(NAMESPACE_PATTERN, catalogId, version, "totalUrlCount"),
                 redisConnectionFactory);
@@ -62,15 +53,27 @@ public class OneTimeDashboard implements Dashboard, InitializingBean {
         indexedResourceCount = new RedisAtomicLong(
                 String.format(NAMESPACE_PATTERN, catalogId, version, "indexedResourceCount"),
                 redisConnectionFactory);
-        completed = new RedisGenericDataType<Boolean>(
-                String.format(NAMESPACE_PATTERN, catalogId, version, "completed"), Boolean.class,
-                redisConnectionFactory, true);
         this.catalogDetails = catalogDetails;
+
     }
+
+    final CatalogDetails catalogDetails;
+    final RedisGenericDataType<Long> startTime;
+    final RedisGenericDataType<Long> endTime;
+    final RedisGenericDataType<Boolean> completed;
+    final RedisAtomicLong totalUrlCount;
+    final RedisAtomicLong invalidUrlCount;
+    final RedisAtomicLong existingUrlCount;
+    final RedisAtomicLong filteredUrlCount;
+    final RedisAtomicLong savedResourceCount;
+    final RedisAtomicLong indexedResourceCount;
+
+    final EnumMap<CountingType, List<Long>> elapsed = new EnumMap<>(CountingType.class);
+    long lastModified;
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        members.delete();
+        completed.set(false);
         startTime.set(System.currentTimeMillis());
         endTime.set(startTime.get()
                 + DateUtils.convertToMillis(catalogDetails.getFetchDuration(), TimeUnit.MINUTES));
@@ -80,70 +83,7 @@ public class OneTimeDashboard implements Dashboard, InitializingBean {
         filteredUrlCount.set(0);
         savedResourceCount.set(0);
         indexedResourceCount.set(0);
-        completed.set(false);
         lastModified = System.currentTimeMillis();
-    }
-
-    @Override
-    public void addMember(String instanceId) {
-        members.leftPush(instanceId);
-    }
-
-    @Override
-    public List<String> getMembers() {
-        return members.list(0, members.sizeOfList());
-    }
-
-    @Override
-    public boolean isCompleted() {
-        return completed.get();
-    }
-
-    @Override
-    public void setCompleted(boolean completed) {
-        this.completed.set(completed);
-        this.lastModified = System.currentTimeMillis();
-    }
-
-    @Override
-    public long incrementCount(CountingType countingType) {
-        return incrementCount(countingType, 1);
-    }
-
-    @Override
-    public long incrementCount(CountingType countingType, int delta) {
-        RedisAtomicLong longCounter = null;
-        switch (countingType) {
-            case URL_TOTAL_COUNT:
-                longCounter = totalUrlCount;
-                break;
-            case INVALID_URL_COUNT:
-                longCounter = invalidUrlCount;
-                break;
-            case EXISTING_URL_COUNT:
-                longCounter = existingUrlCount;
-                break;
-            case FILTERED_URL_COUNT:
-                longCounter = filteredUrlCount;
-                break;
-            case SAVED_RESOURCE_COUNT:
-                longCounter = savedResourceCount;
-                break;
-            case INDEXED_RESOURCE_COUNT:
-                longCounter = indexedResourceCount;
-                break;
-            default:
-                throw new UnsupportedOperationException(
-                        "Unknown incremental type: " + countingType);
-        }
-        try {
-            if (delta == 1) {
-                return longCounter.incrementAndGet();
-            }
-            return longCounter.addAndGet(delta);
-        } finally {
-            this.lastModified = System.currentTimeMillis();
-        }
     }
 
     @Override
@@ -177,6 +117,11 @@ public class OneTimeDashboard implements Dashboard, InitializingBean {
     }
 
     @Override
+    public boolean isCompleted() {
+        return completed.get();
+    }
+
+    @Override
     public long getStartTime() {
         return startTime.get();
     }
@@ -184,6 +129,15 @@ public class OneTimeDashboard implements Dashboard, InitializingBean {
     @Override
     public long getEndTime() {
         return endTime.get();
+    }
+
+    @Override
+    public double getAverageExecutionTime() {
+        List<Long> list = elapsed.get(catalogDetails.getCountingType());
+        if (CollectionUtils.isEmpty(list)) {
+            return 0;
+        }
+        return list.stream().filter(e -> e > 0).mapToLong(Long::longValue).average().getAsDouble();
     }
 
     @Override
@@ -205,14 +159,8 @@ public class OneTimeDashboard implements Dashboard, InitializingBean {
     }
 
     @Override
-    public String getDescription() {
-        return "OneTimeDashboard";
-    }
-
-    @Override
     public String toString() {
-        return ToStringBuilder.reflectionToString(this);
+        return ToStringBuilder.reflectionToString(this, ToStringStyle.JSON_STYLE);
     }
-
 
 }

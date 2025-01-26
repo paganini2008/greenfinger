@@ -11,7 +11,6 @@ import com.github.doodler.common.cloud.SecondaryApplicationInfoRefreshEvent;
 import com.github.doodler.common.events.EventPublisher;
 import com.github.doodler.common.transmitter.ChannelSwitcher;
 import com.github.doodler.common.transmitter.Packet;
-import com.github.doodler.common.utils.DateUtils;
 import com.github.doodler.common.utils.SerializableTaskTimer;
 import lombok.extern.slf4j.Slf4j;
 
@@ -54,9 +53,8 @@ public class WebCrawlerEventManager implements ApplicationEventPublisherAware {
     @EventListener({WebCrawlerInterruptEvent.class})
     public void onInterrupt(WebCrawlerInterruptEvent event) {
         WebCrawlerExecutionContext context = (WebCrawlerExecutionContext) event.getSource();
-        if (System.currentTimeMillis() - context.getDashboard().getLastModified() < DateUtils
-                .convertToMillis(webCrawlerProperties.getEstimatedCompletionDelayDuration(),
-                        TimeUnit.MINUTES)) {
+        if (context.getGlobalStateManager().isTimeout(
+                webCrawlerProperties.getEstimatedCompletionDelayDuration(), TimeUnit.MINUTES)) {
             return;
         }
         CatalogDetails catalogDetails = event.getCatalogDetails();

@@ -21,6 +21,11 @@ public enum CountingType implements EnumConstant {
             return data.getTotalUrlCount() > maxFetchSize;
         }
 
+        @Override
+        public long getValue(Dashboard data) {
+            return data.getTotalUrlCount();
+        }
+
     },
 
     INVALID_URL_COUNT(1, "invalidUrlCount") {
@@ -29,6 +34,11 @@ public enum CountingType implements EnumConstant {
         @Override
         public boolean compare(Dashboard data, long maxFetchSize) {
             return data.getInvalidUrlCount() > maxFetchSize;
+        }
+
+        @Override
+        public long getValue(Dashboard data) {
+            return data.getInvalidUrlCount();
         }
     },
 
@@ -39,6 +49,11 @@ public enum CountingType implements EnumConstant {
         public boolean compare(Dashboard data, long maxFetchSize) {
             return data.getExistingUrlCount() > maxFetchSize;
         }
+
+        @Override
+        public long getValue(Dashboard data) {
+            return data.getExistingUrlCount();
+        }
     },
 
     FILTERED_URL_COUNT(3, "filteredUrlCount") {
@@ -48,6 +63,11 @@ public enum CountingType implements EnumConstant {
         public boolean compare(Dashboard data, long maxFetchSize) {
             return data.getFilteredUrlCount() > maxFetchSize;
         }
+
+        @Override
+        public long getValue(Dashboard data) {
+            return data.getFilteredUrlCount();
+        }
     },
 
     SAVED_RESOURCE_COUNT(4, "savedResourceCount") {
@@ -55,6 +75,11 @@ public enum CountingType implements EnumConstant {
         @Override
         public boolean compare(Dashboard data, long maxFetchSize) {
             return data.getSavedResourceCount() > maxFetchSize;
+        }
+
+        @Override
+        public long getValue(Dashboard data) {
+            return data.getSavedResourceCount();
         }
     },
 
@@ -64,6 +89,13 @@ public enum CountingType implements EnumConstant {
         public boolean compare(Dashboard data, long maxFetchSize) {
             return data.getIndexedResourceCount() > maxFetchSize;
         }
+
+        @Override
+        public long getValue(Dashboard data) {
+            return data.getIndexedResourceCount();
+        }
+
+
     };
 
     private CountingType(int value, String repr) {
@@ -89,5 +121,7 @@ public enum CountingType implements EnumConstant {
     }
 
     public abstract boolean compare(Dashboard data, long maxFetchSize);
+
+    public abstract long getValue(Dashboard data);
 
 }

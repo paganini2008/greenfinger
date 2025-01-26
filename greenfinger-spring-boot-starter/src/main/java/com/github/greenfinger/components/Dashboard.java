@@ -9,9 +9,7 @@ import com.github.greenfinger.CatalogDetails;
  * @Date: 11/01/2025
  * @Version 1.0.0
  */
-public interface Dashboard extends DashboardManager, WebCrawlerComponent {
-
-    String NAMESPACE_PATTERN = "greenfinger:dashboard:%s:%s:%s";
+public interface Dashboard {
 
     long getTotalUrlCount();
 
@@ -32,6 +30,10 @@ public interface Dashboard extends DashboardManager, WebCrawlerComponent {
     long getElapsedTime();
 
     long getLastModified();
+
+    boolean isCompleted();
+
+    double getAverageExecutionTime();
 
     CatalogDetails getCatalogDetails();
 

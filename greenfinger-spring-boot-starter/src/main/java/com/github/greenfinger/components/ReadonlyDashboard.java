@@ -1,19 +1,17 @@
 package com.github.greenfinger.components;
 
-import java.util.List;
 import com.github.greenfinger.CatalogDetails;
 
 /**
  * 
- * @Description: Snapshot
+ * @Description: ReadonlyDashboard
  * @Author: Fred Feng
  * @Date: 23/01/2025
  * @Version 1.0.0
  */
-public class Snapshot implements Dashboard {
+public class ReadonlyDashboard implements Dashboard {
 
     private final CatalogDetails catalogDetails;
-    private final List<String> members;
     private final long totalUrlCount;
     private final long invalidUrlCount;
     private final long existingUrlCount;
@@ -23,11 +21,11 @@ public class Snapshot implements Dashboard {
     private final long startTime;
     private final long endTime;
     private final long elapsedTime;
+    private final double averageExecutionTime;
     private final long lastModified;
 
-    public Snapshot(Dashboard dashboard) {
+    public ReadonlyDashboard(Dashboard dashboard) {
         this.catalogDetails = dashboard.getCatalogDetails();
-        this.members = dashboard.getMembers();
         this.totalUrlCount = dashboard.getTotalUrlCount();
         this.invalidUrlCount = dashboard.getInvalidUrlCount();
         this.existingUrlCount = dashboard.getExistingUrlCount();
@@ -37,17 +35,8 @@ public class Snapshot implements Dashboard {
         this.startTime = dashboard.getStartTime();
         this.endTime = dashboard.getEndTime();
         this.elapsedTime = dashboard.getElapsedTime();
+        this.averageExecutionTime = dashboard.getAverageExecutionTime();
         this.lastModified = dashboard.getLastModified();
-    }
-
-    @Override
-    public void addMember(String serviceLocation) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public List<String> getMembers() {
-        return members;
     }
 
     @Override
@@ -58,21 +47,6 @@ public class Snapshot implements Dashboard {
     @Override
     public boolean isCompleted() {
         return true;
-    }
-
-    @Override
-    public void setCompleted(boolean completed) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public long incrementCount(CountingType countingType) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public long incrementCount(CountingType countingType, int delta) {
-        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -103,6 +77,11 @@ public class Snapshot implements Dashboard {
     @Override
     public long getIndexedResourceCount() {
         return indexedResourceCount;
+    }
+
+    @Override
+    public double getAverageExecutionTime() {
+        return averageExecutionTime;
     }
 
     @Override

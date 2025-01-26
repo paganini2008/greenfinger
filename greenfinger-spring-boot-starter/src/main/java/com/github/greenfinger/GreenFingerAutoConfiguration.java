@@ -2,16 +2,20 @@ package com.github.greenfinger;
 
 import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.elasticsearch.repository.config.EnableElasticsearchRepositories;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
 import com.github.doodler.common.transmitter.HashPartitioner;
 import com.github.doodler.common.transmitter.MultipleChoicePartitioner;
 import com.github.doodler.common.transmitter.Partitioner;
 import com.github.doodler.common.utils.SerializableTaskTimer;
+import com.github.greenfinger.components.DashboardFactory;
 import com.github.greenfinger.components.DefaultWebCrawlerComponentFactory;
+import com.github.greenfinger.components.RedisDashboardFactory;
 import com.github.greenfinger.components.WebCrawlerComponentFactory;
 
 /**
@@ -44,6 +48,7 @@ public class GreenFingerAutoConfiguration {
         return new SerializableTaskTimer(5, 5, TimeUnit.SECONDS, false);
     }
 
+    @ConditionalOnMissingBean
     @Bean
     public WebCrawlerComponentFactory webCrawlerComponentFactory() {
         return new DefaultWebCrawlerComponentFactory();
@@ -52,6 +57,12 @@ public class GreenFingerAutoConfiguration {
     @Bean
     public WebCrawlerSemaphore webCrawlerSemaphore() {
         return new WebCrawlerSemaphore();
+    }
+
+    @ConditionalOnMissingBean
+    @Bean
+    public DashboardFactory defaultDashboardFactory(RedisConnectionFactory redisConnectionFactory) {
+        return new RedisDashboardFactory(redisConnectionFactory);
     }
 
 }

@@ -51,13 +51,13 @@ public class ChannelSwitcherJob {
         }
         WebCrawlerExecutionContext executionContext =
                 WebCrawlerExecutionContextUtils.get(catalogDetails.getId(), false);
-        if (executionContext == null || executionContext.getDashboard() == null) {
+        if (executionContext == null || executionContext.getGlobalStateManager() == null) {
             return;
         }
-        if (executionContext.getDashboard().isCompleted()) {
+        if (executionContext.getGlobalStateManager().isCompleted()) {
             return;
         }
-        Optional.ofNullable(executionContext.getDashboard().getMembers()).ifPresent(l -> {
+        Optional.ofNullable(executionContext.getGlobalStateManager().getMembers()).ifPresent(l -> {
             l.forEach(instanceId -> {
                 Optional<SocketAddress> opt = lookupSocketAddressesFromDiscoveryClient(instanceId);
                 if (opt.isPresent()) {

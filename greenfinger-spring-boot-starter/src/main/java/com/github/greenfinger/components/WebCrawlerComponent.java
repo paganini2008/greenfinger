@@ -9,7 +9,7 @@ package com.github.greenfinger.components;
  */
 public interface WebCrawlerComponent {
 
-    default String getDescription() {
+    default String getName() {
         return getClass().getSimpleName();
     }
 

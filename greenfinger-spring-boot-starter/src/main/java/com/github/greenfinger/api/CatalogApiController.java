@@ -1,10 +1,7 @@
 package com.github.greenfinger.api;
 
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,7 +12,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.github.doodler.common.ApiResult;
 import com.github.doodler.common.page.PageVo;
-import com.github.doodler.common.utils.MapUtils;
 import com.github.greenfinger.CatalogAdminService;
 import com.github.greenfinger.CatalogDetails;
 import com.github.greenfinger.CatalogDetailsService;
@@ -25,8 +21,8 @@ import com.github.greenfinger.WebCrawlerExecutionContextUtils;
 import com.github.greenfinger.WebCrawlerJobService;
 import com.github.greenfinger.api.pojo.CatalogInfo;
 import com.github.greenfinger.api.pojo.CatalogSummary;
-import com.github.greenfinger.components.OneTimeDashboard;
-import com.github.greenfinger.components.Snapshot;
+import com.github.greenfinger.components.Dashboard;
+import com.github.greenfinger.components.DashboardFactory;
 import com.github.greenfinger.model.Catalog;
 
 /**
@@ -40,11 +36,6 @@ import com.github.greenfinger.model.Catalog;
 @RestController
 public class CatalogApiController {
 
-    private final Map<Long, Snapshot> snapshotCache = new ConcurrentHashMap<>();
-
-    @Autowired
-    private RedisConnectionFactory redisConnectionFactory;
-
     @Autowired
     private WebCrawlerJobService webCrawlerJobService;
 
@@ -56,6 +47,9 @@ public class CatalogApiController {
 
     @Autowired
     private CatalogDetailsService catalogDetailsService;
+
+    @Autowired
+    private DashboardFactory dashboardFactory;
 
     @GetMapping("/all/cats")
     public ApiResult<List<String>> getCatList() {
@@ -97,7 +91,7 @@ public class CatalogApiController {
         WebCrawlerExecutionContext executionContext =
                 WebCrawlerExecutionContextUtils.get(catalogId, false);
         if (executionContext != null) {
-            executionContext.getDashboard().setCompleted(true);
+            executionContext.getGlobalStateManager().setCompleted(true);
         }
         return ApiResult.ok("Crawling Task will be triggered soon.");
     }
@@ -120,18 +114,17 @@ public class CatalogApiController {
         WebCrawlerExecutionContext executionContext =
                 WebCrawlerExecutionContextUtils.get(catalogDetails.getId(), false);
         if (executionContext != null) {
-            return ApiResult
-                    .ok(new CatalogSummary(catalogDetails, executionContext.getDashboard()));
+            return ApiResult.ok(
+                    new CatalogSummary(executionContext.getGlobalStateManager().getDashboard()));
         }
-        Snapshot snapshot = MapUtils.getOrCreate(snapshotCache, catalogDetails.getId(),
-                () -> new Snapshot(new OneTimeDashboard(catalogDetails, redisConnectionFactory)));
-        return ApiResult.ok(new CatalogSummary(catalogDetails, snapshot));
+        Dashboard snapshot = dashboardFactory.getReadyonlyDashboard(catalogDetails);
+        return ApiResult.ok(new CatalogSummary(snapshot));
     }
 
     @PostMapping("/{id}/running")
     public ApiResult<Boolean> isRunning(@PathVariable("id") Long catalogId) {
         WebCrawlerExecutionContext context = WebCrawlerExecutionContextUtils.get(catalogId);
-        return context != null ? ApiResult.ok(!context.getDashboard().isCompleted())
+        return context != null ? ApiResult.ok(!context.getGlobalStateManager().isCompleted())
                 : ApiResult.ok(false);
     }
 
@@ -139,8 +132,8 @@ public class CatalogApiController {
     public ApiResult<Boolean> stop(@PathVariable("id") Long catalogId) {
         WebCrawlerExecutionContext context = WebCrawlerExecutionContextUtils.get(catalogId, false);
         if (context != null) {
-            context.getDashboard().setCompleted(true);
-            return ApiResult.ok(context.getDashboard().isCompleted());
+            context.getGlobalStateManager().setCompleted(true);
+            return ApiResult.ok(context.getGlobalStateManager().isCompleted());
         }
         return ApiResult.ok(false);
     }
