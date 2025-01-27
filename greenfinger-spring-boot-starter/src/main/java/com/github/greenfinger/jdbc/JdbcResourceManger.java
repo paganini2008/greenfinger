@@ -17,6 +17,7 @@ import java.util.Date;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import com.github.doodler.common.id.IdGenerator;
@@ -170,8 +171,6 @@ public class JdbcResourceManger implements ResourceManager {
         return catalogDao.pageForCatalog(whereClause.toString(), example, page, size);
     }
 
-
-
     @Override
     public PageResponse<CatalogInfo> pageForCatalog2(Catalog example, int page, int size) {
         StringBuilder whereClause = new StringBuilder();
@@ -256,7 +255,11 @@ public class JdbcResourceManger implements ResourceManager {
 
     @Override
     public String getLatestReferencePath(long catalogId) {
-        return resourceDao.getLatestReferencePath(catalogId);
+        try {
+            return resourceDao.getLatestReferencePath(catalogId);
+        } catch (DataAccessException e) {
+            return "";
+        }
     }
 
     @Override

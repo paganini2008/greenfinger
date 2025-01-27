@@ -8,15 +8,15 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Component;
 import com.github.doodler.common.events.Context;
 import com.github.doodler.common.events.EventSubscriber;
-import com.github.doodler.common.transmitter.Acknowledger;
 import com.github.doodler.common.transmitter.NioClient;
 import com.github.doodler.common.transmitter.Packet;
+import com.github.doodler.common.transmitter.PacketRetryer;
 import com.github.doodler.common.transmitter.Partitioner;
 import com.github.doodler.common.utils.CharsetUtils;
 import com.github.greenfinger.components.CountingType;
@@ -50,8 +50,9 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
     @Autowired
     private ResourceIndexService resourceIndexService;
 
+    @Lazy
     @Autowired
-    private ObjectProvider<Acknowledger> acknowledger;
+    private PacketRetryer packetRetryer;
 
     @Override
     public void consume(Packet packet, Context context) {
@@ -74,19 +75,18 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
             default:
                 throw new IllegalArgumentException("Unknown packet: " + packet);
         }
-        acknowledger.getObject().succeed(packet);
     }
 
     @Override
-    public void onError(Packet packet, Throwable e, Context context) {
-        acknowledger.getObject().backfill(packet);
+    public void onError(Packet packet, Exception e, Context context) {
+        packetRetryer.backfill(packet);
         if (log.isErrorEnabled()) {
             log.error(e.getMessage(), e);
         }
     }
 
     @Override
-    public void onComplete(Packet packet, Context context) {
+    public void onComplete(Packet packet, Exception e, Context context) {
         long catalogId = (Long) packet.getField("catalogId");
         WebCrawlerExecutionContext executionContext =
                 WebCrawlerExecutionContextUtils.get(catalogId);
