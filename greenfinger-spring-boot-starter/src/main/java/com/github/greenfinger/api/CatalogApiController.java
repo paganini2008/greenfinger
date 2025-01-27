@@ -36,6 +36,7 @@ import com.github.greenfinger.model.Catalog;
 @RestController
 public class CatalogApiController {
 
+
     @Autowired
     private WebCrawlerJobService webCrawlerJobService;
 
@@ -51,7 +52,7 @@ public class CatalogApiController {
     @Autowired
     private DashboardFactory dashboardFactory;
 
-    @GetMapping("/all/cats")
+    @GetMapping("/cats")
     public ApiResult<List<String>> getCatList() {
         return ApiResult.ok(resourceManager.selectAllCats());
     }

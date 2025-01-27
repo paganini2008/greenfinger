@@ -1,8 +1,10 @@
 package com.github.greenfinger.components;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.apache.commons.collections4.CollectionUtils;
+import org.springframework.data.redis.core.RedisTemplate;
 import com.github.doodler.common.utils.MapUtils;
 import com.github.greenfinger.CatalogDetails;
 import lombok.RequiredArgsConstructor;
@@ -17,19 +19,26 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class RedisDashboardFactory implements DashboardFactory {
 
-    private final RedisConnectionFactory redisConnectionFactory;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     private final Map<Long, Dashboard> snapshots = new ConcurrentHashMap<>();
 
     @Override
     public Dashboard getDashboard(CatalogDetails catalogDetails) {
-        return new RedisDashboard(catalogDetails, redisConnectionFactory);
+        return new RedisDashboard(catalogDetails, redisTemplate.getConnectionFactory());
     }
 
     @Override
     public Dashboard getReadyonlyDashboard(CatalogDetails catalogDetails) {
+        String keyPattern = String.format(RedisGlobalStateManager.NAMESPACE_PATTERN,
+                catalogDetails.getId(), catalogDetails.getVersion(), "*");
+        Set<String> keys = redisTemplate.keys(keyPattern);
+        if (CollectionUtils.isNotEmpty(keys)) {
+            return MapUtils.getOrCreate(snapshots, catalogDetails.getId(),
+                    () -> new ReadonlyDashboard(getDashboard(catalogDetails)));
+        }
         return MapUtils.getOrCreate(snapshots, catalogDetails.getId(),
-                () -> new ReadonlyDashboard(getDashboard(catalogDetails)));
+                () -> new EmptyDashboard(catalogDetails));
     }
 
 

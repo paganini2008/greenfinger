@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.elasticsearch.repository.config.EnableElasticsearchRepositories;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.core.RedisTemplate;
 import com.github.doodler.common.transmitter.HashPartitioner;
 import com.github.doodler.common.transmitter.MultipleChoicePartitioner;
 import com.github.doodler.common.transmitter.Partitioner;
@@ -61,8 +61,8 @@ public class GreenFingerAutoConfiguration {
 
     @ConditionalOnMissingBean
     @Bean
-    public DashboardFactory defaultDashboardFactory(RedisConnectionFactory redisConnectionFactory) {
-        return new RedisDashboardFactory(redisConnectionFactory);
+    public DashboardFactory defaultDashboardFactory(RedisTemplate<String, Object> redisTemplate) {
+        return new RedisDashboardFactory(redisTemplate);
     }
 
 }

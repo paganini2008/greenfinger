@@ -4,6 +4,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import com.github.doodler.common.Constants;
 import com.github.doodler.common.context.ManagedBeanLifeCycle;
+import com.github.doodler.common.utils.DateUtils;
 import com.github.doodler.common.utils.DefaultProgressBarBuilder;
 import com.github.doodler.common.utils.ProgressBar;
 import com.github.doodler.common.utils.TimeWaitProgressBar;
@@ -20,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ProgressBarSupplier implements ManagedBeanLifeCycle, WebCrawlerComponent {
 
+    private static final int PROGRESS_BAR_MOVING_INTERVAL = 5;
     private final CatalogDetails catalogDetails;
     private final Dashboard dashboard;
     private final AtomicLong counter = new AtomicLong(0);
@@ -29,27 +31,36 @@ public class ProgressBarSupplier implements ManagedBeanLifeCycle, WebCrawlerComp
     @Override
     public void afterPropertiesSet() throws Exception {
         if (maxFetchSizeProgressBar == null) {
-            maxFetchSizeProgressBar = new TimeWaitProgressBar(3, TimeUnit.SECONDS,
-                    () -> catalogDetails.getMaxFetchSize().longValue(),
+            maxFetchSizeProgressBar = new TimeWaitProgressBar(PROGRESS_BAR_MOVING_INTERVAL,
+                    TimeUnit.SECONDS, () -> catalogDetails.getMaxFetchSize().longValue(),
                     () -> catalogDetails.getCountingType().getValue(dashboard),
                     () -> dashboard.getAverageExecutionTime(), new MaxFetchSize());
             maxFetchSizeProgressBar.afterPropertiesSet();
         }
         if (durationProgressBar == null) {
-            durationProgressBar = new TimeWaitProgressBar(3, TimeUnit.SECONDS,
-                    () -> catalogDetails.getFetchDuration(), () -> dashboard.getElapsedTime(),
-                    () -> dashboard.getAverageExecutionTime(), new Duration());
+            durationProgressBar =
+                    new TimeWaitProgressBar(PROGRESS_BAR_MOVING_INTERVAL, TimeUnit.SECONDS,
+                            () -> DateUtils.convertToMillis(catalogDetails.getFetchDuration(),
+                                    TimeUnit.MINUTES),
+                            () -> dashboard.getElapsedTime(),
+                            () -> dashboard.getAverageExecutionTime(), new Duration());
             durationProgressBar.afterPropertiesSet();
         }
     }
 
     @Override
-    public void destroy() throws Exception {
+    public void destroy() {
         if (maxFetchSizeProgressBar != null) {
-            maxFetchSizeProgressBar.destroy();
+            try {
+                maxFetchSizeProgressBar.destroy();
+            } catch (Exception ignored) {
+            }
         }
         if (durationProgressBar != null) {
-            durationProgressBar.destroy();
+            try {
+                durationProgressBar.destroy();
+            } catch (Exception ignored) {
+            }
         }
     }
 

@@ -46,6 +46,10 @@ public class RedisGenericDataType<T> {
     private final RedisTemplate<String, T> redisTemplate;
     private final String key;
 
+    public boolean exists() {
+        return redisTemplate.hasKey(key);
+    }
+
     public void set(T value) {
         redisTemplate.opsForValue().set(key, value);
     }

@@ -1,6 +1,7 @@
 package com.github.greenfinger.components;
 
 import static com.github.greenfinger.components.RedisGlobalStateManager.NAMESPACE_PATTERN;
+import java.text.DateFormat;
 import java.util.Date;
 import java.util.EnumMap;
 import java.util.List;
@@ -39,19 +40,19 @@ public class RedisDashboard implements Dashboard, InitializingBean {
                 redisConnectionFactory);
         invalidUrlCount = new RedisAtomicLong(
                 String.format(NAMESPACE_PATTERN, catalogId, version, "invalidUrlCount"),
-                redisConnectionFactory);
+                redisConnectionFactory, 0);
         existingUrlCount = new RedisAtomicLong(
                 String.format(NAMESPACE_PATTERN, catalogId, version, "existingUrlCount"),
-                redisConnectionFactory);
+                redisConnectionFactory, 0);
         filteredUrlCount = new RedisAtomicLong(
                 String.format(NAMESPACE_PATTERN, catalogId, version, "filteredUrlCount"),
-                redisConnectionFactory);
+                redisConnectionFactory, 0);
         savedResourceCount = new RedisAtomicLong(
                 String.format(NAMESPACE_PATTERN, catalogId, version, "savedResourceCount"),
-                redisConnectionFactory);
+                redisConnectionFactory, 0);
         indexedResourceCount = new RedisAtomicLong(
                 String.format(NAMESPACE_PATTERN, catalogId, version, "indexedResourceCount"),
-                redisConnectionFactory);
+                redisConnectionFactory, 0);
         this.catalogDetails = catalogDetails;
 
     }
@@ -117,17 +118,17 @@ public class RedisDashboard implements Dashboard, InitializingBean {
 
     @Override
     public boolean isCompleted() {
-        return completed.get();
+        return completed.exists() ? completed.get() : false;
     }
 
     @Override
     public long getStartTime() {
-        return startTime.get();
+        return startTime.exists() ? startTime.get() : 0L;
     }
 
     @Override
     public long getEndTime() {
-        return endTime.get();
+        return endTime.exists() ? endTime.get() : 0L;
     }
 
     @Override
@@ -159,23 +160,31 @@ public class RedisDashboard implements Dashboard, InitializingBean {
 
     @Override
     public String toString() {
+        DateFormat dateFormat =
+                DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM);
         StringBuilder str = new StringBuilder();
+
         str.append(
-                "╔══════════════════╦══════════════════╦══════════════════╦══════════════════╦══════════════════╦══════════════════╦══════════════════╦══════════════════╦══════════════════╗\n");
+                "╔════════════════════════════════╦═════════════════════════════════╦════════════════╦════════════════╦════════════════╦════════════════╦════════════════╦════════════════╦════════════════╗\n");
         str.append(String.format(
-                "║ %-12s ║ %-12s ║ %-12s ║ %-12s ║ %-12s ║ %-12s ║ %-12s ║ %-12s ║ %-12s ║\n",
+                "║ %-30s ║ %-30s ║ %-15s ║ %-15s ║ %-15s ║ %-15s ║ %-15s ║ %-15s ║ %-15s ║\n",
                 "StartTime", "EndTime", "Completed", "TotalUrls", "InvalidUrls", "ExistingUrls",
                 "FilteredUrls", "SavedResources", "IndexedResources"));
         str.append(
-                "╠══════════════════╬══════════════════╬══════════════════╬══════════════════╬══════════════════╬══════════════════╬══════════════════╬══════════════════╬══════════════════╣\n");
+                "╠════════════════════════════════╬═════════════════════════════════╬════════════════╬════════════════╬════════════════╬════════════════╬════════════════╬════════════════╬════════════════╣\n");
+
         str.append(String.format(
-                "║ %-12s ║ %-12s ║ %-12s ║ %-12s ║ %-12s ║ %-12s ║ %-12s ║ %-12s ║ %-12s ║\n",
-                new Date(startTime.get()), new Date(endTime.get()), isCompleted(),
-                getTotalUrlCount(), getInvalidUrlCount(), getExistingUrlCount(),
-                getFilteredUrlCount(), getSavedResourceCount(), getIndexedResourceCount()));
+                "║ %-30s ║ %-30s ║ %-15s ║ %-15s ║ %-15s ║ %-15s ║ %-15s ║ %-15s ║ %-15s ║\n",
+                dateFormat.format(new Date(startTime.get())),
+                dateFormat.format(new Date(endTime.get())), isCompleted(), getTotalUrlCount(),
+                getInvalidUrlCount(), getExistingUrlCount(), getFilteredUrlCount(),
+                getSavedResourceCount(), getIndexedResourceCount()));
+
         str.append(
-                "╚══════════════════╩══════════════════╩══════════════════╩══════════════════╩══════════════════╩══════════════════╩══════════════════╩══════════════════╩══════════════════╝\n");
+                "╚════════════════════════════════╩═════════════════════════════════╩════════════════╩════════════════╩════════════════╩════════════════╩════════════════╩════════════════╩════════════════╝\n");
+
         return str.toString();
     }
+
 
 }

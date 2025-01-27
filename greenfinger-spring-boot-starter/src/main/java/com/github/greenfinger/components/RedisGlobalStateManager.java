@@ -19,7 +19,7 @@ import com.github.greenfinger.CatalogDetails;
  */
 public class RedisGlobalStateManager implements GlobalStateManager, InitializingBean {
 
-    static final String NAMESPACE_PATTERN = "greenfinger:dashboard:%s:%s:%s";
+    public static final String NAMESPACE_PATTERN = "greenfinger:dashboard:%s:%s:%s";
 
     private final CatalogDetails catalogDetails;
     private final RedisGenericDataType<String> members;

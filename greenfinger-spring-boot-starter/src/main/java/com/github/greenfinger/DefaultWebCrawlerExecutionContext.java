@@ -189,11 +189,13 @@ public class DefaultWebCrawlerExecutionContext
 
     @Override
     public boolean shouldInterrupt() {
-        for (InterruptionChecker interruptionChecker : interruptionCheckers) {
-            if (interruptionChecker.shouldInterrupt(catalogDetails,
-                    globalStateManager.getDashboard())) {
-                globalStateManager.setCompleted(true);
-                break;
+        if (!isCompleted()) {
+            for (InterruptionChecker interruptionChecker : interruptionCheckers) {
+                if (interruptionChecker.shouldInterrupt(catalogDetails,
+                        globalStateManager.getDashboard())) {
+                    globalStateManager.setCompleted(true);
+                    break;
+                }
             }
         }
         return isCompleted();
