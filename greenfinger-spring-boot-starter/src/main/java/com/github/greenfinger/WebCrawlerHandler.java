@@ -10,6 +10,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Component;
 import com.github.doodler.common.events.Context;
 import com.github.doodler.common.events.EventSubscriber;
@@ -165,6 +166,12 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
             if (indexEnabled) {
                 sendIndex(catalogId, resource.getId(), version);
             }
+        } catch (DuplicateKeyException e) {
+            if (log.isErrorEnabled()) {
+                log.error(e.getMessage(), e);
+            }
+            executionContext.getGlobalStateManager().incrementCount(packet.getTimestamp(),
+                    CountingType.EXISTING_URL_COUNT);
         } catch (Exception e) {
             if (log.isErrorEnabled()) {
                 log.error(e.getMessage(), e);
@@ -239,7 +246,6 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
             executionContext.getGlobalStateManager().incrementCount(packet.getTimestamp(),
                     CountingType.EXISTING_URL_COUNT);
         } else {
-
             try {
                 Resource resource = new Resource();
                 resource.setTitle(document.title());
@@ -258,6 +264,12 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
                 if (indexEnabled) {
                     sendIndex(catalogId, resource.getId(), version);
                 }
+            } catch (DuplicateKeyException e) {
+                if (log.isErrorEnabled()) {
+                    log.error(e.getMessage(), e);
+                }
+                executionContext.getGlobalStateManager().incrementCount(packet.getTimestamp(),
+                        CountingType.EXISTING_URL_COUNT);
             } catch (Exception e) {
                 if (log.isErrorEnabled()) {
                     log.error(e.getMessage(), e);

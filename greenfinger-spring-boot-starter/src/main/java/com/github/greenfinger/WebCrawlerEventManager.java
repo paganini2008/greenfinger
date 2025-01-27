@@ -53,21 +53,11 @@ public class WebCrawlerEventManager implements ApplicationEventPublisherAware {
     @EventListener({WebCrawlerInterruptEvent.class})
     public void onInterrupt(WebCrawlerInterruptEvent event) {
         WebCrawlerExecutionContext context = (WebCrawlerExecutionContext) event.getSource();
-        if (context.getGlobalStateManager().isTimeout(
+        if (!context.getGlobalStateManager().isTimeout(
                 webCrawlerProperties.getEstimatedCompletionDelayDuration(), TimeUnit.MINUTES)) {
-            try {
-                context.waitForTermination(
-                        webCrawlerProperties.getEstimatedCompletionDelayDuration(),
-                        TimeUnit.MINUTES);
-            } catch (Exception e) {
-                if (log.isErrorEnabled()) {
-                    log.error(e.getMessage(), e);
-                }
-            }
             return;
         }
         CatalogDetails catalogDetails = event.getCatalogDetails();
-
         channelSwitcher.enableExternalChannels(false);
         taskTimer.removeBatch((Runnable) context);
         resourceManager.setRunningState(catalogDetails.getId(), "none");

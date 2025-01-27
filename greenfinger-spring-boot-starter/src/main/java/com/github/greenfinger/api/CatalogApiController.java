@@ -87,8 +87,8 @@ public class CatalogApiController {
         return ApiResult.ok("Crawling Task will be triggered soon.");
     }
 
-    @PostMapping("/{id}/interupt")
-    public ApiResult<String> interupt(@PathVariable("id") Long catalogId) throws Exception {
+    @PostMapping("/{id}/interrupt")
+    public ApiResult<String> interrupt(@PathVariable("id") Long catalogId) throws Exception {
         WebCrawlerExecutionContext executionContext =
                 WebCrawlerExecutionContextUtils.get(catalogId, false);
         if (executionContext != null) {

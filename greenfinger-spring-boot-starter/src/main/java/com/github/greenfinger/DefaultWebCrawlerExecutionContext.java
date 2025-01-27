@@ -14,6 +14,7 @@ import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.stereotype.Component;
 import com.github.doodler.common.context.BeanLifeCycleUtils;
 import com.github.doodler.common.transmitter.Packet;
+import com.github.doodler.common.utils.DateUtils;
 import com.github.doodler.common.utils.SerializableTaskTimer;
 import com.github.greenfinger.components.ExistingUrlPathFilter;
 import com.github.greenfinger.components.Extractor;
@@ -64,6 +65,8 @@ public class DefaultWebCrawlerExecutionContext
     private ApplicationEventPublisher applicationEventPublisher;
 
     private final AtomicInteger concurrents = new AtomicInteger(0);
+
+    private CompletableFuture<?> completableFuture;
 
     DefaultWebCrawlerExecutionContext() {}
 
@@ -214,31 +217,53 @@ public class DefaultWebCrawlerExecutionContext
 
     @Override
     public void waitForTermination(long timeout, TimeUnit timeUnit) throws Exception {
-        CompletableFuture<?> future = CompletableFuture.runAsync(() -> {
-            while (concurrents.get() > 0) {
-                ;
-            }
-        });
+        if (completableFuture == null || completableFuture.isDone()
+                || completableFuture.isCompletedExceptionally()
+                || completableFuture.isCancelled()) {
+            return;
+        }
         try {
-            future.get(timeout, timeUnit);
+            completableFuture.get(timeout, timeUnit);
         } catch (TimeoutException e) {
-            if (log.isErrorEnabled()) {
-                log.error("Unable to wait for termination because time is up to: " + timeout
-                        + timeUnit.name());
-            }
+            applicationEventPublisher
+                    .publishEvent(new WebCrawlerInterruptEvent(this, catalogDetails));
+            throw new TimeoutException("Unable to wait for termination because time is up to "
+                    + DateUtils.converToSecond(timeout, timeUnit) + " seconds.");
         } catch (Exception e) {
-            throw e;
+            if (log.isErrorEnabled()) {
+                log.error(e.getMessage(), e);
+            }
         }
     }
+
+    private long interruptTag;
 
     @Override
     public void run() {
         if (shouldInterrupt()) {
-            applicationEventPublisher
-                    .publishEvent(new WebCrawlerInterruptEvent(this, catalogDetails));
-            if (log.isTraceEnabled()) {
-                log.trace("Catalog web crawler '{}' is interrupted. Dashboard: {}",
-                        catalogDetails.toString(), globalStateManager.getDashboard().toString());
+            if (interruptTag > 0 && System.currentTimeMillis() - interruptTag > DateUtils
+                    .converToSecond(5, TimeUnit.MINUTES)) {
+                if (completableFuture != null && !completableFuture.isDone()) {
+                    applicationEventPublisher
+                            .publishEvent(new WebCrawlerInterruptEvent(this, catalogDetails));
+                    completableFuture.cancel(true);
+                }
+            } else {
+                if (completableFuture == null) {
+                    completableFuture = CompletableFuture.runAsync(() -> {
+                        while (concurrents.get() > 0) {
+                            ;
+                        }
+                    }).thenAccept(a -> {
+                        applicationEventPublisher
+                                .publishEvent(new WebCrawlerInterruptEvent(this, catalogDetails));
+                    });
+                }
+                interruptTag = System.currentTimeMillis();
+            }
+            if (log.isInfoEnabled()) {
+                log.info("Catalog web crawler '{}' is interrupted. Current concurrents: {}",
+                        catalogDetails.toString(), concurrents.get());
             }
         }
     }

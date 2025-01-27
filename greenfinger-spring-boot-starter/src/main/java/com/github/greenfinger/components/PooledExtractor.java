@@ -90,8 +90,8 @@ public abstract class PooledExtractor<T> extends AbstractExtractor
     public static class PooledConfig<T> extends GenericObjectPoolConfig<T> {
         PooledConfig() {
             setMinIdle(1);
-            setMaxIdle(5);
-            setMaxTotal(20);
+            setMaxIdle(1);
+            setMaxTotal(10);
         }
     }
 

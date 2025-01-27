@@ -112,7 +112,7 @@ public class RedisGlobalStateManager implements GlobalStateManager, Initializing
 
     @Override
     public boolean isTimeout(long delay, TimeUnit timeUnit) {
-        return System.currentTimeMillis() - redisDashboard.getLastModified() < DateUtils
+        return System.currentTimeMillis() - redisDashboard.getLastModified() > DateUtils
                 .convertToMillis(delay, timeUnit);
     }
 

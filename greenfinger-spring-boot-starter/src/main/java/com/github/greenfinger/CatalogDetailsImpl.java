@@ -6,8 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.builder.ReflectionToStringBuilder;
-import org.apache.commons.lang3.builder.ToStringStyle;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.github.doodler.common.utils.JacksonUtils;
 import com.github.greenfinger.components.CountingType;
@@ -15,6 +13,7 @@ import com.github.greenfinger.components.ThreadWait;
 import com.github.greenfinger.model.Catalog;
 import com.github.greenfinger.model.CatalogCredential;
 import com.github.greenfinger.model.CatalogIndex;
+import lombok.ToString;
 
 /**
  * 
@@ -23,6 +22,7 @@ import com.github.greenfinger.model.CatalogIndex;
  * @Date: 12/01/2025
  * @Version 1.0.0
  */
+@ToString(onlyExplicitlyIncluded = true)
 public class CatalogDetailsImpl implements CatalogDetails {
 
     public CatalogDetailsImpl(Catalog catalog, CatalogIndex catalogIndex,
@@ -54,29 +54,33 @@ public class CatalogDetailsImpl implements CatalogDetails {
     private final List<String> urlPathAcceptors;
     private final CatalogCredentials[] catalogCredentials;
 
+    @ToString.Include
     @Override
     public Long getId() {
         return catalog.getId();
     }
 
+    @ToString.Include
     @Override
     public String getName() {
         return catalog.getName();
     }
 
+    @ToString.Include
     @Override
     public String getUrl() {
         return catalog.getUrl();
     }
 
-    @Override
-    public String getStartUrl() {
-        return catalog.getStartUrl();
-    }
-
+    @ToString.Include
     @Override
     public String getCategory() {
         return catalog.getCat();
+    }
+
+    @Override
+    public String getStartUrl() {
+        return catalog.getStartUrl();
     }
 
     @Override
@@ -177,12 +181,6 @@ public class CatalogDetailsImpl implements CatalogDetails {
         return catalogCredentials;
     }
 
-    @Override
-    public String toString() {
-        return new ReflectionToStringBuilder(this, ToStringStyle.JSON_STYLE)
-                .setExcludeFieldNames("catalog", "catalogIndex", "webCrawlerProperties").toString();
-    }
-
     /**
      * 
      * @Description: CatalogCredentialsImpl
@@ -190,6 +188,7 @@ public class CatalogDetailsImpl implements CatalogDetails {
      * @Date: 12/01/2025
      * @Version 1.0.0
      */
+    @ToString(onlyExplicitlyIncluded = true)
     static class CatalogCredentialsImpl implements CatalogCredentials {
 
         private final CatalogCredential catalogCredential;
@@ -202,11 +201,13 @@ public class CatalogDetailsImpl implements CatalogDetails {
                             new TypeReference<HashMap<String, String>>() {});
         }
 
+        @ToString.Include
         @Override
         public String getUsername() {
             return catalogCredential.getUsername();
         }
 
+        @ToString.Include
         @Override
         public String getPassword() {
             return catalogCredential.getPassword();
@@ -215,12 +216,6 @@ public class CatalogDetailsImpl implements CatalogDetails {
         @Override
         public Map<String, String> getAdditionalInformation() {
             return additionalInformation;
-        }
-
-        @Override
-        public String toString() {
-            return new ReflectionToStringBuilder(this, ToStringStyle.JSON_STYLE)
-                    .setExcludeFieldNames("catalogCredential").toString();
         }
 
     }
