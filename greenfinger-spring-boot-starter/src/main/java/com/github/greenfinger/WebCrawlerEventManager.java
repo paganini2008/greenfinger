@@ -55,6 +55,15 @@ public class WebCrawlerEventManager implements ApplicationEventPublisherAware {
         WebCrawlerExecutionContext context = (WebCrawlerExecutionContext) event.getSource();
         if (context.getGlobalStateManager().isTimeout(
                 webCrawlerProperties.getEstimatedCompletionDelayDuration(), TimeUnit.MINUTES)) {
+            try {
+                context.waitForTermination(
+                        webCrawlerProperties.getEstimatedCompletionDelayDuration(),
+                        TimeUnit.MINUTES);
+            } catch (Exception e) {
+                if (log.isErrorEnabled()) {
+                    log.error(e.getMessage(), e);
+                }
+            }
             return;
         }
         CatalogDetails catalogDetails = event.getCatalogDetails();

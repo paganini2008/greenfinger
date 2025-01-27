@@ -2,6 +2,10 @@ package com.github.greenfinger;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
@@ -58,6 +62,8 @@ public class DefaultWebCrawlerExecutionContext
     private ProgressBarSupplier progressBarSupplier;
 
     private ApplicationEventPublisher applicationEventPublisher;
+
+    private final AtomicInteger concurrents = new AtomicInteger(0);
 
     DefaultWebCrawlerExecutionContext() {}
 
@@ -199,6 +205,30 @@ public class DefaultWebCrawlerExecutionContext
             }
         }
         return isCompleted();
+    }
+
+    @Override
+    public AtomicInteger getConcurrents() {
+        return concurrents;
+    }
+
+    @Override
+    public void waitForTermination(long timeout, TimeUnit timeUnit) throws Exception {
+        CompletableFuture<?> future = CompletableFuture.runAsync(() -> {
+            while (concurrents.get() > 0) {
+                ;
+            }
+        });
+        try {
+            future.get(timeout, timeUnit);
+        } catch (TimeoutException e) {
+            if (log.isErrorEnabled()) {
+                log.error("Unable to wait for termination because time is up to: " + timeout
+                        + timeUnit.name());
+            }
+        } catch (Exception e) {
+            throw e;
+        }
     }
 
     @Override

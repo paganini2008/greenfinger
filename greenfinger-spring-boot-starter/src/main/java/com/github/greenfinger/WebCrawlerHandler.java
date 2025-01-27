@@ -54,26 +54,42 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
 
     @Override
     public void consume(Packet packet, Context context) {
-        final String action = (String) packet.getField("action");
-        if (StringUtils.isNotBlank(action)) {
-            switch (action) {
-                case "crawl":
-                    doCrawl(packet);
-                    break;
-                case "update":
-                    doUpdate(packet);
-                    break;
-                case "index":
-                    doIndex(packet);
-                    break;
-            }
-            acknowledger.getObject().succeed(packet);
+        long catalogId = (Long) packet.getField("catalogId");
+        WebCrawlerExecutionContext executionContext =
+                WebCrawlerExecutionContextUtils.get(catalogId);
+        executionContext.getConcurrents().incrementAndGet();
+
+        String action = (String) packet.getField("action");
+        switch (action) {
+            case "crawl":
+                doCrawl(packet);
+                break;
+            case "update":
+                doUpdate(packet);
+                break;
+            case "index":
+                doIndex(packet);
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown packet: " + packet);
+        }
+        acknowledger.getObject().succeed(packet);
+    }
+
+    @Override
+    public void onError(Packet packet, Throwable e, Context context) {
+        acknowledger.getObject().backfill(packet);
+        if (log.isErrorEnabled()) {
+            log.error(e.getMessage(), e);
         }
     }
 
     @Override
-    public void handleError(Packet packet, Throwable e, Context context) {
-        acknowledger.getObject().backfill(packet);
+    public void onComplete(Packet packet, Context context) {
+        long catalogId = (Long) packet.getField("catalogId");
+        WebCrawlerExecutionContext executionContext =
+                WebCrawlerExecutionContextUtils.get(catalogId);
+        executionContext.getConcurrents().decrementAndGet();
     }
 
     private void doCrawl(Packet packet) {
@@ -120,7 +136,7 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
                     refer, path, charset, packet, e);
         }
         if (StringUtils.isBlank(html)) {
-            log.warn("Empty html content by path: {}", path);
+            log.warn("Get empty html content by path: {}", path);
             return;
         }
         Document document;
