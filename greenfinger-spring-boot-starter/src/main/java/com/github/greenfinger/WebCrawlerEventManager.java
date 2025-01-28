@@ -49,9 +49,10 @@ public class WebCrawlerEventManager implements ApplicationEventPublisherAware {
     @EventListener({WebCrawlerInterruptEvent.class})
     public void onInterrupt(WebCrawlerInterruptEvent event) {
         WebCrawlerExecutionContext context = (WebCrawlerExecutionContext) event.getSource();
+        taskTimer.removeBatch((Runnable) context);
+
         CatalogDetails catalogDetails = event.getCatalogDetails();
         channelSwitcher.enableExternalChannels(false);
-        taskTimer.removeBatch((Runnable) context);
         resourceManager.setRunningState(catalogDetails.getId(), "none");
         WebCrawlerExecutionContextUtils.remove(catalogDetails.getId());
         semaphore.release();
