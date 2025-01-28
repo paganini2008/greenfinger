@@ -1,6 +1,5 @@
 package com.github.greenfinger;
 
-import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
@@ -24,9 +23,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Component
 public class WebCrawlerEventManager implements ApplicationEventPublisherAware {
-
-    @Autowired
-    private WebCrawlerProperties webCrawlerProperties;
 
     @Autowired
     private SerializableTaskTimer taskTimer;
@@ -53,10 +49,6 @@ public class WebCrawlerEventManager implements ApplicationEventPublisherAware {
     @EventListener({WebCrawlerInterruptEvent.class})
     public void onInterrupt(WebCrawlerInterruptEvent event) {
         WebCrawlerExecutionContext context = (WebCrawlerExecutionContext) event.getSource();
-        if (!context.getGlobalStateManager().isTimeout(
-                webCrawlerProperties.getEstimatedCompletionDelayDuration(), TimeUnit.MINUTES)) {
-            return;
-        }
         CatalogDetails catalogDetails = event.getCatalogDetails();
         channelSwitcher.enableExternalChannels(false);
         taskTimer.removeBatch((Runnable) context);

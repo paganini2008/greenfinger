@@ -46,7 +46,7 @@ public class HtmlUnitPooledExtractor extends PooledExtractor<WebClient> implemen
             webClient = new WebClient(BrowserVersion.BEST_SUPPORTED);
         }
         webClient.getOptions().setThrowExceptionOnScriptError(false);
-        webClient.getOptions().setThrowExceptionOnFailingStatusCode(false);
+        webClient.getOptions().setThrowExceptionOnFailingStatusCode(true);
         webClient.getOptions().setActiveXNative(false);
         webClient.getOptions().setCssEnabled(false);
         webClient.getOptions().setJavaScriptEnabled(config.isJavaScriptEnabled());
@@ -57,7 +57,6 @@ public class HtmlUnitPooledExtractor extends PooledExtractor<WebClient> implemen
         webClient.setCookieManager(new CookieManager());
         webClient.setAjaxController(new NicelyResynchronizingAjaxController());
         webClient.setJavaScriptTimeout(config.getJavaScriptTimeout());
-
         setDefaultHttpHeaders(webClient);
         return webClient;
     }
@@ -87,9 +86,6 @@ public class HtmlUnitPooledExtractor extends PooledExtractor<WebClient> implemen
         try {
             WebCrawlerExtractorProperties.HtmlUnit config = extractorProperties.getHtmlunit();
             Page page = webClient.getPage(url);
-            if (config.isJavaScriptEnabled()) {
-                webClient.waitForBackgroundJavaScript(config.getJavaScriptTimeout());
-            }
             if (config.getLoadingTimeout() > 0) {
                 ThreadUtils.sleep(config.getLoadingTimeout());
             } else {
@@ -120,7 +116,7 @@ public class HtmlUnitPooledExtractor extends PooledExtractor<WebClient> implemen
         pageSource.afterPropertiesSet();
         // System.out.println(pageSource.getHtml("https://blog.csdn.net/u010814849/article/details/52526705"));
         System.out.println(pageSource.extractHtml(null, "https://www.tuniu.com",
-                "https://goldenmatrix.com/", StandardCharsets.UTF_8, null));
+                "https://greatist.com/", StandardCharsets.UTF_8, null));
         System.in.read();
         pageSource.destroy();
     }

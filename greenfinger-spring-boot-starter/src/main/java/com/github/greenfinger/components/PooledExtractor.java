@@ -52,7 +52,7 @@ public abstract class PooledExtractor<T> extends AbstractExtractor
 
                 @Override
                 public void destroyObject(PooledObject<T> p) throws Exception {
-                    destroyObject(p);
+                    PooledExtractor.this.destroyObject(p);
                 }
             };
 

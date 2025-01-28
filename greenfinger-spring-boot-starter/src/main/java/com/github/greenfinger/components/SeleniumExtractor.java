@@ -121,8 +121,8 @@ public class SeleniumExtractor extends AbstractExtractor
                 new SeleniumExtractor(new WebCrawlerExtractorProperties());
         pageExtractor.afterPropertiesSet();
 
-        System.out.println(pageExtractor.extractHtml(null, "http://www.ttmeishi.com",
-                "https://goldenmatrix.com/", null, null));
+        System.out.println(pageExtractor.extractHtml(null, "https://greatist.com/",
+                "https://greatist.com/", null, null));
         System.in.read();
         pageExtractor.destroy();
     }

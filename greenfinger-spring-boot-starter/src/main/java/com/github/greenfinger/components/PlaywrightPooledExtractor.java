@@ -108,7 +108,7 @@ public class PlaywrightPooledExtractor extends PooledExtractor<BrowserContext>
         PlaywrightPooledExtractor extractor =
                 new PlaywrightPooledExtractor(new WebCrawlerExtractorProperties());
         extractor.afterPropertiesSet();
-        String html = extractor.extractHtml(null, "", "https://goldenmatrix.com/company",
+        String html = extractor.extractHtml(null, "", "https://greatist.com/",
                 StandardCharsets.UTF_8, null);
         System.out.println(html);
         System.in.read();

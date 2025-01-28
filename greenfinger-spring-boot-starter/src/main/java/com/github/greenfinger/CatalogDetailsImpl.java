@@ -60,6 +60,10 @@ public class CatalogDetailsImpl implements CatalogDetails {
         return catalog.getId();
     }
 
+    public String getDisplayId() {
+        return catalog.getDisplayId();
+    }
+
     @ToString.Include
     @Override
     public String getName() {

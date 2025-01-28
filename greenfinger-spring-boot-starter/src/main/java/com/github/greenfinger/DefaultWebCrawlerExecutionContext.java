@@ -40,6 +40,9 @@ public class DefaultWebCrawlerExecutionContext
         implements WebCrawlerExecutionContext, Runnable, ApplicationEventPublisherAware {
 
     @Autowired
+    private WebCrawlerProperties webCrawlerProperties;
+
+    @Autowired
     private CatalogDetailsService catalogDetailsService;
 
     @Autowired
@@ -236,34 +239,33 @@ public class DefaultWebCrawlerExecutionContext
         }
     }
 
-    private long interruptTag;
-
     @Override
     public void run() {
-        if (shouldInterrupt()) {
-            if (interruptTag > 0 && System.currentTimeMillis() - interruptTag > DateUtils
-                    .converToSecond(5, TimeUnit.MINUTES)) {
-                if (completableFuture != null && !completableFuture.isDone()) {
-                    applicationEventPublisher
-                            .publishEvent(new WebCrawlerInterruptEvent(this, catalogDetails));
-                    completableFuture.cancel(true);
+        if (!shouldInterrupt()) {
+            return;
+        }
+        if (log.isInfoEnabled()) {
+            log.info("Catalog web crawler '{}' is interrupted. Current concurrents: {}",
+                    catalogDetails.toString(), concurrents.get());
+        }
+        if (completableFuture == null) {
+            completableFuture = CompletableFuture.runAsync(() -> {
+                while (concurrents.get() > 0) {
+                    ;
                 }
-            } else {
-                if (completableFuture == null) {
-                    completableFuture = CompletableFuture.runAsync(() -> {
-                        while (concurrents.get() > 0) {
-                            ;
-                        }
-                    }).thenAccept(a -> {
-                        applicationEventPublisher
-                                .publishEvent(new WebCrawlerInterruptEvent(this, catalogDetails));
-                    });
-                }
-                interruptTag = System.currentTimeMillis();
-            }
-            if (log.isInfoEnabled()) {
-                log.info("Catalog web crawler '{}' is interrupted. Current concurrents: {}",
-                        catalogDetails.toString(), concurrents.get());
+            }).thenAccept(a -> {
+                applicationEventPublisher
+                        .publishEvent(new WebCrawlerInterruptEvent(this, catalogDetails));
+            });
+        }
+        if (webCrawlerProperties.getEstimatedCompletionDelayDuration() > 0
+                && getGlobalStateManager().isTimeout(
+                        webCrawlerProperties.getEstimatedCompletionDelayDuration(),
+                        TimeUnit.MINUTES)) {
+            if (completableFuture != null && !completableFuture.isDone()) {
+                completableFuture.cancel(true);
+                applicationEventPublisher
+                        .publishEvent(new WebCrawlerInterruptEvent(this, catalogDetails));
             }
         }
     }
