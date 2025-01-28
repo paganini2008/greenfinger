@@ -34,25 +34,25 @@ public class RedisDashboard implements Dashboard, InitializingBean {
                 redisConnectionFactory);
         completed = new RedisGenericDataType<Boolean>(
                 String.format(NAMESPACE_PATTERN, catalogId, version, "completed"), Boolean.class,
-                redisConnectionFactory, true);
+                redisConnectionFactory);
         totalUrlCount = new RedisAtomicLong(
                 String.format(NAMESPACE_PATTERN, catalogId, version, "totalUrlCount"),
                 redisConnectionFactory);
         invalidUrlCount = new RedisAtomicLong(
                 String.format(NAMESPACE_PATTERN, catalogId, version, "invalidUrlCount"),
-                redisConnectionFactory, 0);
+                redisConnectionFactory);
         existingUrlCount = new RedisAtomicLong(
                 String.format(NAMESPACE_PATTERN, catalogId, version, "existingUrlCount"),
-                redisConnectionFactory, 0);
+                redisConnectionFactory);
         filteredUrlCount = new RedisAtomicLong(
                 String.format(NAMESPACE_PATTERN, catalogId, version, "filteredUrlCount"),
-                redisConnectionFactory, 0);
+                redisConnectionFactory);
         savedResourceCount = new RedisAtomicLong(
                 String.format(NAMESPACE_PATTERN, catalogId, version, "savedResourceCount"),
-                redisConnectionFactory, 0);
+                redisConnectionFactory);
         indexedResourceCount = new RedisAtomicLong(
                 String.format(NAMESPACE_PATTERN, catalogId, version, "indexedResourceCount"),
-                redisConnectionFactory, 0);
+                redisConnectionFactory);
         this.catalogDetails = catalogDetails;
 
     }

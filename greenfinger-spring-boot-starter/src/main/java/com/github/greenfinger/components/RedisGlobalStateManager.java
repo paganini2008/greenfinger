@@ -24,21 +24,25 @@ public class RedisGlobalStateManager implements GlobalStateManager, Initializing
     private final CatalogDetails catalogDetails;
     private final RedisGenericDataType<String> members;
     private final RedisDashboard redisDashboard;
+    private final boolean initialized;
 
     public RedisGlobalStateManager(CatalogDetails catalogDetails,
-            RedisConnectionFactory redisConnectionFactory) {
+            RedisConnectionFactory redisConnectionFactory, boolean initialized) {
         members = new RedisGenericDataType<String>(
                 String.format(NAMESPACE_PATTERN, catalogDetails.getId(),
                         catalogDetails.getVersion(), "members"),
                 String.class, redisConnectionFactory);
         redisDashboard = new RedisDashboard(catalogDetails, redisConnectionFactory);
         this.catalogDetails = catalogDetails;
+        this.initialized = initialized;
     }
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        members.delete();
-        redisDashboard.afterPropertiesSet();
+        if (initialized) {
+            members.delete();
+            redisDashboard.afterPropertiesSet();
+        }
     }
 
     @Override

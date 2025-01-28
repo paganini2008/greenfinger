@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.util.ClassUtils;
 import org.springframework.web.client.RestTemplate;
+import com.github.doodler.common.cloud.ApplicationInfoHolder;
 import com.github.doodler.common.context.ApplicationContextUtils;
 import com.github.greenfinger.CatalogDetails;
 import com.github.greenfinger.WebCrawlerExtractorProperties;
@@ -26,6 +27,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @SuppressWarnings("all")
 public class DefaultWebCrawlerComponentFactory implements WebCrawlerComponentFactory {
+
+    @Autowired
+    private ApplicationInfoHolder applicationInfoHolder;
 
     @Autowired
     private WebCrawlerProperties webCrawlerProperties;
@@ -157,7 +161,8 @@ public class DefaultWebCrawlerComponentFactory implements WebCrawlerComponentFac
 
     @Override
     public GlobalStateManager getGlobalStateManager(CatalogDetails catalogDetails) {
-        return new RedisGlobalStateManager(catalogDetails, redisConnectionFactory);
+        return new RedisGlobalStateManager(catalogDetails, redisConnectionFactory,
+                applicationInfoHolder.isPrimary());
     }
 
     @Override

@@ -42,7 +42,7 @@ public abstract class PooledExtractor<T> extends AbstractExtractor
 
                 @Override
                 public T create() throws Exception {
-                    return createObject();
+                    return PooledExtractor.this.createObject();
                 }
 
                 @Override
