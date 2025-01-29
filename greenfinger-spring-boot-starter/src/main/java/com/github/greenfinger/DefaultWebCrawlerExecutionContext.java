@@ -3,6 +3,7 @@ package com.github.greenfinger;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -13,9 +14,12 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.stereotype.Component;
 import com.github.doodler.common.context.BeanLifeCycleUtils;
+import com.github.doodler.common.events.EventPublisher;
+import com.github.doodler.common.transmitter.NioContext;
 import com.github.doodler.common.transmitter.Packet;
 import com.github.doodler.common.utils.DateUtils;
 import com.github.doodler.common.utils.SerializableTaskTimer;
+import com.github.doodler.common.utils.ThreadUtils;
 import com.github.greenfinger.components.ExistingUrlPathFilter;
 import com.github.greenfinger.components.Extractor;
 import com.github.greenfinger.components.GlobalStateManager;
@@ -41,6 +45,12 @@ public class DefaultWebCrawlerExecutionContext
 
     @Autowired
     private WebCrawlerProperties webCrawlerProperties;
+
+    @Autowired
+    private EventPublisher<Packet> eventPublisher;
+
+    @Autowired
+    private NioContext nioContext;
 
     @Autowired
     private CatalogDetailsService catalogDetailsService;
@@ -111,6 +121,10 @@ public class DefaultWebCrawlerExecutionContext
     @Override
     public void afterPropertiesSet() throws Exception {
         CatalogDetails catalogDetails = catalogDetailsService.loadRunningCatalogDetails();
+        if (catalogDetails == null) {
+            throw new CatalogDetailsNotFoundException("");
+        }
+
         this.catalogDetails = catalogDetails;
         log.info("Initializing WebCrawler ExecutionContext to {} catalog '{}'",
                 catalogDetails.getRunningState(), catalogDetails.toString());
@@ -214,30 +228,32 @@ public class DefaultWebCrawlerExecutionContext
     }
 
     @Override
-    public AtomicInteger getConcurrents() {
-        return concurrents;
-    }
-
-    @Override
     public void waitForTermination(long timeout, TimeUnit timeUnit) throws Exception {
         if (completableFuture == null || completableFuture.isDone()
                 || completableFuture.isCompletedExceptionally()
                 || completableFuture.isCancelled()) {
             return;
         }
+        boolean fired = true;
         try {
             completableFuture.get(timeout, timeUnit);
         } catch (TimeoutException e) {
-            applicationEventPublisher
-                    .publishEvent(new WebCrawlerInterruptEvent(this, catalogDetails));
             throw new TimeoutException("Unable to wait for termination because time is up to "
                     + DateUtils.converToSecond(timeout, timeUnit) + " seconds.");
         } catch (Exception e) {
+            fired = false;
             if (log.isErrorEnabled()) {
                 log.error(e.getMessage(), e);
             }
+        } finally {
+            if (fired) {
+                applicationEventPublisher
+                        .publishEvent(new WebCrawlerInterruptEvent(this, catalogDetails));
+            }
         }
     }
+
+    private CountDownLatch stopCountDown;
 
     @Override
     public void run() {
@@ -249,25 +265,38 @@ public class DefaultWebCrawlerExecutionContext
                     catalogDetails.toString(), concurrents.get());
         }
         if (completableFuture == null) {
-            completableFuture = CompletableFuture.runAsync(() -> {
-                while (concurrents.get() > 0) {
-                    ;
-                }
-            }).thenAccept(a -> {
-                applicationEventPublisher
-                        .publishEvent(new WebCrawlerInterruptEvent(this, catalogDetails));
-            });
+            prepareInterruption();
         }
-        if (webCrawlerProperties.getEstimatedCompletionDelayDuration() > 0
-                && getGlobalStateManager().isTimeout(
-                        webCrawlerProperties.getEstimatedCompletionDelayDuration(),
-                        TimeUnit.MINUTES)) {
-            if (completableFuture != null && !completableFuture.isDone()) {
-                completableFuture.cancel(true);
-                applicationEventPublisher
-                        .publishEvent(new WebCrawlerInterruptEvent(this, catalogDetails));
+    }
+
+    private void prepareInterruption() {
+        completableFuture = CompletableFuture.supplyAsync(() -> {
+            while (eventPublisher.isActive()) {
+                ThreadUtils.randomSleep(100);
             }
-        }
+            return 0;
+        }).thenApply(n -> {
+            while (nioContext.getConcurrents() > 0) {
+                ;
+            }
+            return nioContext.getConcurrents();
+        }).thenAccept(cons -> {
+            log.info("Final Concurrents: {}", cons);
+            if (webCrawlerProperties.getEstimatedCompletionDelayDuration() > 0
+                    && !getGlobalStateManager().isTimeout(
+                            webCrawlerProperties.getEstimatedCompletionDelayDuration(),
+                            TimeUnit.MINUTES)) {
+                stopCountDown = new CountDownLatch(1);
+                try {
+                    stopCountDown.await(webCrawlerProperties.getEstimatedCompletionDelayDuration(),
+                            TimeUnit.MINUTES);
+                } catch (InterruptedException e) {
+                }
+            }
+            taskTimer.removeBatch(DefaultWebCrawlerExecutionContext.this);
+            applicationEventPublisher
+                    .publishEvent(new WebCrawlerInterruptEvent(this, catalogDetails));
+        });
     }
 
 }

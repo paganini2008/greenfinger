@@ -59,7 +59,7 @@ public class WebCrawlerJob {
             semaphore.setCatalogId(catalogDetails.getId());
             WebCrawlerExecutionContextUtils.remove(catalogDetails.getId());
             WebCrawlerExecutionContext context =
-                    WebCrawlerExecutionContextUtils.get(catalogDetails.getId());
+                    WebCrawlerExecutionContextUtils.get(catalogDetails.getId(), true);
             String runningState = catalogDetails.getRunningState();
             if (StringUtils.isNotBlank(runningState)) {
                 switch (runningState) {
@@ -108,7 +108,7 @@ public class WebCrawlerJob {
             semaphore.setCatalogId(catalogDetails.getId());
             WebCrawlerExecutionContextUtils.remove(catalogDetails.getId());
             WebCrawlerExecutionContext context =
-                    WebCrawlerExecutionContextUtils.get(catalogDetails.getId());
+                    WebCrawlerExecutionContextUtils.get(catalogDetails.getId(), true);
             context.getGlobalStateManager().addMember(instanceId.get());
             log.info("Current Catalog WebCrawler has been initialized.");
         } catch (Exception e) {

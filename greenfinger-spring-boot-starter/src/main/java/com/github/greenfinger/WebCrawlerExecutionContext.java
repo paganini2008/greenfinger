@@ -2,7 +2,6 @@ package com.github.greenfinger;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import com.github.doodler.common.context.ManagedBeanLifeCycle;
 import com.github.doodler.common.transmitter.Packet;
 import com.github.greenfinger.components.ExistingUrlPathFilter;
@@ -31,8 +30,6 @@ public interface WebCrawlerExecutionContext extends ManagedBeanLifeCycle {
     ExistingUrlPathFilter getExistingUrlPathFilter();
 
     GlobalStateManager getGlobalStateManager();
-
-    AtomicInteger getConcurrents();
 
     void waitForTermination(long timeout, TimeUnit timeUnit) throws Exception;
 

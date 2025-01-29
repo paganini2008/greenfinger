@@ -165,8 +165,8 @@ public class ResourceIndexService {
         indexedResource.setCreateTime(resource.getCreateTime().getTime());
         indexedResource.setVersion(version);
         indexedResourceRepository.save(indexedResource);
-        if (log.isTraceEnabled()) {
-            log.trace("Index resource: " + resource.toString());
+        if (log.isInfoEnabled()) {
+            log.info("Index resource: " + resource.toString());
         }
     }
 

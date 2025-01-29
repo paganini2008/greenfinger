@@ -62,6 +62,8 @@ public class ChannelSwitcherJob {
                 Optional<SocketAddress> opt = lookupSocketAddressesFromDiscoveryClient(instanceId);
                 if (opt.isPresent()) {
                     channelSwitcher.enableExternalChannel(opt.get(), true);
+                } else {
+                    executionContext.getGlobalStateManager().removeMember(instanceId);
                 }
             });
         });

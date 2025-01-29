@@ -56,11 +56,6 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
 
     @Override
     public void consume(Packet packet, Context context) {
-        long catalogId = (Long) packet.getField("catalogId");
-        WebCrawlerExecutionContext executionContext =
-                WebCrawlerExecutionContextUtils.get(catalogId);
-        executionContext.getConcurrents().incrementAndGet();
-
         String action = (String) packet.getField("action");
         switch (action) {
             case "crawl":
@@ -85,19 +80,11 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
         }
     }
 
-    @Override
-    public void onComplete(Packet packet, Exception e, Context context) {
-        long catalogId = (Long) packet.getField("catalogId");
-        WebCrawlerExecutionContext executionContext =
-                WebCrawlerExecutionContextUtils.get(catalogId);
-        executionContext.getConcurrents().decrementAndGet();
-    }
-
     private void doCrawl(Packet packet) {
         final long catalogId = (Long) packet.getField("catalogId");
         WebCrawlerExecutionContext executionContext =
                 WebCrawlerExecutionContextUtils.get(catalogId);
-        if (executionContext.isCompleted()) {
+        if (executionContext == null || executionContext.isCompleted()) {
             return;
         }
 
@@ -199,7 +186,7 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
         final long catalogId = (Long) packet.getField("catalogId");
         WebCrawlerExecutionContext executionContext =
                 WebCrawlerExecutionContextUtils.get(catalogId);
-        if (executionContext.isCompleted()) {
+        if (executionContext == null || executionContext.isCompleted()) {
             return;
         }
 
@@ -296,12 +283,17 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
 
     private void doIndex(Packet packet) {
         long catalogId = (Long) packet.getField("catalogId");
-        WebCrawlerExecutionContext context = WebCrawlerExecutionContextUtils.get(catalogId);
+        WebCrawlerExecutionContext executionContext =
+                WebCrawlerExecutionContextUtils.get(catalogId);
+        if (executionContext == null) {
+            return;
+        }
+
         long resourceId = (Long) packet.getField("resourceId");
         int version = (Integer) packet.getField("version");
         Resource resource = resourceManager.getResource(resourceId);
-        resourceIndexService.indexResource(context.getCatalogDetails(), resource, version);
-        context.getGlobalStateManager().incrementCount(packet.getTimestamp(),
+        resourceIndexService.indexResource(executionContext.getCatalogDetails(), resource, version);
+        executionContext.getGlobalStateManager().incrementCount(packet.getTimestamp(),
                 CountingType.INDEXED_RESOURCE_COUNT);
     }
 

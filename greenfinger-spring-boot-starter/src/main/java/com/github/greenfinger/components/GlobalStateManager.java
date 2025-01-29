@@ -15,6 +15,8 @@ public interface GlobalStateManager extends WebCrawlerComponent {
 
     void addMember(String instanceId);
 
+    void removeMember(String instanceId);
+
     List<String> getMembers();
 
     boolean isCompleted();

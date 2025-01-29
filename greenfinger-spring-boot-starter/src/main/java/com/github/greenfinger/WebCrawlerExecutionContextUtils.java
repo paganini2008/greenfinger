@@ -24,7 +24,7 @@ public class WebCrawlerExecutionContextUtils implements DisposableBean {
     private static final Map<Long, WebCrawlerExecutionContext> cache = new ConcurrentHashMap<>();
 
     public static WebCrawlerExecutionContext get(long catalogId) {
-        return get(catalogId, true);
+        return get(catalogId, false);
     }
 
     public static synchronized WebCrawlerExecutionContext get(long catalogId, boolean initialized) {
@@ -37,7 +37,7 @@ public class WebCrawlerExecutionContextUtils implements DisposableBean {
         }
     }
 
-    public static void remove(long catalogId) {
+    public static synchronized void remove(long catalogId) {
         WebCrawlerExecutionContext executionContext = cache.remove(catalogId);
         if (executionContext != null) {
             try {

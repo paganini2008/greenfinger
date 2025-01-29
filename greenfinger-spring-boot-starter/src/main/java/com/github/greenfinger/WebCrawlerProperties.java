@@ -22,5 +22,5 @@ public class WebCrawlerProperties {
     private long defaultFetchInterval = 1000L;
     private String defaultUrlPathFilter = "redission-bloomfilter";
     private String defaultExtractor = "resttemplate";
-    private int estimatedCompletionDelayDuration = 5;
+    private int estimatedCompletionDelayDuration = 1;
 }

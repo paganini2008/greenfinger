@@ -10,7 +10,6 @@ import com.github.doodler.common.cloud.SecondaryApplicationInfoRefreshEvent;
 import com.github.doodler.common.events.EventPublisher;
 import com.github.doodler.common.transmitter.ChannelSwitcher;
 import com.github.doodler.common.transmitter.Packet;
-import com.github.doodler.common.utils.SerializableTaskTimer;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -23,9 +22,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Component
 public class WebCrawlerEventManager implements ApplicationEventPublisherAware {
-
-    @Autowired
-    private SerializableTaskTimer taskTimer;
 
     @Autowired
     private ResourceManager resourceManager;
@@ -48,9 +44,6 @@ public class WebCrawlerEventManager implements ApplicationEventPublisherAware {
 
     @EventListener({WebCrawlerInterruptEvent.class})
     public void onInterrupt(WebCrawlerInterruptEvent event) {
-        WebCrawlerExecutionContext context = (WebCrawlerExecutionContext) event.getSource();
-        taskTimer.removeBatch((Runnable) context);
-
         CatalogDetails catalogDetails = event.getCatalogDetails();
         channelSwitcher.enableExternalChannels(false);
         resourceManager.setRunningState(catalogDetails.getId(), "none");

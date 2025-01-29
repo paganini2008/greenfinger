@@ -40,7 +40,6 @@ public class RedisGlobalStateManager implements GlobalStateManager, Initializing
     @Override
     public void afterPropertiesSet() throws Exception {
         if (initialized) {
-            members.delete();
             redisDashboard.afterPropertiesSet();
         }
     }
@@ -48,6 +47,11 @@ public class RedisGlobalStateManager implements GlobalStateManager, Initializing
     @Override
     public void addMember(String instanceId) {
         members.leftPush(instanceId);
+    }
+
+    @Override
+    public void removeMember(String instanceId) {
+        members.removeFromList(1, instanceId);
     }
 
     @Override
