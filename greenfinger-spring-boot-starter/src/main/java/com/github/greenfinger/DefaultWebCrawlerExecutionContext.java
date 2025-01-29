@@ -6,7 +6,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
@@ -76,8 +75,6 @@ public class DefaultWebCrawlerExecutionContext
     private ProgressBarSupplier progressBarSupplier;
 
     private ApplicationEventPublisher applicationEventPublisher;
-
-    private final AtomicInteger concurrents = new AtomicInteger(0);
 
     private CompletableFuture<?> completableFuture;
 
@@ -261,8 +258,7 @@ public class DefaultWebCrawlerExecutionContext
             return;
         }
         if (log.isInfoEnabled()) {
-            log.info("Catalog web crawler '{}' is interrupted. Current concurrents: {}",
-                    catalogDetails.toString(), concurrents.get());
+            log.info("Catalog web crawler '{}' is interrupted.", catalogDetails.toString());
         }
         if (completableFuture == null) {
             prepareInterruption();
@@ -277,7 +273,7 @@ public class DefaultWebCrawlerExecutionContext
             return 0;
         }).thenApply(n -> {
             while (nioContext.getConcurrents() > 0) {
-                ;
+                ThreadUtils.randomSleep(100);
             }
             return nioContext.getConcurrents();
         }).thenAccept(cons -> {
@@ -294,8 +290,8 @@ public class DefaultWebCrawlerExecutionContext
                 }
             }
             taskTimer.removeBatch(DefaultWebCrawlerExecutionContext.this);
-            applicationEventPublisher
-                    .publishEvent(new WebCrawlerInterruptEvent(this, catalogDetails));
+            applicationEventPublisher.publishEvent(new WebCrawlerInterruptEvent(
+                    DefaultWebCrawlerExecutionContext.this, catalogDetails));
         });
     }
 
