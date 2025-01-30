@@ -1,4 +1,4 @@
-package com.github.greenfinger;
+package com.github.greenfinger.security;
 
 import java.util.List;
 import org.springframework.context.annotation.Bean;
@@ -14,6 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.doodler.common.context.ContextPath;
 import com.github.doodler.common.context.ServerProperties;
+import com.github.greenfinger.SimpleAuthenticationProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 

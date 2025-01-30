@@ -1,4 +1,4 @@
-package com.github.greenfinger;
+package com.github.greenfinger.security;
 
 import static com.github.doodler.common.Constants.REQUEST_HEADER_TIMESTAMP;
 import javax.servlet.http.HttpServletRequest;
@@ -16,7 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * 
- * @Description: AuthenticationExceptionAwareHandler
+ * @Description: AuthenticationExceptionHandler
  * @Author: Fred Feng
  * @Date: 30/01/2025
  * @Version 1.0.0
@@ -24,7 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Order(90)
 @RestControllerAdvice
-public class AuthenticationExceptionAwareHandler {
+public class AuthenticationExceptionHandler {
 
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     @ExceptionHandler(AuthenticationException.class)
