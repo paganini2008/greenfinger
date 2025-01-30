@@ -32,7 +32,7 @@ public class SimpleAuthenticationProvider implements AuthenticationProvider {
             return new UsernamePasswordAuthenticationToken(username, password,
                     Collections.singletonList(new SimpleGrantedAuthority("GREENFINGER_ADMIN")));
         }
-        throw new UsernameNotFoundException("Invalid username: " + username);
+        throw new UsernameNotFoundException("Invalid username '" + username + "' or password");
     }
 
     @Override

@@ -11,6 +11,8 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.doodler.common.context.ContextPath;
 import com.github.doodler.common.context.ServerProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -27,6 +29,9 @@ import lombok.SneakyThrows;
 @RequiredArgsConstructor
 public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 
+    private final ContextPath contextPath;
+    private final ObjectMapper objectMapper;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return PasswordEncoderFactories.createDelegatingPasswordEncoder();
@@ -35,9 +40,15 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http.csrf().disable().httpBasic().and().formLogin().disable().logout().disable().cors()
-                .and().authorizeRequests().antMatchers("/monitor/**").permitAll()
-                .antMatchers("/v1/login").permitAll().antMatchers("/v1/**").authenticated()
-                .anyRequest().permitAll();
+                .and().authorizeRequests()
+
+                .antMatchers("/actuator/**", "/monitor/**").permitAll()
+                .antMatchers(contextPath.getContextPath() + "/v1/login").permitAll()
+                .antMatchers(contextPath.getContextPath() + "/v1/**").authenticated().anyRequest()
+                .permitAll().and().exceptionHandling()
+                .authenticationEntryPoint(new ForbiddenAuthenticationEntryPoint(objectMapper))
+                .accessDeniedHandler(new GlobalAccessDeniedHandler(objectMapper));
+
     }
 
     @Bean
