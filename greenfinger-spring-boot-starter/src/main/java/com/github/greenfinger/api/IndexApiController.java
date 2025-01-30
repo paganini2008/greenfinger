@@ -9,7 +9,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.github.doodler.common.ApiResult;
-import com.github.greenfinger.searcher.ResourceIndexService;
+import com.github.greenfinger.WebCrawling;
+import com.github.greenfinger.searcher.ResourceIndexManager;
 
 /**
  * 
@@ -23,39 +24,44 @@ import com.github.greenfinger.searcher.ResourceIndexService;
 public class IndexApiController {
 
     @Autowired
-    private ResourceIndexService resourceIndexService;
+    private ResourceIndexManager resourceIndexManager;
 
+    @WebCrawling
     @PostMapping("/sync")
     public ApiResult<String> recreateCatalogIndex() throws Exception {
-        resourceIndexService.recreateCatalogIndex();
+        resourceIndexManager.recreateCatalogIndex();
         return ApiResult.ok("Recreate Catalog Index Successfully.");
     }
 
+    @WebCrawling
     @PostMapping("/{id}/sync")
     public ApiResult<String> recreateCatalogIndex(@PathVariable("id") Long catalogId)
             throws Exception {
-        resourceIndexService.recreateCatalogIndex(catalogId);
+        resourceIndexManager.recreateCatalogIndex(catalogId);
         return ApiResult.ok("Recreate Catalog Index Successfully.");
     }
 
+    @WebCrawling
     @PutMapping("/upgrade")
     public ApiResult<String> upgradeCatalogIndex() throws Exception {
-        resourceIndexService.upgradeCatalogIndex();
+        resourceIndexManager.upgradeCatalogIndex();
         return ApiResult.ok("Upgrade Catalog Index Successfully.");
     }
 
+    @WebCrawling
     @PutMapping("/{id}/upgrade")
     public ApiResult<String> upgradeCatalogIndex(@PathVariable("id") Long catalogId)
             throws Exception {
-        resourceIndexService.upgradeCatalogIndex(catalogId);
+        resourceIndexManager.upgradeCatalogIndex(catalogId);
         return ApiResult.ok("Upgrade Catalog Index Successfully.");
     }
 
+    @WebCrawling
     @DeleteMapping("/{id}")
     public ApiResult<String> deleteResource(@PathVariable("id") Long catalogId,
             @RequestParam(name = "version", defaultValue = "-1", required = false) int version) {
-        resourceIndexService.deleteResource(catalogId, version);
-        return ApiResult.ok("Delete resource Successfully.");
+        resourceIndexManager.deleteResource(catalogId, version);
+        return ApiResult.ok("Delete Catalog Index Successfully.");
     }
 
 }

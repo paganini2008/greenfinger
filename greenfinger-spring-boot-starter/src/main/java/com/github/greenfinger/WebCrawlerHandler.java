@@ -22,7 +22,7 @@ import com.github.doodler.common.utils.CharsetUtils;
 import com.github.greenfinger.components.CountingType;
 import com.github.greenfinger.components.ExistingUrlPathFilter;
 import com.github.greenfinger.model.Resource;
-import com.github.greenfinger.searcher.ResourceIndexService;
+import com.github.greenfinger.searcher.ResourceIndexManager;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -48,7 +48,7 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
     private Partitioner partitioner;
 
     @Autowired
-    private ResourceIndexService resourceIndexService;
+    private ResourceIndexManager resourceIndexManager;
 
     @Lazy
     @Autowired
@@ -292,7 +292,7 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
         long resourceId = (Long) packet.getField("resourceId");
         int version = (Integer) packet.getField("version");
         Resource resource = resourceManager.getResource(resourceId);
-        resourceIndexService.indexResource(executionContext.getCatalogDetails(), resource, version);
+        resourceIndexManager.indexResource(executionContext.getCatalogDetails(), resource, version);
         executionContext.getGlobalStateManager().incrementCount(packet.getTimestamp(),
                 CountingType.INDEXED_RESOURCE_COUNT);
     }

@@ -40,7 +40,8 @@ public abstract class AbstractExtractor implements Extractor {
     public String extractHtml(CatalogDetails catalogDetails, String referUrl, String url,
             Charset pageEncoding, Packet packet) throws Exception {
         String content = requestUrl(catalogDetails, referUrl, url, pageEncoding, packet);
-        return rewriteContent(catalogDetails, referUrl, url, pageEncoding, content);
+        content = rewriteContent(catalogDetails, referUrl, url, pageEncoding, content);
+        return content;
     }
 
     private List<ResponseBodyRewriter> responseBodyRewriters = new ArrayList<>();

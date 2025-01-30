@@ -36,7 +36,6 @@ import com.github.greenfinger.model.Catalog;
 @RestController
 public class CatalogApiController {
 
-
     @Autowired
     private WebCrawlerJobService webCrawlerJobService;
 
@@ -53,7 +52,7 @@ public class CatalogApiController {
     private DashboardFactory dashboardFactory;
 
     @GetMapping("/cats")
-    public ApiResult<List<String>> getCatList() {
+    public ApiResult<List<String>> selectAllCats() {
         return ApiResult.ok(resourceManager.selectAllCats());
     }
 
@@ -78,7 +77,7 @@ public class CatalogApiController {
     @PostMapping("/{id}/rebuild")
     public ApiResult<String> rebuild(@PathVariable("id") Long catalogId) throws Exception {
         webCrawlerJobService.rebuild(catalogId);
-        return ApiResult.ok("Crawling Task will be triggered soon.");
+        return ApiResult.ok("Crawling Task will be triggered to rebuild soon.");
     }
 
     @PostMapping("/{id}/crawl")
@@ -94,19 +93,13 @@ public class CatalogApiController {
         if (executionContext != null) {
             executionContext.getGlobalStateManager().setCompleted(true);
         }
-        return ApiResult.ok("Crawling Task will be triggered soon.");
-    }
-
-    @PostMapping("/{id}/finish")
-    public ApiResult<String> finish(@PathVariable("id") Long catalogId) throws Exception {
-        webCrawlerJobService.finish(catalogId);
-        return ApiResult.ok("Crawling Task will be finish soon.");
+        return ApiResult.ok("Crawling Task will be interrupted soon.");
     }
 
     @PostMapping("/save")
     public ApiResult<String> saveCatalog(@RequestBody Catalog catalog) {
         resourceManager.saveCatalog(catalog);
-        return ApiResult.ok("Save Successfully.");
+        return ApiResult.ok("Save Catalog Successfully.");
     }
 
     @GetMapping("/{id}/summary")
@@ -127,16 +120,6 @@ public class CatalogApiController {
         WebCrawlerExecutionContext context = WebCrawlerExecutionContextUtils.get(catalogId);
         return context != null ? ApiResult.ok(!context.getGlobalStateManager().isCompleted())
                 : ApiResult.ok(false);
-    }
-
-    @PostMapping("/{id}/stop")
-    public ApiResult<Boolean> stop(@PathVariable("id") Long catalogId) {
-        WebCrawlerExecutionContext context = WebCrawlerExecutionContextUtils.get(catalogId, false);
-        if (context != null) {
-            context.getGlobalStateManager().setCompleted(true);
-            return ApiResult.ok(context.getGlobalStateManager().isCompleted());
-        }
-        return ApiResult.ok(false);
     }
 
     @PostMapping("/list")

@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.github.doodler.common.ApiResult;
 import com.github.doodler.common.page.PageResponse;
 import com.github.doodler.common.page.PageVo;
-import com.github.greenfinger.searcher.ResourceIndexService;
+import com.github.greenfinger.searcher.ResourceIndexManager;
 import com.github.greenfinger.searcher.SearchResult;
 
 /**
@@ -24,7 +24,7 @@ import com.github.greenfinger.searcher.SearchResult;
 public class SearcherController {
 
     @Autowired
-    private ResourceIndexService resourceIndexService;
+    private ResourceIndexManager resourceIndexManager;
 
     @GetMapping("/")
     public ApiResult<PageVo<SearchResult>> search(@RequestParam("q") String keyword,
@@ -34,7 +34,7 @@ public class SearcherController {
             @RequestParam(value = "pageSize", required = false, defaultValue = "10") int size,
             Model ui) throws Exception {
         PageResponse<SearchResult> pageResponse =
-                resourceIndexService.search(cat, keyword, version, page, size);
+                resourceIndexManager.search(cat, keyword, version, page, size);
         PageVo<SearchResult> pageBean = PageVo.wrap(pageResponse);
         return ApiResult.ok(pageBean);
     }

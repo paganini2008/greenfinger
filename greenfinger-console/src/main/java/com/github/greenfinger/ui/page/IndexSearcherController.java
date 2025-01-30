@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import com.github.doodler.common.page.PageBean;
 import com.github.doodler.common.page.PageResponse;
-import com.github.greenfinger.searcher.ResourceIndexService;
+import com.github.greenfinger.searcher.ResourceIndexManager;
 import com.github.greenfinger.searcher.SearchResult;
 
 /**
@@ -25,7 +25,7 @@ import com.github.greenfinger.searcher.SearchResult;
 public class IndexSearcherController {
 
     @Autowired
-    private ResourceIndexService resourceIndexService;
+    private ResourceIndexManager resourceIndexService;
 
     @GetMapping("/")
     public String index(Model ui) {

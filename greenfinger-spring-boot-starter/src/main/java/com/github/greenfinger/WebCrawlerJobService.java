@@ -49,6 +49,7 @@ public class WebCrawlerJobService {
         });
     }
 
+    @WebCrawling
     public void rebuild(long catalogId) throws WebCrawlerException {
         CatalogDetails catalogDetails = catalogDetailsService.loadRunningCatalogDetails();
         if (catalogDetails != null) {
@@ -58,6 +59,7 @@ public class WebCrawlerJobService {
         }
     }
 
+    @WebCrawling
     public void crawl(long catalogId) throws WebCrawlerException {
         CatalogDetails catalogDetails = catalogDetailsService.loadRunningCatalogDetails();
         if (catalogDetails != null) {
@@ -80,11 +82,6 @@ public class WebCrawlerJobService {
                 resourceManager.setRunningState(catalogId, "crawl");
             }
         }
-    }
-
-    public void finish(long catalogId) {
-        WebCrawlerExecutionContextUtils.remove(catalogId);
-        resourceManager.setRunningState(catalogId, "none");
     }
 
     @EventListener({WebCrawlerCompletionEvent.class})

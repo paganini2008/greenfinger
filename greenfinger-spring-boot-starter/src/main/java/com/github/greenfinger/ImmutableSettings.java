@@ -11,7 +11,7 @@ import org.springframework.core.env.ConfigurableEnvironment;
  * @Date: 23/01/2025
  * @Version 1.0.0
  */
-public class ImmutableSettings implements EnvironmentPostProcessor {
+public final class ImmutableSettings implements EnvironmentPostProcessor {
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment,

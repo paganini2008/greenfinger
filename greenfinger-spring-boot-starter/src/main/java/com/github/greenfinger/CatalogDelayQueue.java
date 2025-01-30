@@ -6,6 +6,7 @@ import com.github.doodler.common.utils.SingleObservable;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 
@@ -14,6 +15,7 @@ import lombok.NoArgsConstructor;
  * @Date: 23/01/2025
  * @Version 1.0.0
  */
+@Slf4j
 public class CatalogDelayQueue {
 
     private static final String NAME = "greenfinger:catalog:queue";
@@ -41,6 +43,9 @@ public class CatalogDelayQueue {
         Action nextAction = (Action) redisOperations.opsForList().rightPop(NAME);
         if (nextAction != null) {
             observable.notifyObservers(NAME, nextAction);
+            if (log.isInfoEnabled()) {
+                log.info("Start running next operation: {}", nextAction);
+            }
         }
     }
 

@@ -12,7 +12,7 @@ import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
 import org.springframework.data.elasticsearch.core.query.NativeSearchQuery;
 import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import org.springframework.util.StopWatch;
 import com.github.doodler.common.page.EachPage;
 import com.github.doodler.common.page.PageReader;
@@ -29,14 +29,14 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * 
- * @Description: ResourceIndexService
+ * @Description: ElasticsearchResourceIndexManager
  * @Author: Fred Feng
- * @Date: 31/12/2024
+ * @Date: 30/01/2025
  * @Version 1.0.0
  */
 @Slf4j
-@Service
-public class ResourceIndexService {
+@Component
+public class ElasticsearchResourceIndexManager implements ResourceIndexManager {
 
     @Autowired
     private IndexedResourceRepository indexedResourceRepository;
@@ -50,14 +50,17 @@ public class ResourceIndexService {
     @Autowired
     private ElasticsearchRestTemplate elasticsearchTemplate;
 
+    @Override
     public void createIndex(String indexName) {
         elasticsearchTemplate.indexOps(IndexCoordinates.of(indexName)).create();
     }
 
+    @Override
     public void deleteIndex(String indexName) {
         elasticsearchTemplate.indexOps(IndexCoordinates.of(indexName)).delete();
     }
 
+    @Override
     public void deleteResource(long catalogId, int version) {
         Catalog catalog = resourceManager.getCatalog(catalogId);
         NativeSearchQueryBuilder searchQueryBuilder = new NativeSearchQueryBuilder();
@@ -72,18 +75,22 @@ public class ResourceIndexService {
         log.info("Delete indexed resource by catalogId '{}' successfully.", catalogId);
     }
 
+    @Override
     public void saveResource(IndexedResource indexedResource) {
         indexedResourceRepository.save(indexedResource);
     }
 
+    @Override
     public void deleteResource(IndexedResource indexedResource) {
         indexedResourceRepository.delete(indexedResource);
     }
 
+    @Override
     public long indexCount() {
         return indexedResourceRepository.count();
     }
 
+    @Override
     @Async
     public void upgradeCatalogIndex() throws WebCrawlerException {
         final StopWatch stopWatch = new StopWatch();
@@ -99,6 +106,7 @@ public class ResourceIndexService {
         log.info(stopWatch.prettyPrint());
     }
 
+    @Override
     @Async
     public void recreateCatalogIndex() throws WebCrawlerException {
         final StopWatch stopWatch = new StopWatch();
@@ -114,6 +122,7 @@ public class ResourceIndexService {
         log.info(stopWatch.prettyPrint());
     }
 
+    @Override
     @Async
     public void recreateCatalogIndex(long catalogId) throws WebCrawlerException {
         int version = resourceManager.getCatalogIndexVersion(catalogId);
@@ -121,12 +130,14 @@ public class ResourceIndexService {
         createCatalogIndex(catalogId);
     }
 
+    @Override
     @Async
     public void upgradeCatalogIndex(long catalogId) throws WebCrawlerException {
         resourceManager.incrementCatalogIndexVersion(catalogId);
         createCatalogIndex(catalogId);
     }
 
+    @Override
     @Async
     public void createCatalogIndex(long catalogId) throws WebCrawlerException {
         long startTime = System.currentTimeMillis();
@@ -151,6 +162,7 @@ public class ResourceIndexService {
     }
 
 
+    @Override
     public void indexResource(CatalogDetails catalogDetails, Resource resource, int version) {
         IndexedResource indexedResource = new IndexedResource();
         String html = resource.getHtml();
@@ -170,11 +182,13 @@ public class ResourceIndexService {
         }
     }
 
+    @Override
     public PageResponse<SearchResult> search(String cat, String keyword, Integer version, int page,
             int size) {
         return search(cat, keyword, version).list(PageRequest.of(page, size));
     }
 
+    @Override
     public PageReader<SearchResult> search(String cat, String keyword, Integer version) {
         if (version == null) {
             version = resourceManager.maximumVersionOfCatalogIndex(cat);
