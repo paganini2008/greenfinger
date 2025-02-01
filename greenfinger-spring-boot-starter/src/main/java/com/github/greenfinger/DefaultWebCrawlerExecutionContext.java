@@ -6,6 +6,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
@@ -49,9 +50,6 @@ public class DefaultWebCrawlerExecutionContext
     private EventPublisher<Packet> eventPublisher;
 
     @Autowired
-    private NioContext nioContext;
-
-    @Autowired
     private CatalogDetailsService catalogDetailsService;
 
     @Autowired
@@ -59,6 +57,9 @@ public class DefaultWebCrawlerExecutionContext
 
     @Autowired
     private SerializableTaskTimer taskTimer;
+
+    @Autowired
+    private NioContext nioContext;
 
     private CatalogDetails catalogDetails;
 
@@ -113,6 +114,11 @@ public class DefaultWebCrawlerExecutionContext
     @Override
     public GlobalStateManager getGlobalStateManager() {
         return globalStateManager;
+    }
+
+    @Override
+    public AtomicInteger getConcurrents() {
+        return nioContext.getConcurrents();
     }
 
     @Override
@@ -272,27 +278,17 @@ public class DefaultWebCrawlerExecutionContext
             }
             return 0;
         }).thenApply(n -> {
-            while (nioContext.getConcurrents() > 0) {
+            while (getConcurrents().get() > 0) {
                 ThreadUtils.randomSleep(100);
             }
-            return nioContext.getConcurrents();
-        }).thenAccept(cons -> {
-            log.info("Final Concurrents: {}", cons);
-            if (webCrawlerProperties.getEstimatedCompletionDelayDuration() > 0
-                    && !getGlobalStateManager().isTimeout(
-                            webCrawlerProperties.getEstimatedCompletionDelayDuration(),
-                            TimeUnit.MINUTES)) {
-                stopCountDown = new CountDownLatch(1);
-                try {
-                    stopCountDown.await(webCrawlerProperties.getEstimatedCompletionDelayDuration(),
-                            TimeUnit.MINUTES);
-                } catch (InterruptedException e) {
-                }
-            }
-            taskTimer.removeBatch(DefaultWebCrawlerExecutionContext.this);
-            applicationEventPublisher.publishEvent(new WebCrawlerInterruptEvent(
-                    DefaultWebCrawlerExecutionContext.this, catalogDetails));
-        });
+            return getConcurrents().get();
+        }).completeOnTimeout(0, webCrawlerProperties.getEstimatedCompletionDelayDuration(),
+                TimeUnit.MINUTES).thenAccept(cons -> {
+                    log.info("Final Concurrents: {}", cons);
+                    taskTimer.removeBatch(DefaultWebCrawlerExecutionContext.this);
+                    applicationEventPublisher.publishEvent(new WebCrawlerInterruptEvent(
+                            DefaultWebCrawlerExecutionContext.this, catalogDetails));
+                });
     }
 
 }

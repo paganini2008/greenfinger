@@ -20,3 +20,8 @@ doodler:
     nio:
       server:
         bindHostName: 192.168.159.1
+        
+greenfinger:
+  workThreads: 1000
+  extractor: 
+    timeout: 600000

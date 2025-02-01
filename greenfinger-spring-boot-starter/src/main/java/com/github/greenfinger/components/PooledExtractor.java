@@ -13,10 +13,8 @@
  */
 package com.github.greenfinger.components;
 
+import java.time.Duration;
 import org.apache.commons.pool2.BasePooledObjectFactory;
-import org.apache.commons.pool2.ObjectPool;
-import org.apache.commons.pool2.PooledObject;
-import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.slf4j.Logger;
@@ -34,43 +32,22 @@ public abstract class PooledExtractor<T> extends AbstractExtractor
         implements Extractor, ManagedBeanLifeCycle {
 
     protected final Logger log = LoggerFactory.getLogger(getClass());
-    protected ObjectPool<T> objectPool;
-    protected PooledConfig<T> pooledConfig = new PooledConfig<T>();
+    protected GenericObjectPool<T> objectPool;
+    protected ObjectPoolConfig<T> objectPoolConfig = new ObjectPoolConfig<T>();
 
-    private final BasePooledObjectFactory<T> basePooledObjectFactory =
-            new BasePooledObjectFactory<T>() {
-
-                @Override
-                public T create() throws Exception {
-                    return PooledExtractor.this.createObject();
-                }
-
-                @Override
-                public PooledObject<T> wrap(T object) {
-                    return new DefaultPooledObject<T>(object);
-                }
-
-                @Override
-                public void destroyObject(PooledObject<T> p) throws Exception {
-                    PooledExtractor.this.destroyObject(p);
-                }
-            };
-
-    public PooledConfig<T> getPooledConfig() {
-        return pooledConfig;
+    public ObjectPoolConfig<T> getObjectPoolConfig() {
+        return objectPoolConfig;
     }
 
-    public void setPooledConfig(PooledConfig<T> pooledConfig) {
-        this.pooledConfig = pooledConfig;
+    public void setObjectPoolConfig(ObjectPoolConfig<T> objectPoolConfig) {
+        this.objectPoolConfig = objectPoolConfig;
     }
 
-    public abstract T createObject() throws Exception;
-
-    public abstract void destroyObject(PooledObject<T> object) throws Exception;
+    protected abstract BasePooledObjectFactory<T> createObjectFactory();
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        objectPool = new GenericObjectPool<T>(basePooledObjectFactory, pooledConfig);
+        objectPool = new GenericObjectPool<T>(createObjectFactory(), getObjectPoolConfig());
     }
 
     @Override
@@ -82,16 +59,19 @@ public abstract class PooledExtractor<T> extends AbstractExtractor
 
     /**
      * 
-     * @Description: ExtractorPooledConfig
+     * @Description: ObjectPoolConfig
      * @Author: Fred Feng
      * @Date: 10/01/2025
      * @Version 1.0.0
      */
-    public static class PooledConfig<T> extends GenericObjectPoolConfig<T> {
-        PooledConfig() {
+    public static class ObjectPoolConfig<T> extends GenericObjectPoolConfig<T> {
+        ObjectPoolConfig() {
             setMinIdle(1);
-            setMaxIdle(1);
-            setMaxTotal(10);
+            setMaxIdle(2);
+            setMaxTotal(20);
+            setTimeBetweenEvictionRuns(Duration.ofMillis(15000));
+            setMinEvictableIdleTime(Duration.ofMillis(60000));
+            setBlockWhenExhausted(true);
         }
     }
 

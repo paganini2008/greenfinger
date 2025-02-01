@@ -20,10 +20,12 @@ import lombok.ToString;
 @Setter
 public class WebCrawlerExtractorProperties {
 
+    private long timeout = 1L * 60 * 1000;
     private Default restTemplate = new Default();
     private Playwright playwright = new Playwright();
     private Selenium selenium = new Selenium();
     private HtmlUnit htmlunit = new HtmlUnit();
+    private ObjectPool objectPool = new ObjectPool();
 
     @Getter
     @Setter
@@ -56,10 +58,22 @@ public class WebCrawlerExtractorProperties {
     @Getter
     @Setter
     @ToString
+    public static class ObjectPool {
+
+        private int minIdle = 1;
+        private int maxIdle = 2;
+        private int maxTotal = 20;
+        private int borrowTimeout = -1;
+
+    }
+
+    @Getter
+    @Setter
+    @ToString
     public static class Playwright extends Base {
 
         private boolean javaScriptEnabled = true;
-        private int timeout = 60 * 1000;
+        private int timeout = 10 * 1000;
     }
 
     @Getter
@@ -69,6 +83,7 @@ public class WebCrawlerExtractorProperties {
 
         private String webDriverExecutionPath =
                 "G:\\selfEmployed\\chromedriver-win64\\chromedriver-win64\\chromedriver.exe";
+
     }
 
     @Getter
@@ -76,9 +91,9 @@ public class WebCrawlerExtractorProperties {
     @ToString
     public static class HtmlUnit extends Base {
 
-        private int timeout = 60 * 1000;
+        private int timeout = 10 * 1000;
         private boolean javaScriptEnabled = true;
-        private long javaScriptTimeout = 60L * 1000;
+        private long javaScriptTimeout = 10L * 1000;
     }
 
 }

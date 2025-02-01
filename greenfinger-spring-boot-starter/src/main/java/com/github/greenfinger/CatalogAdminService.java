@@ -29,11 +29,12 @@ public class CatalogAdminService {
 
     @WebCrawling
     public void deleteCatalog(long catalogId, boolean retainIndex) {
-        resourceManager.deleteResourceByCatalogId(catalogId);
-        resourceManager.deleteCatalog(catalogId);
         if (!retainIndex) {
             resourceIndexManager.deleteResource(catalogId, -1);
         }
+        resourceManager.deleteResourceByCatalogId(catalogId);
+        resourceManager.deleteCatalog(catalogId);
+
     }
 
 }

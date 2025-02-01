@@ -1,11 +1,16 @@
 package com.github.greenfinger.components;
 
 import java.nio.charset.Charset;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.pool2.BasePooledObjectFactory;
+import org.apache.commons.pool2.PooledObject;
+import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.openqa.selenium.Proxy;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -18,6 +23,7 @@ import com.github.doodler.common.utils.ThreadUtils;
 import com.github.greenfinger.CatalogDetails;
 import com.github.greenfinger.WebCrawlerConstants;
 import com.github.greenfinger.WebCrawlerExtractorProperties;
+import io.github.bonigarcia.wdm.WebDriverManager;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -28,65 +34,91 @@ import lombok.RequiredArgsConstructor;
  * @Version 1.0.0
  */
 @RequiredArgsConstructor
-public class SeleniumExtractor extends AbstractExtractor
+public class SeleniumExtractor extends PooledExtractor<WebDriver>
         implements NamedExetractor, ManagedBeanLifeCycle {
 
     private final WebCrawlerExtractorProperties extractorProperties;
-    private Map<String, String> defaultHttpHeaders = new HashMap<>() {
 
-        private static final long serialVersionUID = 1L;
-        {
-            put("Accept", "*/*");
-            put("Accept-Language", "en-US,en;q=0.9");
-        }
-    };
+    @Override
+    protected BasePooledObjectFactory<WebDriver> createObjectFactory() {
+        return new BasePooledObjectFactory<WebDriver>() {
 
-    public Map<String, String> getDefaultHttpHeaders() {
-        return defaultHttpHeaders;
+            @Override
+            public PooledObject<WebDriver> wrap(WebDriver object) {
+                return new DefaultPooledObject<WebDriver>(object);
+            }
+
+            @Override
+            public WebDriver create() throws Exception {
+                WebCrawlerExtractorProperties.Selenium selenium = extractorProperties.getSelenium();
+                ChromeOptions options = new ChromeOptions();
+                options.addArguments("--remote-allow-origins=*");
+                options.addArguments("--headless");
+                options.addArguments("--disable-gpu");
+                options.addArguments("--window-size=1920,1080");
+                options.addArguments("--disable-web-security");
+                options.addArguments("--disable-blink-features=AutomationControlled");
+                options.addArguments("--no-sandbox");
+                options.addArguments("--disable-dev-shm-usage");
+                options.addArguments(
+                        "--user-agent=" + RandomUtils.randomChoice(WebCrawlerConstants.userAgents));
+                if (StringUtils.isNotBlank(selenium.getProxyServer())) {
+                    Proxy proxy = new Proxy();
+                    proxy.setHttpProxy(selenium.getProxyServer());
+                    options.setProxy(proxy);
+                }
+                setDefaultHttpHeaders(options);
+                return new ChromeDriver(options);
+            }
+
+            @Override
+            public void destroyObject(PooledObject<WebDriver> po) throws Exception {
+                po.getObject().quit();
+            }
+        };
     }
 
-    public void setDefaultHttpHeaders(Map<String, String> defaultHttpHeaders) {
-        this.defaultHttpHeaders = defaultHttpHeaders;
-    }
-
-    private WebDriver driver;
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        System.setProperty("webdriver.chrome.driver",
-                extractorProperties.getSelenium().getWebDriverExecutionPath());
-
-        WebCrawlerExtractorProperties.Selenium selenium = extractorProperties.getSelenium();
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("--remote-allow-origins=*");
-        options.addArguments("--headless");
-        options.addArguments("--disable-gpu");
-        options.addArguments("--window-size=1920,1080");
-        options.addArguments("--disable-web-security");
-        options.addArguments("--disable-blink-features=AutomationControlled");
-        options.addArguments("--no-sandbox");
-        options.addArguments("--disable-dev-shm-usage");
-        options.addArguments(
-                "--user-agent=" + RandomUtils.randomChoice(WebCrawlerConstants.userAgents));
-        if (StringUtils.isNotBlank(selenium.getProxyServer())) {
-            Proxy proxy = new Proxy();
-            proxy.setHttpProxy(selenium.getProxyServer());
-            options.setProxy(proxy);
+        if (StringUtils.isNotBlank(extractorProperties.getSelenium().getWebDriverExecutionPath())) {
+            System.setProperty("webdriver.chrome.driver",
+                    extractorProperties.getSelenium().getWebDriverExecutionPath());
+        } else {
+            WebDriverManager.chromedriver().setup();
         }
-        setDefaultHttpHeaders(options);
-        driver = new ChromeDriver(options);
+        WebCrawlerExtractorProperties.ObjectPool poolConfig = extractorProperties.getObjectPool();
+        getObjectPoolConfig().setMinIdle(poolConfig.getMinIdle());
+        getObjectPoolConfig().setMaxIdle(poolConfig.getMaxIdle());
+        getObjectPoolConfig().setMaxTotal(poolConfig.getMaxTotal());
+        super.afterPropertiesSet();
     }
 
-    protected synchronized String requestUrl(CatalogDetails catalogDetails, String referUrl,
-            String url, Charset pageEncoding, Packet packet) throws Exception {
-        driver.get(url);
-        WebCrawlerExtractorProperties.Selenium selenium = extractorProperties.getSelenium();
-        if (selenium.getLoadingTimeout() > 0) {
-            ThreadUtils.sleep(selenium.getLoadingTimeout());
-        } else {
-            ThreadUtils.randomSleep(1000L);
+    protected String requestUrl(CatalogDetails catalogDetails, String referUrl, String url,
+            Charset pageEncoding, Packet packet) throws Exception {
+        WebCrawlerExtractorProperties.Selenium config = extractorProperties.getSelenium();
+        WebCrawlerExtractorProperties.ObjectPool poolConfig = extractorProperties.getObjectPool();
+        WebDriver webDriver = null;
+
+        try {
+            webDriver = poolConfig.getBorrowTimeout() > 0
+                    ? objectPool.borrowObject(Duration.ofMillis(poolConfig.getBorrowTimeout()))
+                    : objectPool.borrowObject();
+            if (webDriver == null) {
+                throw new NoSuchElementException("No available WebDriver now");
+            }
+            webDriver.get(url);
+            if (config.getLoadingTimeout() > 0) {
+                ThreadUtils.sleep(config.getLoadingTimeout());
+            } else {
+                ThreadUtils.randomSleep(1000L);
+            }
+            return webDriver.getPageSource();
+        } finally {
+            if (webDriver != null) {
+                objectPool.returnObject(webDriver);
+            }
         }
-        return driver.getPageSource();
     }
 
     private void setDefaultHttpHeaders(ChromeOptions options) {
@@ -98,13 +130,6 @@ public class SeleniumExtractor extends AbstractExtractor
                 arguments.add(entry.toString());
             }
             options.addArguments(arguments);
-        }
-    }
-
-    @Override
-    public void destroy() throws Exception {
-        if (driver != null) {
-            driver.close();
         }
     }
 
@@ -122,7 +147,7 @@ public class SeleniumExtractor extends AbstractExtractor
         pageExtractor.afterPropertiesSet();
 
         System.out.println(pageExtractor.extractHtml(null, "https://greatist.com/",
-                "https://greatist.com/", null, null));
+                "https://www.baidu.com/", null, null));
         System.in.read();
         pageExtractor.destroy();
     }

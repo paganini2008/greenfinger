@@ -1,160 +1,187 @@
 
-# GreenFinger
+# Greenfinger
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Spring Cloud](https://img.shields.io/badge/Spring%20Cloud-Compatible-brightgreen.svg)](https://spring.io/projects/spring-cloud)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Compatible-blue.svg)](https://www.postgresql.org/)
 [![Elasticsearch](https://img.shields.io/badge/Elasticsearch-Compatible-green.svg)](https://www.elastic.co/)
 [![Netty](https://img.shields.io/badge/Netty-Based-brightgreen.svg)](https://netty.io/)
 
-GreenFinger is a **powerful and scalable distributed web crawler framework** designed to handle massive-scale web crawling with precision and flexibility. With its **Spring Cloud** foundation and integration with **PostgreSQL** and **Elasticsearch**, GreenFinger is the ultimate choice for enterprises and developers seeking a customizable, high-performance crawling solution. Its advanced features, intuitive Web UI, and event-driven architecture make it stand out as an exceptional tool for data...
+[**GreenFinger**](https://github.com/paganini2008/greenfinger) is a high-performance, highly scalable distributed web crawler built in Java. Designed for both enterprise and individual users, it offers an intuitive user interface and minimal configuration, enabling seamless and efficient web resource extraction. As an open-source solution, [**GreenFinger**](https://github.com/paganini2008/greenfinger)  provides a powerful yet user-friendly approach to large-scale web crawling and data acquisition.
 
----
 
-## Key Features
 
-### 1. Intuitive Web UI for Task Management
-GreenFinger provides a user-friendly **Web UI** for managing crawler tasks:
-- Create and configure websites, URLs, and crawling parameters.
-- Dynamically create tasks using **Amber Job** (see [Amber Job README](https://github.com/paganini2008/amber-job)) or trigger tasks manually with one click.
-- Monitor task execution in real time and view detailed logs.
 
----
+## 🌟Features: 
+------------------------------
 
-### 2. Distributed Architecture with Dynamic Node Scaling
-- GreenFinger supports **horizontal scaling**, allowing nodes to be dynamically added or removed as needed.
-- The distributed architecture ensures efficient resource utilization and fault tolerance, enabling seamless handling of large-scale crawling tasks.
+1. Seamless Spring Boot Integration
+   Natively integrates with Spring Boot, ensuring effortless configuration, deployment, and maintenance. 
+2. Scalable, High-Throughput Distributed Crawling 
+   Architected for distributed environments, enabling seamless horizontal scaling to handle massive workloads efficiently. 
+3. Optimized Network Communication with Netty 
+   Leverages Netty for ultra-low-latency networking, with additional support for Mina and Grizzly for flexible communication strategies. 
+4. Enterprise-Grade URL Deduplication 
+   Implements billion-scale deduplication using Bloom Filter and RocksDB, ensuring optimal storage efficiency and crawl accuracy. 
+5. Granular URL Customization 
+   Supports fine-grained control over URL selection, allowing users to define initial URLs, retain only relevant URLs, and exclude undesired links dynamically. 
+6. Advanced Fault Tolerance & Crawler Constraints 
+   Incorporates intelligent retry mechanisms, configurable timeouts, target URL limits, and maximum crawl depth enforcement for robust error handling. 
+7. Multi-Engine Web Content Extraction 
+   Integrates Playwright, Selenium, and HtmlUnit to capture and process dynamic web content efficiently.  
+8. Strict Adherence to Robots.txt 
+   Fully complies with the Robots Exclusion Protocol, ensuring ethical and responsible web crawling.  
+9. Comprehensive Developer API 
+   Exposes a rich set of APIs, enabling seamless customization, extension, and integration into diverse ecosystems. 
+10. Automated Authentication Handling 
+    Supports intelligent login and logout workflows, facilitating seamless authentication across secured web portals. 
+11. Version-Controlled Web Document Management 
+    Assigns unique versioning to crawled documents, enabling multi-version indexing for enhanced content tracking and retrieval. 
+12. Intuitive Angular-Based Web Interface 
+    Provides a modern, interactive dashboard built with Angular, empowering users with real-time monitoring, configuration, and management capabilities. 
 
----
 
-### 3. Massive-Scale Duplicate URL Elimination
-- Supports **trillions of URLs** with advanced deduplication strategies.
-- Integrates **Bloom Filters** for memory-efficient duplicate detection.
-- Ensures clean and efficient crawling by eliminating redundant URLs from the pipeline.
 
----
+## 🚀  Technology Stack
+-----------------------------------------
 
-### 4. Selenium Integration for Dynamic Page Crawling
-- GreenFinger integrates with **Selenium**, enabling it to handle dynamic web pages, JavaScript-rendered content, and other modern web technologies.
-- Ideal for crawling rich, interactive websites.
+| Technology      | Version Requirement | Description |
+|---------------|----------------|-------------|
+| ☕ **JDK**      | 17 or later    | Core Java runtime environment |
+| 🌱 **Spring Boot** | 2.7.18        | Backend framework for microservices and rapid development |
+| ⚡ **Netty**     | 4.x           | High-performance asynchronous networking framework |
+| 🔥 **Redis**     | 7.x or later  | In-memory data store for caching and message queuing |
+| 🐘 **PostgreSQL** | 9.x or later  | High-performance, open-source relational database |
+| 🔍 **ElasticSearch** | 7.16.2 or later | Distributed search and analytics engine |
+| 🕷 **Selenium** | 4.x           | Web automation framework for headless and UI-based scraping |
+| 🎭 **Playwright** | 1.48          | Modern browser automation tool for scraping and testing |
+| 📄 **HtmlUnit**  | 2.6           | Lightweight headless browser for quick HTML processing |
+| 🌐 **Angular**    | 19.x                  | Frontend framework for building interactive web applications |
+| 🎨 **Angular Material** | Latest        | UI component library for modern, responsive designs |
 
----
 
-### 5. Intelligent URL Depth and Format Validation
-- Automatically validates URL formats and depth levels to prevent over-crawling.
-- Prevents URL "leakage" by ensuring the crawler remains focused on the intended domain or site scope.
-- Uses advanced algorithms to detect and block domain transitions.
 
----
+## Install:
+-----------------------------
 
-### 6. Real-Time Monitoring and Interrupt Conditions
-- Provides comprehensive **real-time monitoring** of task progress, resource utilization, and key metrics.
-- Supports **conditional interruption**, allowing tasks to terminate automatically based on predefined rules, such as data thresholds, error rates, or completion percentages.
+* Git Repository：
+  https://github.com/paganini2008/greenfinger.git
+* Directory Structure：
+``` shell
+📂 greenfinger
+├── 📂 greenfinger-ui  
+│   ├── 📜 pom.xml  
+│   ├── 📂 src  
+│   │   ├── 📂 config  # Configuration files  
+│   │   ├── 📂 db      # Database-related scripts and configurations  
+│   │   └── ...  
+├── 📂 greenfinger-spring-boot-starter  
+│   ├── 📜 pom.xml  
+│   ├── 📂 src  
+│   └── ...  
+├── 📜 LICENSE  
+├── 📜 pom.xml  
+└── 📜 README.md  
 
----
+```
+### Steps: 
+1.  Modify configuration:
 
-### 7. Vertical Crawling with High Customizability
-- Designed for **vertical crawling** with domain-specific configurations.
-- Fully customizable crawling logic, allowing developers to tailor it to their exact needs, including data extraction rules, scheduling, and storage formats.
+``` yaml
+spring:
+  redis:
+    database: 0
+    host: 127.0.0.1
+    port: 6379
+    password: 123456
+  elasticsearch:
+    rest:
+      uris: http://127.0.0.1:9200
+      connection-timeout: 10000
+      read-timeout: 60000
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/test?characterEncoding=utf8&allowMultiQueries=true&useSSL=false&stringtype=unspecified
+    username: admin
+    password: 123456
+# Binding host name is preferred
+doodler:
+  transmitter:
+    nio:
+      server:
+        bindHostName: 127.0.0.1
+# Internal Work ThreadPool Threads      
+greenfinger:
+  workThreads: 1000
 
----
+```
 
-### 8. PostgreSQL and Elasticsearch Integration
-- Uses **PostgreSQL** for robust, relational data storage and task management.
-- Automatically creates **Elasticsearch indices** for fast and scalable search capabilities.
+2. Create database and import table scripts
+   **execute db/crawler.sql**
+3. <code>mvn clean install</code>
+4. run jar with <code>java  --add-opens=java.base/java.lang=ALL-UNNAMED -jar greenfinger-ui-service-1.0.0-SNAPSHOT.jar</code>
 
----
+2. Open the Web UI
+    http://localhost:6120/ui/index.html
 
-### 9. Event-Driven, High-Performance Architecture
-- Built on **Netty NIO**, leveraging non-blocking IO for high throughput and low latency.
-- The **event-driven model** ensures efficient task execution, making GreenFinger suitable for high-concurrency environments.
+ ![image.png](https://paganini2008.github.io/assets/images/greenfinger/p0.png)
 
----
 
-### 10. Future-Ready Features
-- **Advanced Workflow Support**: Plan to integrate DAG-based task orchestration for complex crawling workflows.
-- **Custom Plugin System**: Future support for pluggable extensions to enhance functionality, such as new deduplication algorithms or domain-specific parsers.
 
----
-
-## Getting Started
-
-### Prerequisites
-- **Java 17+**
-- **PostgreSQL** for task and data storage
-- **Elasticsearch** for search indexing
-- **Selenium** (optional) for dynamic page crawling
-
-### Installation
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/paganini2008/greenfinger.git
-   cd greenfinger
-   ```
-
-2. Build and run the application:
-   ```bash
-   mvn clean install
-   java -jar target/greenfinger-console.jar
-   ```
-
-3. Access the Web UI:
-   Navigate to `http://localhost:8080` to configure tasks and monitor progress.
-
-###  Greenfinger Console Using Guide：
-
+##  Greenfinger UI Guide：
 -------------------------
+####  Catalog Management
+ ![image.png](https://paganini2008.github.io/assets/images/greenfinger/p1.png)
 
-Understanding the meaning of **Catalog** and **Resource:**
+#### Create a catalog
+ ![image.png](https://paganini2008.github.io/assets/images/greenfinger/p2.png)
 
-* **Catalog**: a website that will be crawled
-* *Resource**: a URL that is crawled from a catalog
+#### Edit a catalog
+ ![image.png](https://paganini2008.github.io/assets/images/greenfinger/p3.png)
 
-Home Page：http://localhost:8080/greenfinger/catalog/
+#### Run web crawler
+ ![image.png](https://paganini2008.github.io/assets/images/greenfinger/p4.png)
 
-* **Catalog List**
-  ![image.png]( https://paganini2008.github.io/assets/images/greenfinger/1.png)
-  **Description：**
+#### Monitor
+ ![image.png](https://paganini2008.github.io/assets/images/greenfinger/p5.png)
 
-- 【Edit】 Edit Catalog
+####  Query
+ ![image.png](https://paganini2008.github.io/assets/images/greenfinger/p6.png)
 
-- 【Delete】Delete directory (including resources and indexes under the directory)
 
-- 【Clean】 Clean up the directory (including the resources and indexes under the directory, but the directory is still there, and the version number is set to 0)
 
-- 【Rebuild】Reconstruct the directory (start a web spider, crawl the directory again, build an index, and increase the version number)
+## Customize your application
 
-- 【Update】Update the directory (start a web spider, then continue to crawl and update the directory from the latest resource, and build an index, with the version number unchanged)
+### Application Integration
+-------------------------
+**Step1**:  add dependency in your pom.xml:
 
-  *When the crawler is running, you can also:*
+``` xml
+<dependency>
+  <groupId>com.github.paganini2008</groupId>
+  <artifactId>greenfinger-spring-boot-starter</artifactId>
+  <version>1.0.0-SNAPSHOT</version>
+</dependency>
+```
+**Step2**: add <code>@EnableGreenFingerServer</code> on the main:
 
-- 【Stop】Stop running a web spider
+``` java
+@EnableAsync(proxyTargetClass = true)
+@EnableScheduling
+@EnableGreenfingerServer
+@SpringBootApplication
+public class GreenFingerServerConsoleMain {
 
-- 【Realtime】Watching real-time statistics when a web spider works
+	public static void main(String[] args) {
+		SpringApplication.run(GreenFingerServerConsoleMain.class, args);
+	}
+}
+```
+**Step3**:  Run it
 
-* **Save Catalog：**
-  ![image.png](https://paganini2008.github.io/assets/images/greenfinger/2.png)
-  **说明：**
-  + **Name**: catalog name
-  + **Cat**: category of catalogs
-  + **URL**: the started url      (e.g.  http://www.example.com)
-  + **Page Encoding**: encoding of page content    (e.g.  UTF-8, ISO-8859-1)
-  + **Path Pattern**: URL matching pattern, more patterns are separated by ","           (e.g. http://www/example.com/foo/\*\*, http://www/example.com/bar/\*\*)
-  + **Excluded Path Pattern**: Excluded URL matching pattern，more patterns are separated by ","
-  + **Max Fetch Size**: Maximum number of links crawled（100000 by default）
-  + **Duration**: The running time (milliseconds) of a web spider  (20 minutes by default), that means  beyond this time, the web spider will automatically end the crawling work.
-
-* **Observe the statistics of a running web spider：**
-  ![image.png](https://paganini2008.github.io/assets/images/greenfinger/3.png)
-* **While the crawler is crawling, you can also search with keywords in real-time:**
-  ![image.png](https://paganini2008.github.io/assets/images/greenfinger/4.png)
-* **If no keyword is entered, all items will be queried：**
-  ![image.png](https://paganini2008.github.io/assets/images/greenfinger/5.png)
-
----
 
 ## Documentation
-For detailed setup instructions, API references, and advanced configuration, visit the [Official Documentation](https://github.com/paganini2008/greenfinger/wiki).
+For detailed setup instructions, API references, and advanced configuration, visit the [Official Documentation](https://github.com/paganini2008/greenfinger/wiki/QuickStart).
 
 ---
 
@@ -164,8 +191,7 @@ Contributions are welcome! Refer to the [Contributing Guide](CONTRIBUTING.md) fo
 ---
 
 ## License
-GreenFinger is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+Greenfinger is licensed under the Apache License. See the [LICENSE](LICENSE) file for more details.
 
 ---
 
-GreenFinger combines the power of distributed systems, high-performance crawling, and real-time monitoring into a single, cohesive framework. Whether for enterprise-scale web scraping or domain-specific data extraction, GreenFinger is the ultimate tool for modern web crawling challenges.

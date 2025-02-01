@@ -22,6 +22,9 @@ import org.springframework.stereotype.Component;
 public class WebCrawlingChecker {
 
     @Autowired
+    private WebCrawlerSemaphore semaphore;
+
+    @Autowired
     private CatalogDetailsService catalogDetailsService;
 
     @Pointcut("execution(public * *(..))")
@@ -36,10 +39,7 @@ public class WebCrawlingChecker {
         MethodSignature signature = (MethodSignature) pjp.getSignature();
         Parameter[] parameters = signature.getMethod().getParameters();
         long catalogId = findCatalogId(parameters, pjp.getArgs());
-        if (catalogId < 0) {
-            throw new WebCrawlerRunningException("There is a running web crawler job now");
-        }
-        if (catalogDetails.getId().equals(catalogId)) {
+        if (catalogId != -1 && catalogDetails.getId().equals(catalogId) && semaphore.isOccupied()) {
             throw new WebCrawlerRunningException("Current catalog is running a web crawler job");
         }
         return pjp.proceed();

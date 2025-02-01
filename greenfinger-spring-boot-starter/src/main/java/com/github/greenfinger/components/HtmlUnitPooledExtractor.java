@@ -2,10 +2,14 @@ package com.github.greenfinger.components;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.pool2.BasePooledObjectFactory;
 import org.apache.commons.pool2.PooledObject;
+import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.springframework.http.HttpStatus;
 import com.gargoylesoftware.htmlunit.BrowserVersion;
 import com.gargoylesoftware.htmlunit.CookieManager;
@@ -13,6 +17,7 @@ import com.gargoylesoftware.htmlunit.NicelyResynchronizingAjaxController;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebResponse;
+import com.github.doodler.common.context.ManagedBeanLifeCycle;
 import com.github.doodler.common.transmitter.Packet;
 import com.github.doodler.common.utils.MapUtils;
 import com.github.doodler.common.utils.RandomIpUtils;
@@ -31,34 +36,52 @@ import lombok.RequiredArgsConstructor;
  * @Version 1.0.0
  */
 @RequiredArgsConstructor
-public class HtmlUnitPooledExtractor extends PooledExtractor<WebClient> implements NamedExetractor {
+public class HtmlUnitPooledExtractor extends PooledExtractor<WebClient>
+        implements NamedExetractor, ManagedBeanLifeCycle {
 
     private final WebCrawlerExtractorProperties extractorProperties;
 
     @Override
-    public WebClient createObject() throws Exception {
-        WebCrawlerExtractorProperties.HtmlUnit config = extractorProperties.getHtmlunit();
-        WebClient webClient;
-        if (StringUtils.isNotBlank(config.getProxyHost()) && config.getProxyPort() > 0) {
-            webClient = new WebClient(BrowserVersion.BEST_SUPPORTED, config.getProxyHost(),
-                    config.getProxyPort());
-        } else {
-            webClient = new WebClient(BrowserVersion.BEST_SUPPORTED);
-        }
-        webClient.getOptions().setThrowExceptionOnScriptError(false);
-        webClient.getOptions().setThrowExceptionOnFailingStatusCode(true);
-        webClient.getOptions().setActiveXNative(false);
-        webClient.getOptions().setCssEnabled(false);
-        webClient.getOptions().setJavaScriptEnabled(config.isJavaScriptEnabled());
-        webClient.getOptions().setRedirectEnabled(false);
-        webClient.getOptions().setDownloadImages(false);
-        webClient.getOptions().setUseInsecureSSL(true);
-        webClient.getOptions().setTimeout(config.getTimeout());
-        webClient.setCookieManager(new CookieManager());
-        webClient.setAjaxController(new NicelyResynchronizingAjaxController());
-        webClient.setJavaScriptTimeout(config.getJavaScriptTimeout());
-        setDefaultHttpHeaders(webClient);
-        return webClient;
+    protected BasePooledObjectFactory<WebClient> createObjectFactory() {
+
+        return new BasePooledObjectFactory<WebClient>() {
+
+            @Override
+            public PooledObject<WebClient> wrap(WebClient object) {
+                return new DefaultPooledObject<WebClient>(object);
+            }
+
+            @Override
+            public WebClient create() throws Exception {
+                WebCrawlerExtractorProperties.HtmlUnit config = extractorProperties.getHtmlunit();
+                WebClient webClient;
+                if (StringUtils.isNotBlank(config.getProxyHost()) && config.getProxyPort() > 0) {
+                    webClient = new WebClient(BrowserVersion.BEST_SUPPORTED, config.getProxyHost(),
+                            config.getProxyPort());
+                } else {
+                    webClient = new WebClient(BrowserVersion.BEST_SUPPORTED);
+                }
+                webClient.getOptions().setThrowExceptionOnScriptError(false);
+                webClient.getOptions().setThrowExceptionOnFailingStatusCode(true);
+                webClient.getOptions().setActiveXNative(false);
+                webClient.getOptions().setCssEnabled(false);
+                webClient.getOptions().setJavaScriptEnabled(config.isJavaScriptEnabled());
+                webClient.getOptions().setRedirectEnabled(false);
+                webClient.getOptions().setDownloadImages(false);
+                webClient.getOptions().setUseInsecureSSL(true);
+                webClient.getOptions().setTimeout(config.getTimeout());
+                webClient.setCookieManager(new CookieManager());
+                webClient.setAjaxController(new NicelyResynchronizingAjaxController());
+                webClient.setJavaScriptTimeout(config.getJavaScriptTimeout());
+                setDefaultHttpHeaders(webClient);
+                return webClient;
+            }
+
+            @Override
+            public void destroyObject(PooledObject<WebClient> po) throws Exception {
+                po.getObject().close();
+            }
+        };
     }
 
     private void setDefaultHttpHeaders(WebClient webClient) {
@@ -75,15 +98,17 @@ public class HtmlUnitPooledExtractor extends PooledExtractor<WebClient> implemen
     }
 
     @Override
-    public void destroyObject(PooledObject<WebClient> object) throws Exception {
-        object.getObject().close();
-    }
-
-    @Override
     protected String requestUrl(CatalogDetails catalogDetails, String referUrl, String url,
             Charset pageEncoding, Packet packet) throws Exception {
-        WebClient webClient = objectPool.borrowObject();
+        WebCrawlerExtractorProperties.ObjectPool poolConfig = extractorProperties.getObjectPool();
+        WebClient webClient = null;
         try {
+            webClient = poolConfig.getBorrowTimeout() > 0
+                    ? objectPool.borrowObject(Duration.ofMillis(poolConfig.getBorrowTimeout()))
+                    : objectPool.borrowObject();
+            if (webClient == null) {
+                throw new NoSuchElementException("No available WebClient now");
+            }
             WebCrawlerExtractorProperties.HtmlUnit config = extractorProperties.getHtmlunit();
             Page page = webClient.getPage(url);
             if (config.getLoadingTimeout() > 0) {
@@ -103,6 +128,15 @@ public class HtmlUnitPooledExtractor extends PooledExtractor<WebClient> implemen
                 objectPool.returnObject(webClient);
             }
         }
+    }
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        WebCrawlerExtractorProperties.ObjectPool poolConfig = extractorProperties.getObjectPool();
+        getObjectPoolConfig().setMinIdle(poolConfig.getMinIdle());
+        getObjectPoolConfig().setMaxIdle(poolConfig.getMaxIdle());
+        getObjectPoolConfig().setMaxTotal(poolConfig.getMaxTotal());
+        super.afterPropertiesSet();
     }
 
     @Override

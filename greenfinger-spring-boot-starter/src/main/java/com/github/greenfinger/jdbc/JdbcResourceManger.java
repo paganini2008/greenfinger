@@ -18,6 +18,7 @@ import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import com.github.doodler.common.id.IdGenerator;
@@ -149,7 +150,11 @@ public class JdbcResourceManger implements ResourceManager {
 
     @Override
     public Catalog getCatalog(long id) {
-        return catalogDao.getCatalog(id);
+        try {
+            return catalogDao.getCatalog(id);
+        } catch (EmptyResultDataAccessException e) {
+            return null;
+        }
     }
 
     @Override

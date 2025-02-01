@@ -63,6 +63,9 @@ public class ElasticsearchResourceIndexManager implements ResourceIndexManager {
     @Override
     public void deleteResource(long catalogId, int version) {
         Catalog catalog = resourceManager.getCatalog(catalogId);
+        if (catalog == null) {
+            return;
+        }
         NativeSearchQueryBuilder searchQueryBuilder = new NativeSearchQueryBuilder();
         BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery()
                 .must(QueryBuilders.termQuery(SEARCH_FIELD_CATALOG, catalog.getName()));
