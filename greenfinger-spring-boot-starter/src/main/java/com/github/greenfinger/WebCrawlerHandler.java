@@ -84,7 +84,7 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
         final long catalogId = (Long) packet.getField("catalogId");
         WebCrawlerExecutionContext executionContext =
                 WebCrawlerExecutionContextUtils.get(catalogId);
-        if (executionContext == null || executionContext.isCompleted()) {
+        if (executionContext == null) {
             return;
         }
 
@@ -124,14 +124,14 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
                     refer, path, charset, packet, e);
         }
         if (StringUtils.isBlank(html)) {
-            log.warn("Get empty html content by path: {}", path);
+            log.warn("No page content with path: {}", path);
             return;
         }
         Document document;
         try {
             document = Jsoup.parse(html);
         } catch (Exception ignored) {
-            log.warn("Unable to parse html content by path: {}", path);
+            log.warn("Unable to parse html content with path: {}", path);
             return;
         }
 
@@ -165,18 +165,20 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
             }
         }
 
-        Elements elements = document.body().select("a");
-        if (CollectionUtils.isNotEmpty(elements)) {
-            String href;
-            for (Element element : elements) {
-                href = element.absUrl("href");
-                if (StringUtils.isBlank(href)) {
-                    href = element.attr("href");
-                }
-                if (StringUtils.isNotBlank(href)
-                        && isUrlAcceptable(catalogId, refer, href, packet, executionContext)) {
-                    crawlRecursively(action, catalogId, refer, href, version, packet,
-                            executionContext);
+        if (!executionContext.isCompleted()) {
+            Elements elements = document.body().select("a");
+            if (CollectionUtils.isNotEmpty(elements)) {
+                String href;
+                for (Element element : elements) {
+                    href = element.absUrl("href");
+                    if (StringUtils.isBlank(href)) {
+                        href = element.attr("href");
+                    }
+                    if (StringUtils.isNotBlank(href)
+                            && isUrlAcceptable(catalogId, refer, href, packet, executionContext)) {
+                        crawlRecursively(action, catalogId, refer, href, version, packet,
+                                executionContext);
+                    }
                 }
             }
         }
@@ -186,7 +188,7 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
         final long catalogId = (Long) packet.getField("catalogId");
         WebCrawlerExecutionContext executionContext =
                 WebCrawlerExecutionContextUtils.get(catalogId);
-        if (executionContext == null || executionContext.isCompleted()) {
+        if (executionContext == null) {
             return;
         }
 
@@ -214,6 +216,7 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
                     refer, path, charset, packet, e);
         }
         if (StringUtils.isBlank(html)) {
+            log.warn("No page content with path: {}", path);
             return;
         }
 
@@ -221,6 +224,7 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
         try {
             document = Jsoup.parse(html);
         } catch (Exception ignored) {
+            log.warn("Unable to parse html content with path: {}", path);
             return;
         }
 
@@ -264,25 +268,27 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
             }
         }
 
-        Elements elements = document.body().select("a");
-        if (CollectionUtils.isNotEmpty(elements)) {
-            String href;
-            for (Element element : elements) {
-                href = element.absUrl("href");
-                if (StringUtils.isBlank(href)) {
-                    href = element.attr("href");
-                }
-                if (StringUtils.isNotBlank(href)
-                        && isUrlAcceptable(catalogId, refer, href, packet, executionContext)) {
-                    updateRecursively(action, catalogId, refer, href, version, packet,
-                            executionContext);
+        if (!executionContext.isCompleted()) {
+            Elements elements = document.body().select("a");
+            if (CollectionUtils.isNotEmpty(elements)) {
+                String href;
+                for (Element element : elements) {
+                    href = element.absUrl("href");
+                    if (StringUtils.isBlank(href)) {
+                        href = element.attr("href");
+                    }
+                    if (StringUtils.isNotBlank(href)
+                            && isUrlAcceptable(catalogId, refer, href, packet, executionContext)) {
+                        updateRecursively(action, catalogId, refer, href, version, packet,
+                                executionContext);
+                    }
                 }
             }
         }
     }
 
     private void doIndex(Packet packet) {
-        long catalogId = (Long) packet.getField("catalogId");
+        final long catalogId = (Long) packet.getField("catalogId");
         WebCrawlerExecutionContext executionContext =
                 WebCrawlerExecutionContextUtils.get(catalogId);
         if (executionContext == null) {
