@@ -62,7 +62,7 @@ public class WebCrawlerExtractorProperties {
         private int minIdle = 1;
         private int maxIdle = 2;
         private int maxTotal = 20;
-        private int borrowTimeout = 10 * 1000;
+        private int borrowTimeout = 60 * 1000;
 
     }
 

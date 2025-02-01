@@ -6,6 +6,8 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.pool2.BasePooledObjectFactory;
 import org.apache.commons.pool2.PooledObject;
@@ -41,6 +43,7 @@ public class PlaywrightPooledExtractor extends PooledExtractor<BrowserContext>
     private final WebCrawlerExtractorProperties extractorProperties;
 
     private Playwright playwright;
+    private final Lock lock = new ReentrantLock();
 
     @Override
     public void afterPropertiesSet() throws Exception {
@@ -65,18 +68,16 @@ public class PlaywrightPooledExtractor extends PooledExtractor<BrowserContext>
 
             @Override
             public BrowserContext create() throws Exception {
-                synchronized (playwright) {
-                    Browser browser = playwright.chromium()
-                            .launch(new BrowserType.LaunchOptions().setHeadless(true));
-                    Browser.NewContextOptions newContextOptions = new Browser.NewContextOptions()
-                            .setIsMobile(false).setAcceptDownloads(false).setBypassCSP(true)
-                            .setJavaScriptEnabled(config.isJavaScriptEnabled())
-                            .setExtraHTTPHeaders(mergeHttpHeaders());
-                    if (StringUtils.isNotBlank(config.getProxyServer())) {
-                        newContextOptions.setProxy(new Proxy(config.getProxyServer()));
-                    }
-                    return browser.newContext(newContextOptions);
+                Browser browser = playwright.chromium()
+                        .launch(new BrowserType.LaunchOptions().setHeadless(true));
+                Browser.NewContextOptions newContextOptions = new Browser.NewContextOptions()
+                        .setIsMobile(false).setAcceptDownloads(false).setBypassCSP(true)
+                        .setJavaScriptEnabled(config.isJavaScriptEnabled())
+                        .setExtraHTTPHeaders(mergeHttpHeaders());
+                if (StringUtils.isNotBlank(config.getProxyServer())) {
+                    newContextOptions.setProxy(new Proxy(config.getProxyServer()));
                 }
+                return browser.newContext(newContextOptions);
             }
 
             @Override
@@ -101,7 +102,7 @@ public class PlaywrightPooledExtractor extends PooledExtractor<BrowserContext>
         WebCrawlerExtractorProperties.Playwright config = extractorProperties.getPlaywright();
         WebCrawlerExtractorProperties.ObjectPool poolConfig = extractorProperties.getObjectPool();
         BrowserContext browserContext = null;
-        Page page = null;
+        lock.lock();
         try {
             browserContext = poolConfig.getBorrowTimeout() > 0
                     ? objectPool.borrowObject(Duration.ofMillis(poolConfig.getBorrowTimeout()))
@@ -109,8 +110,8 @@ public class PlaywrightPooledExtractor extends PooledExtractor<BrowserContext>
             if (browserContext == null) {
                 throw new NoSuchElementException("No available BrowserContext now");
             }
-            synchronized (playwright) {
-                page = browserContext.newPage();
+
+            try (Page page = browserContext.newPage()) {
                 page.navigate(url, new Page.NavigateOptions().setTimeout(config.getTimeout())
                         .setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
                 if (config.getLoadingTimeout() > 0) {
@@ -120,10 +121,9 @@ public class PlaywrightPooledExtractor extends PooledExtractor<BrowserContext>
                 }
                 return page.content();
             }
+
         } finally {
-            if (page != null) {
-                page.close();
-            }
+            lock.unlock();
             if (browserContext != null) {
                 objectPool.returnObject(browserContext);
             }

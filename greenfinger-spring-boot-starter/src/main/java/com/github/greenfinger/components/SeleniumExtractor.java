@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.pool2.BasePooledObjectFactory;
 import org.apache.commons.pool2.PooledObject;
@@ -38,6 +40,7 @@ public class SeleniumExtractor extends PooledExtractor<WebDriver>
         implements NamedExetractor, ManagedBeanLifeCycle {
 
     private final WebCrawlerExtractorProperties extractorProperties;
+    private final Lock lock = new ReentrantLock();
 
     @Override
     protected BasePooledObjectFactory<WebDriver> createObjectFactory() {
@@ -87,14 +90,19 @@ public class SeleniumExtractor extends PooledExtractor<WebDriver>
         } else {
             WebDriverManager.chromedriver().setup();
         }
+        WebCrawlerExtractorProperties.ObjectPool poolConfig = extractorProperties.getObjectPool();
+        getObjectPoolConfig().setMinIdle(poolConfig.getMinIdle());
+        getObjectPoolConfig().setMaxIdle(poolConfig.getMaxIdle());
+        getObjectPoolConfig().setMaxTotal(poolConfig.getMaxTotal());
         super.afterPropertiesSet();
     }
 
-    protected synchronized String requestUrl(CatalogDetails catalogDetails, String referUrl,
-            String url, Charset pageEncoding, Packet packet) throws Exception {
+    protected String requestUrl(CatalogDetails catalogDetails, String referUrl, String url,
+            Charset pageEncoding, Packet packet) throws Exception {
         WebCrawlerExtractorProperties.Selenium config = extractorProperties.getSelenium();
         WebCrawlerExtractorProperties.ObjectPool poolConfig = extractorProperties.getObjectPool();
         WebDriver webDriver = null;
+        lock.lock();
         try {
             webDriver = poolConfig.getBorrowTimeout() > 0
                     ? objectPool.borrowObject(Duration.ofMillis(poolConfig.getBorrowTimeout()))
@@ -110,6 +118,7 @@ public class SeleniumExtractor extends PooledExtractor<WebDriver>
             }
             return webDriver.getPageSource();
         } finally {
+            lock.unlock();
             if (webDriver != null) {
                 objectPool.returnObject(webDriver);
             }

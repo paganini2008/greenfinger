@@ -84,13 +84,16 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
         final long catalogId = (Long) packet.getField("catalogId");
         WebCrawlerExecutionContext executionContext =
                 WebCrawlerExecutionContextUtils.get(catalogId);
-        if (executionContext == null) {
+        if (executionContext == null || executionContext.isCompleted()) {
             return;
         }
 
         final String action = (String) packet.getField("action");
         final String refer = (String) packet.getField("refer");
-        final String path = (String) packet.getField("path");
+        String path = (String) packet.getField("path");
+        if ((refer + "/").equals(path)) {
+            path = refer;
+        }
         final String cat = (String) packet.getField("cat");
         final String pageEncoding = (String) packet.getField("pageEncoding");
         final int version = (Integer) packet.getField("version");
@@ -188,13 +191,16 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
         final long catalogId = (Long) packet.getField("catalogId");
         WebCrawlerExecutionContext executionContext =
                 WebCrawlerExecutionContextUtils.get(catalogId);
-        if (executionContext == null) {
+        if (executionContext == null || executionContext.isCompleted()) {
             return;
         }
 
         final String action = (String) packet.getField("action");
         final String refer = (String) packet.getField("refer");
-        final String path = (String) packet.getField("path");
+        String path = (String) packet.getField("path");
+        if ((refer + "/").equals(path)) {
+            path = refer;
+        }
         final String cat = (String) packet.getField("cat");
         final String pageEncoding = (String) packet.getField("pageEncoding");
         final int version = (Integer) packet.getField("version");

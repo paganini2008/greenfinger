@@ -13,6 +13,7 @@
  */
 package com.github.greenfinger.components;
 
+import java.time.Duration;
 import org.apache.commons.pool2.BasePooledObjectFactory;
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
@@ -68,6 +69,8 @@ public abstract class PooledExtractor<T> extends AbstractExtractor
             setMinIdle(1);
             setMaxIdle(2);
             setMaxTotal(20);
+            setTimeBetweenEvictionRuns(Duration.ofMillis(15000));
+            setMinEvictableIdleTime(Duration.ofMillis(60000));
             setBlockWhenExhausted(true);
         }
     }

@@ -17,6 +17,7 @@ import com.gargoylesoftware.htmlunit.NicelyResynchronizingAjaxController;
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebResponse;
+import com.github.doodler.common.context.ManagedBeanLifeCycle;
 import com.github.doodler.common.transmitter.Packet;
 import com.github.doodler.common.utils.MapUtils;
 import com.github.doodler.common.utils.RandomIpUtils;
@@ -35,7 +36,8 @@ import lombok.RequiredArgsConstructor;
  * @Version 1.0.0
  */
 @RequiredArgsConstructor
-public class HtmlUnitPooledExtractor extends PooledExtractor<WebClient> implements NamedExetractor {
+public class HtmlUnitPooledExtractor extends PooledExtractor<WebClient>
+        implements NamedExetractor, ManagedBeanLifeCycle {
 
     private final WebCrawlerExtractorProperties extractorProperties;
 
@@ -126,6 +128,15 @@ public class HtmlUnitPooledExtractor extends PooledExtractor<WebClient> implemen
                 objectPool.returnObject(webClient);
             }
         }
+    }
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        WebCrawlerExtractorProperties.ObjectPool poolConfig = extractorProperties.getObjectPool();
+        getObjectPoolConfig().setMinIdle(poolConfig.getMinIdle());
+        getObjectPoolConfig().setMaxIdle(poolConfig.getMaxIdle());
+        getObjectPoolConfig().setMaxTotal(poolConfig.getMaxTotal());
+        super.afterPropertiesSet();
     }
 
     @Override
