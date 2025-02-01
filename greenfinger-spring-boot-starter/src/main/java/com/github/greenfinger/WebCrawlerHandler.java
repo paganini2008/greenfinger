@@ -2,6 +2,11 @@ package com.github.greenfinger;
 
 import java.nio.charset.Charset;
 import java.util.Date;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jsoup.Jsoup;
@@ -12,13 +17,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Component;
+import com.github.doodler.common.context.ManagedBeanLifeCycle;
 import com.github.doodler.common.events.Context;
 import com.github.doodler.common.events.EventSubscriber;
 import com.github.doodler.common.transmitter.NioClient;
 import com.github.doodler.common.transmitter.Packet;
 import com.github.doodler.common.transmitter.PacketRetryer;
 import com.github.doodler.common.transmitter.Partitioner;
+import com.github.doodler.common.transmitter.PerformanceInspector;
 import com.github.doodler.common.utils.CharsetUtils;
+import com.github.doodler.common.utils.ExecutorUtils;
 import com.github.greenfinger.components.CountingType;
 import com.github.greenfinger.components.ExistingUrlPathFilter;
 import com.github.greenfinger.model.Resource;
@@ -34,7 +42,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Component
-public class WebCrawlerHandler implements EventSubscriber<Packet> {
+public class WebCrawlerHandler implements EventSubscriber<Packet>, ManagedBeanLifeCycle {
 
     private static final String UNIQUE_PATH_IDENTIFIER = "%s||%s||%s||%s";
 
@@ -54,33 +62,42 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
     @Autowired
     private PacketRetryer packetRetryer;
 
+    @Lazy
+    @Autowired
+    private PerformanceInspector performanceInspector;
+
+    private ExecutorService executorService;
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        this.executorService = Executors.newCachedThreadPool();
+    }
+
+    @Override
+    public void destroy() throws Exception {
+        ExecutorUtils.gracefulShutdown(executorService, 60000);
+    }
+
     @Override
     public void consume(Packet packet, Context context) {
-        String action = (String) packet.getField("action");
+        performanceInspector.beforeConsuming(packet);
+        final String action = (String) packet.getField("action");
         switch (action) {
             case "crawl":
-                doCrawl(packet);
+                doCrawl(packet, context);
                 break;
             case "update":
-                doUpdate(packet);
+                doUpdate(packet, context);
                 break;
             case "index":
-                doIndex(packet);
+                doIndex(packet, context);
                 break;
             default:
                 throw new IllegalArgumentException("Unknown packet: " + packet);
         }
     }
 
-    @Override
-    public void onError(Packet packet, Exception e, Context context) {
-        packetRetryer.backfill(packet);
-        if (log.isErrorEnabled()) {
-            log.error(e.getMessage(), e);
-        }
-    }
-
-    private void doCrawl(Packet packet) {
+    private void doCrawl(Packet packet, Context context) {
         final long catalogId = (Long) packet.getField("catalogId");
         WebCrawlerExecutionContext executionContext =
                 WebCrawlerExecutionContextUtils.get(catalogId);
@@ -91,14 +108,13 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
         final String action = (String) packet.getField("action");
         final String refer = (String) packet.getField("refer");
         String path = (String) packet.getField("path");
-        if ((refer + "/").equals(path)) {
+        if (path.equals(refer + "/")) {
             path = refer;
         }
         final String cat = (String) packet.getField("cat");
         final String pageEncoding = (String) packet.getField("pageEncoding");
         final int version = (Integer) packet.getField("version");
         final boolean indexEnabled = (Boolean) packet.getField("indexEnabled", true);
-
         executionContext.getGlobalStateManager().incrementCount(packet.getTimestamp(),
                 CountingType.URL_TOTAL_COUNT);
 
@@ -110,144 +126,46 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
                     CountingType.EXISTING_URL_COUNT);
             return;
         }
+
+        executionContext.getConcurrents().incrementAndGet();
         if (log.isTraceEnabled()) {
             log.trace("Handling resource: [Resource] refer: {}, path: {}", refer, path);
         }
-
-        Charset charset = CharsetUtils.toCharset(pageEncoding);
-        String html = null;
-        try {
-            html = executionContext.getExtractor().extractHtml(executionContext.getCatalogDetails(),
-                    refer, path, charset, packet);
-        } catch (Exception e) {
-            log.error(e.getMessage(), e);
-            executionContext.getGlobalStateManager().incrementCount(packet.getTimestamp(),
-                    CountingType.INVALID_URL_COUNT);
-            html = executionContext.getExtractor().defaultHtml(executionContext.getCatalogDetails(),
-                    refer, path, charset, packet, e);
-        }
-        if (StringUtils.isBlank(html)) {
-            log.warn("No page content with path: {}", path);
-            return;
-        }
-        Document document;
-        try {
-            document = Jsoup.parse(html);
-        } catch (Exception ignored) {
-            log.warn("Unable to parse html content with path: {}", path);
-            return;
-        }
-
-        try {
-            Resource resource = new Resource();
-            resource.setTitle(document.title());
-            resource.setHtml(document.html());
-            resource.setUrl(path);
-            resource.setCat(cat);
-            resource.setVersion(version);
-            resource.setCatalogId(catalogId);
-            resource.setCreateTime(new Date());
-            resourceManager.saveResource(resource);
-            executionContext.getGlobalStateManager().incrementCount(packet.getTimestamp(),
-                    CountingType.SAVED_RESOURCE_COUNT);
-            if (log.isInfoEnabled()) {
-                log.info("Save resource: " + resource);
-            }
-            if (indexEnabled) {
-                sendIndex(catalogId, resource.getId(), version);
-            }
-        } catch (DuplicateKeyException e) {
-            if (log.isErrorEnabled()) {
+        final String thisPath = path;
+        CompletableFuture.supplyAsync(() -> {
+            Charset charset = CharsetUtils.toCharset(pageEncoding);
+            String html = null;
+            try {
+                html = executionContext.getExtractor().extractHtml(
+                        executionContext.getCatalogDetails(), refer, thisPath, charset, packet);
+            } catch (Exception e) {
                 log.error(e.getMessage(), e);
+                executionContext.getGlobalStateManager().incrementCount(packet.getTimestamp(),
+                        CountingType.INVALID_URL_COUNT);
+                html = executionContext.getExtractor().defaultHtml(
+                        executionContext.getCatalogDetails(), refer, thisPath, charset, packet, e);
             }
-            executionContext.getGlobalStateManager().incrementCount(packet.getTimestamp(),
-                    CountingType.EXISTING_URL_COUNT);
-        } catch (Exception e) {
-            if (log.isErrorEnabled()) {
-                log.error(e.getMessage(), e);
+            return html;
+        }, executorService).completeOnTimeout("", 60, TimeUnit.SECONDS).thenApply(html -> {
+            if (StringUtils.isBlank(html)) {
+                log.warn("No page content with path: {}", thisPath);
+                return null;
             }
-        }
-
-        if (!executionContext.isCompleted()) {
-            Elements elements = document.body().select("a");
-            if (CollectionUtils.isNotEmpty(elements)) {
-                String href;
-                for (Element element : elements) {
-                    href = element.absUrl("href");
-                    if (StringUtils.isBlank(href)) {
-                        href = element.attr("href");
-                    }
-                    if (StringUtils.isNotBlank(href)
-                            && isUrlAcceptable(catalogId, refer, href, packet, executionContext)) {
-                        crawlRecursively(action, catalogId, refer, href, version, packet,
-                                executionContext);
-                    }
-                }
+            Document document;
+            try {
+                document = Jsoup.parse(html);
+            } catch (Exception ignored) {
+                log.warn("Unable to parse html content with path: {}", thisPath);
+                return null;
             }
-        }
-    }
-
-    private void doUpdate(Packet packet) {
-        final long catalogId = (Long) packet.getField("catalogId");
-        WebCrawlerExecutionContext executionContext =
-                WebCrawlerExecutionContextUtils.get(catalogId);
-        if (executionContext == null || executionContext.isCompleted()) {
-            return;
-        }
-
-        final String action = (String) packet.getField("action");
-        final String refer = (String) packet.getField("refer");
-        String path = (String) packet.getField("path");
-        if ((refer + "/").equals(path)) {
-            path = refer;
-        }
-        final String cat = (String) packet.getField("cat");
-        final String pageEncoding = (String) packet.getField("pageEncoding");
-        final int version = (Integer) packet.getField("version");
-        final boolean indexEnabled = (Boolean) packet.getField("indexEnabled", true);
-
-        executionContext.getGlobalStateManager().incrementCount(packet.getTimestamp(),
-                CountingType.URL_TOTAL_COUNT);
-
-        Charset charset = CharsetUtils.toCharset(pageEncoding);
-        String html = null;
-        try {
-            html = executionContext.getExtractor().extractHtml(executionContext.getCatalogDetails(),
-                    refer, path, charset, packet);
-        } catch (Exception e) {
-            log.error(e.getMessage(), e);
-            executionContext.getGlobalStateManager().incrementCount(packet.getTimestamp(),
-                    CountingType.INVALID_URL_COUNT);
-            html = executionContext.getExtractor().defaultHtml(executionContext.getCatalogDetails(),
-                    refer, path, charset, packet, e);
-        }
-        if (StringUtils.isBlank(html)) {
-            log.warn("No page content with path: {}", path);
-            return;
-        }
-
-        Document document;
-        try {
-            document = Jsoup.parse(html);
-        } catch (Exception ignored) {
-            log.warn("Unable to parse html content with path: {}", path);
-            return;
-        }
-
-        if (log.isTraceEnabled()) {
-            log.trace("Handling resource: [Resource] refer: {}, path: {}", refer, path);
-        }
-        String pathIdentifier =
-                String.format(UNIQUE_PATH_IDENTIFIER, catalogId, refer, path, version);
-        if (executionContext.getExistingUrlPathFilter().mightExist(pathIdentifier)) {
-            executionContext.getGlobalStateManager().incrementCount(packet.getTimestamp(),
-                    CountingType.EXISTING_URL_COUNT);
-        } else {
+            if (log.isTraceEnabled()) {
+                log.trace("Handling resource: [Resource] refer: {}, path: {}", refer, thisPath);
+            }
             try {
                 Resource resource = new Resource();
                 resource.setTitle(document.title());
                 resource.setHtml(document.html());
-                resource.setUrl(path);
+                resource.setUrl(thisPath);
                 resource.setCat(cat);
                 resource.setVersion(version);
                 resource.setCatalogId(catalogId);
@@ -272,41 +190,195 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
                     log.error(e.getMessage(), e);
                 }
             }
-        }
-
-        if (!executionContext.isCompleted()) {
-            Elements elements = document.body().select("a");
-            if (CollectionUtils.isNotEmpty(elements)) {
-                String href;
-                for (Element element : elements) {
-                    href = element.absUrl("href");
-                    if (StringUtils.isBlank(href)) {
-                        href = element.attr("href");
-                    }
-                    if (StringUtils.isNotBlank(href)
-                            && isUrlAcceptable(catalogId, refer, href, packet, executionContext)) {
-                        updateRecursively(action, catalogId, refer, href, version, packet,
-                                executionContext);
+            return document;
+        }).thenApply(document -> {
+            if (document == null) {
+                return 0;
+            }
+            int links = 0;
+            if (!executionContext.isCompleted()) {
+                Elements elements = document.body().select("a");
+                if (CollectionUtils.isNotEmpty(elements)) {
+                    links = elements.size();
+                    String href;
+                    for (Element element : elements) {
+                        href = element.absUrl("href");
+                        if (StringUtils.isBlank(href)) {
+                            href = element.attr("href");
+                        }
+                        if (StringUtils.isNotBlank(href) && isUrlAcceptable(catalogId, refer, href,
+                                packet, executionContext)) {
+                            crawlRecursively(action, catalogId, refer, href, version, packet,
+                                    executionContext);
+                        }
                     }
                 }
             }
-        }
+            return links;
+        }).whenComplete((result, e) -> {
+            if (e != null) {
+                packetRetryer.backfill(packet);
+                if (log.isErrorEnabled()) {
+                    log.error(e.getMessage(), e);
+                }
+            }
+            executionContext.getConcurrents().decrementAndGet();
+            performanceInspector.completeConsuming(packet, e);
+        });
     }
 
-    private void doIndex(Packet packet) {
+    private void doUpdate(Packet packet, Context context) {
+        final long catalogId = (Long) packet.getField("catalogId");
+        WebCrawlerExecutionContext executionContext =
+                WebCrawlerExecutionContextUtils.get(catalogId);
+        if (executionContext == null || executionContext.isCompleted()) {
+            return;
+        }
+
+        final AtomicReference<String> action =
+                new AtomicReference<>((String) packet.getField("action"));
+        final String refer = (String) packet.getField("refer");
+        String path = (String) packet.getField("path");
+        if (path.equals(refer + "/")) {
+            path = refer;
+        }
+        final String cat = (String) packet.getField("cat");
+        final String pageEncoding = (String) packet.getField("pageEncoding");
+        final int version = (Integer) packet.getField("version");
+        final boolean indexEnabled = (Boolean) packet.getField("indexEnabled", true);
+        executionContext.getGlobalStateManager().incrementCount(packet.getTimestamp(),
+                CountingType.URL_TOTAL_COUNT);
+
+        executionContext.getConcurrents().incrementAndGet();
+        final String thisPath = path;
+        CompletableFuture.supplyAsync(() -> {
+            Charset charset = CharsetUtils.toCharset(pageEncoding);
+            String html = null;
+            try {
+                html = executionContext.getExtractor().extractHtml(
+                        executionContext.getCatalogDetails(), refer, thisPath, charset, packet);
+            } catch (Exception e) {
+                log.error(e.getMessage(), e);
+                executionContext.getGlobalStateManager().incrementCount(packet.getTimestamp(),
+                        CountingType.INVALID_URL_COUNT);
+                html = executionContext.getExtractor().defaultHtml(
+                        executionContext.getCatalogDetails(), refer, thisPath, charset, packet, e);
+            }
+            return html;
+        }, executorService).completeOnTimeout("", 60, TimeUnit.SECONDS).thenApply(html -> {
+            if (StringUtils.isBlank(html)) {
+                log.warn("No page content with path: {}", thisPath);
+                return null;
+            }
+
+            Document document;
+            try {
+                document = Jsoup.parse(html);
+            } catch (Exception ignored) {
+                log.warn("Unable to parse html content with path: {}", thisPath);
+                return null;
+            }
+            if (log.isTraceEnabled()) {
+                log.trace("Handling resource: [Resource] refer: {}, path: {}", refer, thisPath);
+            }
+            String pathIdentifier =
+                    String.format(UNIQUE_PATH_IDENTIFIER, catalogId, refer, thisPath, version);
+            if (executionContext.getExistingUrlPathFilter().mightExist(pathIdentifier)) {
+                executionContext.getGlobalStateManager().incrementCount(packet.getTimestamp(),
+                        CountingType.EXISTING_URL_COUNT);
+            } else {
+                action.set("crawl");
+                try {
+                    Resource resource = new Resource();
+                    resource.setTitle(document.title());
+                    resource.setHtml(document.html());
+                    resource.setUrl(thisPath);
+                    resource.setCat(cat);
+                    resource.setVersion(version);
+                    resource.setCatalogId(catalogId);
+                    resource.setCreateTime(new Date());
+                    resourceManager.saveResource(resource);
+                    executionContext.getGlobalStateManager().incrementCount(packet.getTimestamp(),
+                            CountingType.SAVED_RESOURCE_COUNT);
+                    if (log.isInfoEnabled()) {
+                        log.info("Save resource: " + resource);
+                    }
+                    if (indexEnabled) {
+                        sendIndex(catalogId, resource.getId(), version);
+                    }
+                } catch (DuplicateKeyException e) {
+                    if (log.isErrorEnabled()) {
+                        log.error(e.getMessage(), e);
+                    }
+                    executionContext.getGlobalStateManager().incrementCount(packet.getTimestamp(),
+                            CountingType.EXISTING_URL_COUNT);
+                } catch (Exception e) {
+                    if (log.isErrorEnabled()) {
+                        log.error(e.getMessage(), e);
+                    }
+                }
+            }
+            return document;
+        }).thenApply(document -> {
+            if (document == null) {
+                return 0;
+            }
+            int links = 0;
+            if (!executionContext.isCompleted()) {
+                Elements elements = document.body().select("a");
+                if (CollectionUtils.isNotEmpty(elements)) {
+                    links = elements.size();
+                    String href;
+                    for (Element element : elements) {
+                        href = element.absUrl("href");
+                        if (StringUtils.isBlank(href)) {
+                            href = element.attr("href");
+                        }
+                        if (StringUtils.isNotBlank(href) && isUrlAcceptable(catalogId, refer, href,
+                                packet, executionContext)) {
+                            updateRecursively(action.get(), catalogId, refer, href, version, packet,
+                                    executionContext);
+                        }
+                    }
+                }
+            }
+            return links;
+        }).whenComplete((result, e) -> {
+            if (e != null) {
+                packetRetryer.backfill(packet);
+                if (log.isErrorEnabled()) {
+                    log.error(e.getMessage(), e);
+                }
+            }
+            executionContext.getConcurrents().decrementAndGet();
+            performanceInspector.completeConsuming(packet, e);
+        });
+    }
+
+    private void doIndex(Packet packet, Context context) {
         final long catalogId = (Long) packet.getField("catalogId");
         WebCrawlerExecutionContext executionContext =
                 WebCrawlerExecutionContextUtils.get(catalogId);
         if (executionContext == null) {
             return;
         }
-
-        long resourceId = (Long) packet.getField("resourceId");
-        int version = (Integer) packet.getField("version");
-        Resource resource = resourceManager.getResource(resourceId);
-        resourceIndexManager.indexResource(executionContext.getCatalogDetails(), resource, version);
-        executionContext.getGlobalStateManager().incrementCount(packet.getTimestamp(),
-                CountingType.INDEXED_RESOURCE_COUNT);
+        executionContext.getConcurrents().incrementAndGet();
+        try {
+            long resourceId = (Long) packet.getField("resourceId");
+            int version = (Integer) packet.getField("version");
+            Resource resource = resourceManager.getResource(resourceId);
+            resourceIndexManager.indexResource(executionContext.getCatalogDetails(), resource,
+                    version);
+            executionContext.getGlobalStateManager().incrementCount(packet.getTimestamp(),
+                    CountingType.INDEXED_RESOURCE_COUNT);
+        } catch (Exception e) {
+            if (log.isErrorEnabled()) {
+                log.error(e.getMessage(), e);
+            }
+        } finally {
+            executionContext.getConcurrents().decrementAndGet();
+            performanceInspector.completeConsuming(packet, null);
+        }
     }
 
     private boolean isUrlAcceptable(long catalogId, String refer, String path, Packet packet,
@@ -321,12 +393,6 @@ public class WebCrawlerHandler implements EventSubscriber<Packet> {
 
     private void updateRecursively(String action, long catalogId, String refer, String path,
             int version, Packet current, WebCrawlerExecutionContext context) {
-        // String pathIdentifier =
-        // String.format(UNIQUE_PATH_IDENTIFIER, catalogId, refer, path, version);
-        // if (context.getExistingUrlPathFilter().mightExist(pathIdentifier)) {
-        // context.getGlobalStateManager().incrementCount(CountingType.EXISTING_URL_COUNT);
-        // return;
-        // }
         Packet packet = new Packet();
         packet.setField("partitioner", "hash");
         packet.setField("action", action);

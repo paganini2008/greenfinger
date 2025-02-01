@@ -76,12 +76,18 @@ public class WebCrawlerJobService {
             } catch (Exception e) {
                 throw e;
             }
-            if (StringUtils.isNotBlank(path)) {
+
+            if (StringUtils.isNotBlank(path) && !isIndexPage(path, catalogId)) {
                 resourceManager.setRunningState(catalogId, "update");
             } else {
                 resourceManager.setRunningState(catalogId, "crawl");
             }
         }
+    }
+
+    private boolean isIndexPage(String path, long catalogId) throws WebCrawlerException {
+        CatalogDetails catalogDetails = catalogDetailsService.loadCatalogDetails(catalogId);
+        return catalogDetails.getUrl().equals(path) || (catalogDetails.getUrl() + "/").equals(path);
     }
 
     @EventListener({WebCrawlerCompletionEvent.class})
