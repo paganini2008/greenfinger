@@ -26,6 +26,11 @@
 			<groupId>com.github.paganini2008.doodler</groupId>
 			<artifactId>doodler-common-webmvc</artifactId>
 		</dependency>
+		
+		<dependency>
+			<groupId>com.github.paganini2008.doodler</groupId>
+			<artifactId>doodler-common-swagger</artifactId>
+		</dependency>
 
 		<dependency>
 			<groupId>org.postgresql</groupId>
