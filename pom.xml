@@ -14,7 +14,7 @@
     <packaging>pom</packaging>
     <name>greenfinger</name>
     <description>A lightweight distributed web crawler framework</description>
-	<url>https://github.com/paganini2008/greenfinger</url>
+	<url>https://paganini2008.github.io/greenfinger/</url>
 	
 	<licenses>
         <license>
