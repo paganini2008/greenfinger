@@ -66,6 +66,8 @@
 
 * Git Repository：
   https://github.com/paganini2008/greenfinger.git
+* Wiki:
+  https://paganini2008.github.io/greenfinger/
 * Directory Structure：
 ``` shell
 📂 greenfinger
