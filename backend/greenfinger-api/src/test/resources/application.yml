@@ -1,0 +1,30 @@
+spring:
+  # No cluster in these tests. A node binds ports, gossips and elects, none of which a controller
+  # test has an opinion about -- and with it on, every one of them would start a real node.
+  # What the cluster does is tested where it lives, in greenfinger-cluster, against real nodes.
+  spreader:
+    enabled: false
+  datasource:
+    url: jdbc:h2:mem:greenfinger-starter;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+logging:
+  level:
+    root: WARN
+greenfinger:
+  work-threads: 4
+  default-fetch-interval: 0
+  frontier-directory: ${java.io.tmpdir}/greenfinger-test/frontier
+  dedup:
+    url:
+      directory: ${java.io.tmpdir}/greenfinger-test/url
+    content:
+      directory: ${java.io.tmpdir}/greenfinger-test/content
+  output:
+    file:
+      directory: ${java.io.tmpdir}/greenfinger-test/data

@@ -1,0 +1,32 @@
+# secrets -- never commit an api key
+.env
+.env.*
+!.env.example
+
+# maven build output
+target/
+*/target/
+
+# the packaged distribution: the launcher and config are tracked, the jar is not
+greenfinger/bin/*.jar
+greenfinger/bin/logs/
+
+# crawl output and the resumable state beside it
+data/
+logs/
+.state/
+.rocksdb/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+.factorypath
+.vscode/
+
+# OS
+.DS_Store

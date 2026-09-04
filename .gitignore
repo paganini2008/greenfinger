@@ -15,3 +15,39 @@
 /bin/
 .dbeaver
 .factorypath
+
+# secrets -- never commit an api key
+.env
+.env.*
+!.env.example
+
+# build output and distribution
+/backend/**/target/
+/backend/greenfinger/bin/*.jar
+/backend/greenfinger/bin/logs/
+
+# crawl output and its resumable state
+/data/
+/backend/data/
+**/.state/
+**/.rocksdb/
+
+# deploy/ is entirely made by the build: nothing in it is committed, and a fresh checkout does not
+# have it at all. `mvn package` and `npm run build:deploy` put it together.
+#
+# Where each piece is edited:
+#   greenfinger-cli.sh, greenfinger-face.sh, run.conf, .env.example
+#                          backend/greenfinger-shell/src/main/resources/bin/
+#   run-local.sh, run-docker.sh
+#                          backend/greenfinger-api/src/main/resources/bin/
+#   config/                backend/greenfinger-shell/src/main/resources/config/
+#   docker/Dockerfile, dockerignore
+#                          backend/greenfinger-api/src/main/resources/docker/
+#   docker/Dockerfile.web, docker/server.js, docker/static/
+#                          frontend/greenfinger-ui/  (npm run build:deploy)
+#   lib/                   the two executable jars
+#   data/, logs/           what a run leaves behind
+/deploy/
+
+# macOS
+.DS_Store

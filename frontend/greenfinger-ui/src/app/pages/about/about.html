@@ -1,0 +1,64 @@
+<div class="gf-page">
+  <header class="gf-hero">
+    <div class="gf-hero-glow"></div>
+    <div class="gf-hero-inner">
+      <div>
+        <span class="gf-eyebrow">Version {{ version() || '2.0' }}</span>
+        <img src="logo.png" alt="Greenfinger" class="gf-about-logo" />
+        <h1 class="sr-only">Greenfinger</h1>
+        <p>
+          A full-web crawler. Point it at a site, keep every version of what it finds, and search
+          the result by words, by meaning, or by describing a picture.
+        </p>
+      </div>
+      <div class="gf-hero-actions">
+        <a
+          mat-stroked-button
+          class="gf-ghost-button"
+          href="https://github.com/paganini2008/greenfinger"
+          target="_blank"
+          rel="noreferrer"
+        >
+          <mat-icon>open_in_new</mat-icon>
+          GitHub
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <section class="gf-concepts">
+    @for (concept of concepts; track concept.title) {
+      <article class="gf-concept">
+        <mat-icon>{{ concept.icon }}</mat-icon>
+        <h2>{{ concept.title }}</h2>
+        <p>{{ concept.body }}</p>
+      </article>
+    }
+  </section>
+
+  <section class="gf-about-foot">
+    <div>
+      <h3>Two faces, one crawler</h3>
+      <p>
+        <code>greenfinger-cli.sh</code> runs the same engine from a terminal, with no server and no
+        login. <code>greenfinger-api.sh</code> is what this page talks to. Both read the same
+        configuration, so a setting means the same thing whichever one is running.
+      </p>
+    </div>
+    <div>
+      <h3>Two roles</h3>
+      <p>
+        <strong>Administrator</strong> creates catalogs and runs crawl, update, rebuild and delete.
+        <strong>Support</strong> reads everything and changes nothing. Accounts are handed out up
+        front, in the server's <code>.env</code>.
+      </p>
+    </div>
+  </section>
+
+  <div>
+    <a mat-flat-button color="primary" routerLink="/catalogs">
+      <mat-icon>arrow_forward</mat-icon>
+      Go to catalogs
+    </a>
+  </div>
+</div>

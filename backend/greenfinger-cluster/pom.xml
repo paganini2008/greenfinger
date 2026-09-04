@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>com.github.paganini2008</groupId>
+    <artifactId>greenfinger-backend</artifactId>
+    <version>2.0.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>greenfinger-cluster</artifactId>
+  <packaging>jar</packaging>
+  <name>greenfinger-cluster</name>
+  <description>Runs the crawl across processes: one url dispatched is one recursive call</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.github.paganini2008</groupId>
+      <artifactId>greenfinger-core</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.chaconne-ai</groupId>
+      <artifactId>openspreader</artifactId>
+    </dependency>
+
+    <!--
+      Optional inside spreader, so neither arrives on its own, and neither absence is an error:
+      the transport quietly falls back to the built-in NIO and the listener buffers to the
+      built-in ring queue. Both fallbacks cost throughput and say so only in a log line, which is
+      why ClusterStartupReport asserts at boot that the configured provider is the one in use.
+    -->
+    <!-- what spreader's netty transport actually touches; not netty-all, which would drag in
+         every native transport as a runtime dependency -->
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-transport</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-handler</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.jctools</groupId>
+      <artifactId>jctools-core</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-jpa</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.h2database</groupId>
+      <artifactId>h2</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- @DataJpaTest, for the one thing here that writes rows -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-data-jpa-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- MockEnvironment, for the startup report -->
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>

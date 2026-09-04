@@ -1,0 +1,383 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.github.paganini2008</groupId>
+  <artifactId>greenfinger-backend</artifactId>
+  <version>2.0.0-SNAPSHOT</version>
+  <packaging>pom</packaging>
+
+  <name>greenfinger-backend</name>
+  <description>A high performance web crawler framework, standalone edition</description>
+  <url>https://github.com/paganini2008/greenfinger</url>
+
+  <licenses>
+    <license>
+      <name>The Apache Software License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <name>Fred Feng</name>
+      <email>paganini.fy@gmail.com</email>
+    </developer>
+  </developers>
+
+  <modules>
+    <module>greenfinger-core</module>
+    <module>greenfinger-cluster</module>
+    <module>greenfinger-api</module>
+    <module>greenfinger-shell</module>
+  </modules>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <java.version>17</java.version>
+    <maven.compiler.release>17</maven.compiler.release>
+
+    <spring-boot.version>4.1.1</spring-boot.version>
+    <springdoc.version>3.1.0</springdoc.version>
+
+    <jsoup.version>1.23.2</jsoup.version>
+    <rocksdb.version>10.10.1</rocksdb.version>
+    <crawler-commons.version>1.4</crawler-commons.version>
+    <htmlunit.version>4.13.0</htmlunit.version>
+    <playwright.version>1.62.0</playwright.version>
+    <selenium.version>4.48.0</selenium.version>
+    <webdrivermanager.version>6.3.4</webdrivermanager.version>
+    <djl.version>0.31.1</djl.version>
+    <!--
+      Lucene 9, which is the version Elasticsearch 8.x is built on. Deliberately not 10, so a
+      Greenfinger index written here and an Elasticsearch 8 index are the same segment format,
+      and the embedded engine is not a different search product from the one a deployment grows
+      into.
+    -->
+    <lucene.version>9.12.1</lucene.version>
+    <minio.version>9.0.3</minio.version>
+    <okhttp.version>5.3.2</okhttp.version>
+    <commons-lang3.version>3.19.0</commons-lang3.version>
+    <commons-collections4.version>4.5.0</commons-collections4.version>
+    <commons-io.version>2.20.0</commons-io.version>
+    <commons-pool2.version>2.12.1</commons-pool2.version>
+    <spring-shell.version>4.0.3</spring-shell.version>
+    <openspreader.version>1.0.0-SNAPSHOT</openspreader.version>
+    <!--
+      Both are optional inside spreader, which means they do not arrive transitively and their
+      absence is silent: the transport falls back to the built-in NIO and the listener buffers
+      fall back to the built-in ring queue, each with nothing but a log line to say so. Declared
+      here so the versions are pinned in one place and the fallback never happens by accident.
+    -->
+    <netty.version>4.1.101.Final</netty.version>
+    <jctools.version>4.0.5</jctools.version>
+    <jacoco.version>0.8.15</jacoco.version>
+    <maven-jar-plugin.version>3.4.1</maven-jar-plugin.version>
+    <jacoco.line.coverage>0.80</jacoco.line.coverage>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <!--
+        Ahead of the Boot bom on purpose: first declaration wins, and Boot 4.1 manages netty at
+        4.2.x while spreader was built against 4.1. Overriding Boot's netty.version property does
+        not work here because its bom is imported rather than inherited, so the version has to be
+        pinned with a bom of its own.
+      -->
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-bom</artifactId>
+        <version>${netty.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-dependencies</artifactId>
+        <version>${spring-boot.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <dependency>
+        <groupId>com.github.paganini2008</groupId>
+        <artifactId>greenfinger-core</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.github.paganini2008</groupId>
+        <artifactId>greenfinger-cluster</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.github.paganini2008</groupId>
+        <artifactId>greenfinger-api</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.chaconne-ai</groupId>
+        <artifactId>openspreader</artifactId>
+        <version>${openspreader.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.jctools</groupId>
+        <artifactId>jctools-core</artifactId>
+        <version>${jctools.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>ai.djl</groupId>
+        <artifactId>api</artifactId>
+        <version>${djl.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>ai.djl.huggingface</groupId>
+        <artifactId>tokenizers</artifactId>
+        <version>${djl.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>ai.djl.onnxruntime</groupId>
+        <artifactId>onnxruntime-engine</artifactId>
+        <version>${djl.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.jsoup</groupId>
+        <artifactId>jsoup</artifactId>
+        <version>${jsoup.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.rocksdb</groupId>
+        <artifactId>rocksdbjni</artifactId>
+        <version>${rocksdb.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.github.crawler-commons</groupId>
+        <artifactId>crawler-commons</artifactId>
+        <version>${crawler-commons.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.htmlunit</groupId>
+        <artifactId>htmlunit</artifactId>
+        <version>${htmlunit.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.microsoft.playwright</groupId>
+        <artifactId>playwright</artifactId>
+        <version>${playwright.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.seleniumhq.selenium</groupId>
+        <artifactId>selenium-java</artifactId>
+        <version>${selenium.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.github.bonigarcia</groupId>
+        <artifactId>webdrivermanager</artifactId>
+        <version>${webdrivermanager.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.minio</groupId>
+        <artifactId>minio</artifactId>
+        <version>${minio.version}</version>
+      </dependency>
+      <!--
+        OkHttp 5 publishes the JVM classes as okhttp-jvm; the plain "okhttp" artifact is a Kotlin
+        Multiplatform metadata shim of a few hundred bytes that Maven cannot resolve a variant
+        from, so MinIO fails at both compile and run time without this.
+      -->
+      <dependency>
+        <groupId>org.apache.lucene</groupId>
+        <artifactId>lucene-core</artifactId>
+        <version>${lucene.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.lucene</groupId>
+        <artifactId>lucene-analysis-common</artifactId>
+        <version>${lucene.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.lucene</groupId>
+        <artifactId>lucene-analysis-smartcn</artifactId>
+        <version>${lucene.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.lucene</groupId>
+        <artifactId>lucene-queryparser</artifactId>
+        <version>${lucene.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.lucene</groupId>
+        <artifactId>lucene-queries</artifactId>
+        <version>${lucene.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.lucene</groupId>
+        <artifactId>lucene-highlighter</artifactId>
+        <version>${lucene.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.squareup.okhttp3</groupId>
+        <artifactId>okhttp-jvm</artifactId>
+        <version>${okhttp.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+        <version>${commons-lang3.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-collections4</artifactId>
+        <version>${commons-collections4.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>commons-io</groupId>
+        <artifactId>commons-io</artifactId>
+        <version>${commons-io.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-pool2</artifactId>
+        <version>${commons-pool2.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.springframework.shell</groupId>
+        <artifactId>spring-shell-dependencies</artifactId>
+        <version>${spring-shell.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.springdoc</groupId>
+        <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        <version>${springdoc.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-maven-plugin</artifactId>
+          <version>${spring-boot.version}</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+    <plugins>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco.version}</version>
+        <configuration>
+          <excludes>
+            <!--
+              Plain data holders and entry points: generated accessors and a main method carry no
+              behaviour worth asserting. Every engine, including the browser-driven ones, is
+              measured; they are exercised against a local http server rather than the internet,
+              so the tests stay deterministic.
+            -->
+            <exclude>**/model/**</exclude>
+            <exclude>**/*Properties*</exclude>
+            <exclude>**/*Main.class</exclude>
+          </excludes>
+        </configuration>
+        <executions>
+          <execution>
+            <id>prepare-agent</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>report</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>check-line-coverage</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <rule>
+                  <element>BUNDLE</element>
+                  <limits>
+                    <limit>
+                      <counter>LINE</counter>
+                      <value>COVEREDRATIO</value>
+                      <minimum>${jacoco.line.coverage}</minimum>
+                    </limit>
+                  </limits>
+                </rule>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <!--
+        Writes the version into the jar's manifest, which is where Spring Boot reads
+        ${application.version} from. Without it the banner falls back to the literal in
+        banner.txt, so a jar built at 2.1 would still greet you as 2.0, which is the one place a
+        stale version is guaranteed to be believed.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>${maven-jar-plugin.version}</version>
+        <configuration>
+          <archive>
+            <manifest>
+              <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+              <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+            </manifest>
+          </archive>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <release>${maven.compiler.release}</release>
+          <parameters>true</parameters>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+              <version>${lombok.version}</version>
+            </path>
+          </annotationProcessorPaths>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+  <repositories>
+    <repository>
+      <id>central</id>
+      <url>https://repo1.maven.org/maven2</url>
+    </repository>
+  </repositories>
+</project>

@@ -1,0 +1,118 @@
+<div class="gf-page">
+  <header class="gf-hero">
+    <div class="gf-hero-glow"></div>
+    <div class="gf-hero-inner">
+      <div>
+        <span class="gf-eyebrow">Cluster</span>
+        <h1>{{ status()?.node?.clusterName || 'This node' }}</h1>
+        <p class="gf-hero-sub">
+          What this node can see. Every node answers for itself, so ask each one.
+        </p>
+      </div>
+      @if (status(); as node) {
+        <div class="gf-hero-badges">
+          <span class="gf-chip" [class.gf-chip-cat]="node.node.leader">
+            {{ node.node.leader ? 'leader' : 'follower' }}
+          </span>
+          <span class="gf-chip">{{ node.node.memberCount }} member(s)</span>
+          <span class="gf-chip" [class.gf-chip-warn]="health() !== 'UP'">{{ health() }}</span>
+        </div>
+      }
+    </div>
+  </header>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" class="gf-top-bar" />
+  }
+
+  @if (error()) {
+    <div class="gf-notice gf-notice-warn">
+      <mat-icon>info</mat-icon>
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  <!-- what produces no log line, first -->
+  @for (warning of warnings(); track warning) {
+    <div class="gf-notice gf-notice-warn">
+      <mat-icon>warning</mat-icon>
+      <span>{{ warning }}</span>
+    </div>
+  }
+
+  @if (status(); as status) {
+    <section class="gf-panel">
+      <h2 class="gf-panel-title"><mat-icon>hub</mat-icon> This node</h2>
+      <dl class="gf-defs">
+        <div><dt>Name</dt><dd>{{ status.node.nodeName }}</dd></div>
+        <div><dt>Address</dt><dd>{{ status.node.address }}</dd></div>
+        <div><dt>Leader</dt><dd>{{ status.node.leaderAddress || '--' }}</dd></div>
+        <div><dt>Members</dt><dd>{{ status.node.memberCount }}</dd></div>
+        <div><dt>Up for</dt><dd>{{ uptime() }}</dd></div>
+        <div><dt>Messages/s</dt><dd>{{ status.summary.totalTps | number: '1.0-1' }}</dd></div>
+        <div class="gf-defs-wide"><dt>Id</dt><dd class="gf-mono">{{ status.node.nodeId }}</dd></div>
+      </dl>
+    </section>
+
+    <section class="gf-panel">
+      <h2 class="gf-panel-title"><mat-icon>swap_horiz</mat-icon> Channels</h2>
+      <p class="gf-panel-hint">
+        One row per kind of message. The crawl channel carries urls, the replication channels
+        carry rows and files, the rest belong to the cluster itself.
+      </p>
+      @if (!channels().length) {
+        <div class="gf-empty">
+          <mat-icon>inbox</mat-icon>
+          <p>
+            Nothing has been sent yet. A channel appears here once it carries something, so an
+            idle node shows none &mdash; start a crawl and the crawl channel will be the first.
+          </p>
+        </div>
+      }
+      <div class="gf-table-scroll" [hidden]="!channels().length">
+        <table class="gf-plan-table">
+          <thead>
+            <tr>
+              <th>Channel</th>
+              <th class="text-right">Sent</th>
+              <th class="text-right">Received</th>
+              <th class="text-right">Failed</th>
+              <th class="text-right">Dropped</th>
+              <th>Buffer</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (channel of channels(); track channel.channel) {
+              <tr [class.gf-plan-error]="(channel.buffer?.dropped ?? 0) > 0">
+                <td>
+                  {{ channel.channel }}
+                  @if (channel.systemChannel) {
+                    <span class="gf-muted">&nbsp;system</span>
+                  }
+                </td>
+                <td class="text-right">{{ channel.counters.sent | number }}</td>
+                <td class="text-right">{{ channel.counters.received | number }}</td>
+                <td class="text-right">
+                  {{ channel.counters.sendFailures + channel.counters.receiveFailures | number }}
+                </td>
+                <td class="text-right">{{ channel.buffer?.dropped ?? 0 | number }}</td>
+                <td>
+                  @if (channel.buffer) {
+                    <span
+                      class="gf-node-bar"
+                      [matTooltip]="channel.buffer.pending + ' of ' + channel.buffer.capacity"
+                    >
+                      <i [style.width.%]="bufferPercent(channel)"></i>
+                    </span>
+                  } @else {
+                    <span class="gf-muted">--</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+</div>

@@ -1,0 +1,80 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+// The one solid green surface in the product. Everything below it is white, which is what keeps
+// the green meaning "Greenfinger" rather than merely "coloured".
+.gf-toolbar {
+  background: var(--gf-green);
+  color: var(--gf-on-green);
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+}
+
+// The wordmark is a green-to-black gradient, which disappears against a green bar. Knocking it
+// out to solid white keeps the shape -- the leafed G is the recognisable part -- and reads as a
+// deliberate reversed lockup rather than a logo that half vanished.
+.gf-logo {
+  height: 1.5rem;
+  width: auto;
+  filter: brightness(0) invert(1);
+}
+
+.gf-version {
+  font-size: 0.7rem;
+  font-weight: 500;
+  opacity: 0.75;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 0 0.4rem;
+  line-height: 1.25rem;
+}
+
+.gf-avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--gf-on-green) 22%, transparent);
+  color: var(--gf-on-green);
+}
+
+.gf-sidenav {
+  width: 15rem;
+  border-right: 1px solid var(--gf-outline);
+  background: var(--gf-surface);
+  display: flex;
+  flex-direction: column;
+}
+
+// The active item is marked with a green bar rather than a filled row: a rail of solid green
+// blocks would compete with the toolbar for the eye.
+.gf-active {
+  color: var(--gf-green);
+  background: var(--gf-green-container);
+  border-left: 3px solid var(--gf-green);
+
+  mat-icon {
+    color: var(--gf-green);
+  }
+}
+
+.gf-role-note {
+  margin-top: auto;
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  line-height: 1.1rem;
+  color: var(--gf-muted);
+  border-top: 1px solid var(--gf-outline);
+}
+
+.gf-content {
+  background: var(--mat-sys-surface-container-lowest, #fff);
+}

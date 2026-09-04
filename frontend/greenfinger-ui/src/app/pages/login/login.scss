@@ -1,0 +1,76 @@
+// Green above, white below: the same split the rest of the product uses, turned into a backdrop.
+.gf-login-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 2rem 1rem;
+  background: linear-gradient(160deg, var(--gf-green-container) 0%, var(--gf-surface) 55%);
+}
+
+.gf-login-brand {
+  text-align: center;
+  color: var(--mat-sys-on-surface);
+
+  p {
+    margin: 0.35rem 0 0;
+    max-width: 26rem;
+    color: var(--gf-muted);
+    font-size: 0.875rem;
+  }
+}
+
+// Full colour here: the page behind it is white, which is what the mark was drawn for.
+.gf-login-logo {
+  width: min(17rem, 70vw);
+  height: auto;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.gf-login-card {
+  width: min(24rem, 100%);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.gf-login-title {
+  margin: 0.5rem 0 1.25rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.gf-login-error {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--mat-sys-on-error-container);
+  background: var(--mat-sys-error-container);
+}
+
+.gf-login-submit {
+  height: 2.75rem;
+  font-weight: 600;
+}
+
+.gf-login-foot {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--gf-muted);
+}

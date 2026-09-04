@@ -1,0 +1,288 @@
+# What both faces of greenfinger share: the command line and the server read this same file.
+#
+# Everything tunable, and nothing hard-coded. Every value below reads an environment variable with
+# a sensible fallback, and the launchers source .env before starting, so the file beside the
+# launcher is the one place anything changes -- no rebuild, no editing this file, and no secret
+# anywhere near the repository. See .env.example for the full list.
+#
+# Three files sit beside this one, and each adds only what it must:
+#
+#   application-dev.yml   zero configuration: an H2 file, pages on local disk, nothing to install.
+#                         The default, so ./greenfinger-cli.sh works on a machine with only a JVM.
+#   application-prod.yml  a real deployment: your own database, and the outputs you actually run.
+#
+# Choose between them with GF_PROFILE in .env (dev or prod). The server reads exactly the same
+# three files; what only it has -- a port and a login -- is marked below and ignored by the
+# command line.
+
+spring:
+  # .env, read by Spring itself.
+  #
+  # The launchers source it before starting the jvm, which is what makes ${GF_DB_URL} and the rest
+  # resolve. Starting a main class from an IDE skips the launcher, and without this those
+  # placeholders would fall back to their defaults -- or fail outright where there is none.
+  #
+  # It is properties syntax already (KEY=value), so the [.properties] hint is all Spring needs.
+  # Optional everywhere, and several paths because the working directory differs: deploy/ when a
+  # launcher started it, the module or the project root when an IDE did.
+  config:
+    import:
+      # backend/.env, reached from wherever the jvm was started: the module directory an IDE
+      # uses, the project root, or deploy/ when a launcher did it
+      - optional:file:./.env[.properties]
+      - optional:file:../.env[.properties]
+      - optional:file:../../.env[.properties]
+      - optional:file:./backend/.env[.properties]
+      - optional:file:../backend/.env[.properties]
+  application:
+    name: greenfinger
+  profiles:
+    # dev is zero configuration; prod expects GF_DB_* and the rest to be set in .env
+    active: ${GF_PROFILE:dev}
+  jpa:
+    hibernate:
+      ddl-auto: ${GF_DB_DDL:update}
+    open-in-view: false
+  main:
+    banner-mode: console
+  shell:
+    interactive:
+      enabled: true
+    command:
+      version:
+        enabled: false
+
+  # ---------------------------------------------------------------------------------------------
+  # The cluster. A crawl always runs on one, and a single process is a cluster of one -- so this
+  # section needs nothing changed to run on a laptop, and needs only ip-addresses changed to run
+  # on several machines. Nodes with the same `name` find each other and share the work; a url
+  # discovered on one is fetched by whichever node the round robin picks.
+  # ---------------------------------------------------------------------------------------------
+  spreader:
+    name: ${GF_CLUSTER_NAME:default}
+    # who to knock on. The default finds other processes on this machine; for real hosts list
+    # them, or give a range so a new machine needs no configuration change
+    ip-addresses: ${GF_CLUSTER_HOSTS:127.0.0.1}
+    # every node must agree on this one number. Whoever holds it is the leader, and it is also
+    # the door a joining node knocks at
+    port: ${GF_CLUSTER_PORT:22000}
+    # pinned to the loopback so several processes on one machine do not advertise an interface
+    # the others cannot reach. On real hosts leave it empty and let it detect
+    advertise-host: ${GF_CLUSTER_ADVERTISE_HOST:127.0.0.1}
+    advanced:
+      # Node to node traffic. Narrowed from the default 50000-60000 because the http ports used
+      # for local and container testing sit at the bottom of that range, and a node whose work
+      # port lands on the port its own web server wanted fails to start with nothing to say why.
+      work-port-min: ${GF_CLUSTER_WORK_PORT_MIN:55000}
+      work-port-max: ${GF_CLUSTER_WORK_PORT_MAX:59000}
+      # netty rather than the built-in nio, and the jar is a declared dependency so it is really
+      # netty. Configure it without the jar and spreader falls back silently -- which is why
+      # ClusterStartupReport says at boot which one is actually in use
+      transport-provider: ${GF_CLUSTER_TRANSPORT:NETTY}
+      transport-type: TCP
+    multiprocessing:
+      # the crawl's counters, its completion flag and the reason it ended all live here, and
+      # every node decides the crawl is over by reading them, so this is a requirement rather
+      # than an option
+      cache:
+        enabled: true
+      # replay slices travel on the task pool. Off is not wrong -- replay then runs entirely on
+      # the node that was asked -- but it is the one operation in this system with work worth
+      # spreading, so it is on by default
+      pooling:
+        enabled: ${GF_CLUSTER_POOLING:true}
+        # A slice is two hundred pages of embedding, which is tens of seconds -- the default ten
+        # is for calls that return quickly. Long enough that a working node is never given up on,
+        # short enough that a dead one does not stall the replay for long: the slice is then
+        # simply done on the node that asked, which is safe because a replay is idempotent.
+        request-timeout-ms: ${GF_CLUSTER_POOL_TIMEOUT:120000}
+
+# The console belongs to the live dashboard, so the crawl's own logging goes to a file.
+logging:
+  level:
+    root: ${GF_LOG_LEVEL_ROOT:WARN}
+    com.github.greenfinger: ${GF_LOG_LEVEL:WARN}
+  file:
+    # greenfinger-cli.sh overrides this with a path beside the launcher, so the log does not follow you
+    name: ${GF_LOG_FILE:./logs/greenfinger.log}
+  pattern:
+    console: "%clr(%-5level) %clr(%logger{36}){cyan} %msg%n"
+
+# ---------------------------------------------------------------------------------------------
+# The crawler. Everything below is read by both faces: the command line, the prompt and the
+# server all run the same engine, and this is what it is configured with. What only the server
+# has -- a port, a login, the actuator -- is in greenfinger-api's own file, merged into
+# deploy/config/api/ and loaded after this one.
+# ---------------------------------------------------------------------------------------------
+greenfinger:
+  work-threads: ${GF_WORK_THREADS:16}
+  # On a merge, offer the site the ETag it sent last time so it can answer 304 instead of the
+  # page. Only ever applies to a page crawled before. Turn it off for a site whose ETags do not
+  # change when its pages do.
+  conditional-get: ${GF_CONDITIONAL_GET:true}
+  queue-capacity: ${GF_QUEUE_CAPACITY:100000}
+
+  # How the crawl decides it is over. Both are asked by a clock on every node, against counters
+  # every node shares -- there is no node that decides for the others.
+  #
+  #   completion-check-interval  how often to ask. maxFetchSize is answered on the crawl's own
+  #                              thread as pages go past; fetchDuration and the watchdog below
+  #                              are answered here, because time passes whether or not anything
+  #                              is being fetched.
+  #   idle-timeout               how long the counters may stand still first. Standing still with
+  #                              every dispatched url handled means the site ran out of urls: the
+  #                              crawl is finished and the version is published, without waiting
+  #                              out fetchDuration. Standing still with urls unaccounted for means
+  #                              a node stopped answering: the run ends and publishes nothing.
+  #                              It is therefore also how long a site smaller than maxFetchSize
+  #                              waits after its last page. Lower it for small sites; raise it for
+  #                              a slow one where a single fetch can take minutes.
+  completion-check-interval: ${GF_COMPLETION_CHECK_INTERVAL:5s}
+  idle-timeout: ${GF_IDLE_TIMEOUT:2m}
+  default-max-versions: ${GF_MAX_VERSIONS:10}
+  default-max-fetch-size: ${GF_MAX_FETCH_SIZE:10000}
+  default-fetch-interval: ${GF_FETCH_INTERVAL:1000}
+  default-fetch-duration: ${GF_FETCH_DURATION:30}
+  default-max-retry-count: ${GF_MAX_RETRY:1}
+  default-max-fetch-depth: ${GF_MAX_DEPTH:-1}
+  default-page-encoding: ${GF_PAGE_ENCODING:UTF-8}
+  default-extractor: ${GF_EXTRACTOR:adaptive}   # adaptive | restclient | htmlunit | playwright | selenium
+  frontier-directory: ${GF_SYSTEM_DATA_DIR:./data/system}/frontier
+  dedup:
+    url:
+      # the factory appends /{catalogId}/v{version}, which is what lets a rebuild start clean
+      directory: ${GF_SYSTEM_DATA_DIR:./data/system}/dedup/url
+      normalize: ${GF_DEDUP_NORMALIZE:true}
+    content:
+      enabled: ${GF_DEDUP_CONTENT:true}
+      type: ${GF_DEDUP_CONTENT_TYPE:sha256}   # sha256 exact, simhash near-duplicate
+      directory: ${GF_SYSTEM_DATA_DIR:./data/system}/dedup/content
+      simhash-distance: ${GF_SIMHASH_DISTANCE:3}
+      min-text-length: ${GF_MIN_TEXT_LENGTH:200}
+  # Read what the site publishes about itself before starting to guess from the home page.
+  sitemap:
+    enabled: ${GF_SITEMAP:true}
+    max-urls: ${GF_SITEMAP_MAX_URLS:50000}
+    max-index-depth: ${GF_SITEMAP_MAX_DEPTH:2}
+  # Keep the article, drop the navigation and the footer. The single biggest lever on search
+  # quality: without it every menu item competes with the page's actual words.
+  content:
+    extract-article: ${GF_EXTRACT_ARTICLE:true}
+    min-block-length: ${GF_MIN_BLOCK_LENGTH:200}
+    min-content-length: ${GF_MIN_CONTENT_LENGTH:180}
+  image:
+    enabled: ${GF_IMAGES:true}
+    min-width: ${GF_IMAGE_MIN_WIDTH:100}
+    min-height: ${GF_IMAGE_MIN_HEIGHT:100}
+    max-bytes: ${GF_IMAGE_MAX_BYTES:10485760}
+    max-per-page: ${GF_IMAGE_MAX_PER_PAGE:50}
+    max-page-bytes: ${GF_IMAGE_MAX_PAGE_BYTES:67108864}
+  extractor:
+    timeout: ${GF_EXTRACTOR_TIMEOUT:300000}
+    # extractor=adaptive fetches over plain http and pays for a browser only when what came back
+    # looks like an unrendered shell. The browser is started on first need, never before.
+    adaptive:
+      # htmlunit needs nothing installed; playwright downloads browsers on first use,
+      # and selenium drives one that must already be on the machine
+      browser: ${GF_ADAPTIVE_BROWSER:htmlunit}
+      min-text-length: ${GF_ADAPTIVE_MIN_TEXT:400}
+      shell-text-length: ${GF_ADAPTIVE_SHELL_TEXT:120}
+    rest-client:
+      connect-timeout: ${GF_HTTP_CONNECT_TIMEOUT:10000}
+      read-timeout: ${GF_HTTP_READ_TIMEOUT:60000}
+      max-connection-total: ${GF_HTTP_MAX_TOTAL:200}
+      max-connection-per-route: ${GF_HTTP_MAX_PER_ROUTE:20}
+    playwright:
+      headless: ${GF_HEADLESS:true}
+      browser: ${GF_PLAYWRIGHT_BROWSER:chromium}
+    selenium:
+      headless: ${GF_HEADLESS:true}
+      browser: ${GF_SELENIUM_BROWSER:chrome}
+    htmlunit:
+      java-script-enabled: ${GF_HTMLUNIT_JS:true}
+
+  output:
+    # file is always on; add index and vector to stack them
+    types: ${GF_OUTPUT_TYPES:file}
+    file:
+      target: ${GF_FILE_TARGET:local}          # local | minio  (identical layouts)
+      # the assets/ half of the user data store: pages, extracted text and images
+      directory: ${GF_USER_DATA_DIR:./data/user}/assets
+      shard-depth: ${GF_SHARD_DEPTH:2}
+      minio:
+        endpoint: ${GF_MINIO_ENDPOINT:http://localhost:19000}
+        access-key: ${GF_MINIO_ACCESS_KEY:}
+        secret-key: ${GF_MINIO_SECRET_KEY:}
+        bucket: ${GF_MINIO_BUCKET:greenfinger}
+        create-bucket-if-missing: ${GF_MINIO_CREATE_BUCKET:true}
+    index:
+      # lucene is embedded and needs nothing installed; elasticsearch is what a deployment moves
+      # to when one machine is not enough. The documents are identical, so moving is a replay.
+      provider: ${GF_INDEX_PROVIDER:lucene}      # lucene | elasticsearch
+      # one index per catalog, named <prefix>-<catalog id>, holding every version of it
+      prefix: ${GF_INDEX_PREFIX:greenfinger}
+      lucene:
+        directory: ${GF_USER_DATA_DIR:./data/user}/index
+        # standard is right for English, which is what is mostly crawled. smartcn is a real
+        # Chinese segmenter and is the embedded counterpart of installing IK into a server;
+        # cjk is bigrams and needs no dictionary.
+        analyzer: ${GF_LUCENE_ANALYZER:standard} # standard | smartcn | cjk
+        commit-every: ${GF_LUCENE_COMMIT_EVERY:1000}
+      uris: ${GF_ES_URIS:http://localhost:9200}
+      username: ${GF_ES_USERNAME:}
+      password: ${GF_ES_PASSWORD:}
+      # the server's own analyzer, used only when provider is elasticsearch. ik_max_word and
+      # ik_smart need the IK plugin installed.
+      analyzer: ${GF_ES_ANALYZER:standard}
+      batch-size: ${GF_ES_BATCH_SIZE:100}
+      number-of-shards: ${GF_ES_SHARDS:1}
+      number-of-replicas: ${GF_ES_REPLICAS:0}
+      forcemerge-after-delete: ${GF_ES_FORCEMERGE:false}
+    vector:
+      # lucene's HNSW is the implementation Elasticsearch's own knn search is built on, so the
+      # embedded store is the same engine in one process rather than a lesser one
+      store: ${GF_VECTOR_STORE:lucene}   # lucene | elasticsearch | qdrant | weaviate
+      lucene:
+        directory: ${GF_USER_DATA_DIR:./data/user}/vector
+        similarity: ${GF_LUCENE_SIMILARITY:cosine}   # cosine | dot | euclidean
+      # Vectors in the server the index already uses. A deployment that runs Elasticsearch is one
+      # service away from running a vector database as well, for one field per document -- and
+      # this side is the same Lucene HNSW underneath. Its own uris, so the two can be split later
+      # without moving anything; the same server by default, which is the point.
+      elasticsearch:
+        uris: ${GF_VECTOR_ES_URIS:${GF_ES_URIS:http://localhost:9200}}
+        username: ${GF_VECTOR_ES_USERNAME:${GF_ES_USERNAME:}}
+        password: ${GF_VECTOR_ES_PASSWORD:${GF_ES_PASSWORD:}}
+        similarity: ${GF_VECTOR_ES_SIMILARITY:cosine}
+        number-of-shards: ${GF_VECTOR_ES_SHARDS:1}
+        # zero, like the index: one node cannot place a copy of its own shard, and a cluster that
+        # is yellow from the first crawl teaches its operator to ignore the colour
+        number-of-replicas: ${GF_VECTOR_ES_REPLICAS:0}   # cosine | dot_product | l2_norm
+      text-collection: ${GF_VECTOR_TEXT_COLLECTION:greenfinger_text}
+      image-collection: ${GF_VECTOR_IMAGE_COLLECTION:greenfinger_image}
+      chunk-size: ${GF_CHUNK_SIZE:1000}
+      chunk-overlap: ${GF_CHUNK_OVERLAP:200}
+      max-chunks-per-page: ${GF_MAX_CHUNKS:20}
+      qdrant:
+        url: ${GF_QDRANT_URL:http://localhost:6333}
+        api-key: ${GF_QDRANT_API_KEY:}
+      weaviate:
+        url: ${GF_WEAVIATE_URL:http://localhost:18080/v1}
+        api-key: ${GF_WEAVIATE_API_KEY:}
+
+  embedding:
+    provider: ${GF_EMBEDDING_PROVIDER:local}     # local | ollama | openai
+    model-dir: ${GF_MODEL_DIR:${user.home}/.greenfinger/models}
+    offline: ${GF_EMBEDDING_OFFLINE:false}
+    preload: ${GF_EMBEDDING_PRELOAD:true}
+    batch-size: ${GF_EMBEDDING_BATCH_SIZE:32}
+    local:
+      text-model: ${GF_LOCAL_TEXT_MODEL:intfloat/multilingual-e5-small}
+      image-model: ${GF_LOCAL_IMAGE_MODEL:google/siglip2-base-patch16-224}
+    ollama:
+      url: ${GF_OLLAMA_URL:http://localhost:11434}
+      model: ${GF_OLLAMA_MODEL:qwen3-embedding:4b}
+    openai:
+      base-url: ${GF_OPENAI_BASE_URL:https://api.openai.com/v1}
+      api-key: ${OPENAI_API_KEY:}
+      model: ${GF_OPENAI_MODEL:text-embedding-3-small}

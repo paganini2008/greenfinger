@@ -1,0 +1,87 @@
+# A real deployment: your own database, and the outputs you actually run.
+#
+# Turn it on with GF_PROFILE=prod in .env. What it assumes is a deployment that has servers:
+# PostgreSQL for the metadata, MinIO for the pages, Elasticsearch for the index and Qdrant for the
+# vectors -- shared stores, written once and read by every node, which is the whole difference
+# from dev. Set the addresses in .env; the shapes are the same as dev's, so moving is a setting
+# rather than a rewrite.
+#
+# What has no default here on purpose is what must not be guessed: the accounts, the token secret,
+# and the passwords. Those are in .env and nowhere else.
+#
+# The four databases the project is regression tested against, as GF_DB_* lines for .env. Only the
+# driver and the url differ; nothing in the schema is database specific.
+#
+#   PostgreSQL
+#     GF_DB_URL=jdbc:postgresql://localhost:5432/greenfinger?currentSchema=public
+#     GF_DB_USERNAME=greenfinger
+#     GF_DB_PASSWORD=...
+#     GF_DB_DRIVER=org.postgresql.Driver
+#
+#   MySQL
+#     GF_DB_URL=jdbc:mysql://localhost:3306/greenfinger?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
+#     GF_DB_USERNAME=greenfinger
+#     GF_DB_PASSWORD=...
+#     GF_DB_DRIVER=com.mysql.cj.jdbc.Driver
+#
+#   H2, in file mode -- the dev default, and a perfectly good single machine store
+#     GF_DB_URL=jdbc:h2:file:/var/lib/greenfinger/greenfinger;AUTO_SERVER=TRUE
+#     GF_DB_USERNAME=sa
+#     GF_DB_DRIVER=org.h2.Driver
+#
+#   SQLite -- one file, no server, and the only one that needs its dialect named, because
+#   Hibernate ships no SQLite dialect of its own (it comes from hibernate-community-dialects).
+#   It also wants fewer crawl threads: SQLite locks the whole file to write, so a wide crawl
+#   spends its time colliding rather than fetching. Measured on a twelve page crawl of the same
+#   site: sixteen threads produced 26 lock failures, four produced 6, and the pages were saved
+#   either way because the crawler retries. Write ahead logging and a busy timeout are added to
+#   the url automatically; the thread count is yours to set.
+#     GF_DB_URL=jdbc:sqlite:/var/lib/greenfinger/greenfinger.db
+#     GF_DB_DRIVER=org.sqlite.JDBC
+#     GF_DB_DIALECT=org.hibernate.community.dialect.SQLiteDialect
+#     GF_WORK_THREADS=4
+
+spring:
+  datasource:
+    # PostgreSQL, because this profile is a deployment and a deployment has a database server.
+    # The host is the only line most installations change; the four listed above are all regression
+    # tested and swapping to one of them is the url and the driver, nothing else -- there is
+    # nothing database specific in the schema.
+    url: ${GF_DB_URL:jdbc:postgresql://localhost:5432/greenfinger}
+    username: ${GF_DB_USERNAME:}
+    password: ${GF_DB_PASSWORD:}
+    driver-class-name: ${GF_DB_DRIVER:org.postgresql.Driver}
+    hikari:
+      maximum-pool-size: ${GF_DB_POOL_SIZE:20}
+      minimum-idle: ${GF_DB_POOL_MIN_IDLE:5}
+  jpa:
+    # Left to Hibernate's own detection for every database but SQLite, which has none to detect.
+    database-platform: ${GF_DB_DIALECT:}
+
+greenfinger:
+  output:
+    # All three, because a production crawl that is not searchable was not worth running.
+    # Drop what you do not have: file alone is always valid.
+    types: ${GF_OUTPUT_TYPES:file,index,vector}
+    # Shared stores, which is the whole difference between this profile and dev. Three servers,
+    # not four: Elasticsearch answers the full text search and the semantic one, so Qdrant and
+    # Weaviate stay available (GF_VECTOR_STORE) for a deployment that already runs one.
+    #
+    # Embedded is one copy per node: every node writes the same page into its own Lucene index and
+    # its own directory, and a cluster then spends the crawl copying documents to every member.
+    # Pointed at MinIO, Elasticsearch and Qdrant, the copy happens once and every node reads it --
+    # so this is where a second node starts paying for itself.
+    #
+    # The layouts are identical either way, so moving is a setting and not a rewrite: the same
+    # catalogId/version prefix in the bucket, one index per catalog, one collection per embedding
+    # width. Drop back to lucene here for a deployment that is one node and means to stay one.
+    file:
+      target: ${GF_FILE_TARGET:minio}            # local | minio
+    index:
+      provider: ${GF_INDEX_PROVIDER:elasticsearch}   # lucene | elasticsearch
+    vector:
+      store: ${GF_VECTOR_STORE:elasticsearch}    # lucene | elasticsearch | qdrant | weaviate
+
+logging:
+  level:
+    com.github.greenfinger: ${GF_LOG_LEVEL:INFO}

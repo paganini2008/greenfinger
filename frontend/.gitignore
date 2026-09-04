@@ -1,0 +1,43 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+.yarn/
+
+# build output
+dist/
+build/
+out/
+.angular/
+.next/
+.nuxt/
+.output/
+
+# secrets and local overrides
+.env
+.env.*
+!.env.example
+!.env.production
+
+# test and coverage
+coverage/
+.nyc_output/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Angular workspace: node_modules/ dist/ .angular/ above already match at any depth
+greenfinger-ui/out-tsc/

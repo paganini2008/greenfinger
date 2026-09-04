@@ -1,0 +1,236 @@
+<div class="gf-page">
+  <header class="gf-hero gf-hero-slim">
+    <div class="gf-hero-glow"></div>
+    <div class="gf-hero-inner">
+      <div>
+        <span class="gf-eyebrow">{{ editing() ? 'Edit' : 'Create' }}</span>
+        <h1>{{ editing() ? form.controls.name.value || 'Catalog' : 'New catalog' }}</h1>
+        <p>A url is the whole requirement. Everything below it has a working default.</p>
+      </div>
+      <div class="gf-hero-actions">
+        <a mat-stroked-button class="gf-ghost-button" routerLink="/catalogs">
+          <mat-icon>arrow_back</mat-icon>
+          Cancel
+        </a>
+      </div>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" class="gf-top-bar" />
+  }
+
+  <form [formGroup]="form" (ngSubmit)="save()" class="gf-form">
+    <!-- The part that matters. Anything a first-time catalog needs is here and nowhere else. -->
+    <section class="gf-panel">
+      <h2 class="gf-panel-title"><mat-icon>public</mat-icon> The site</h2>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Url</mat-label>
+        <input matInput formControlName="url" placeholder="https://books.toscrape.com" />
+        <mat-hint>Where the crawl starts, and the only field that is required.</mat-hint>
+        @if (form.controls.url.touched && form.controls.url.invalid) {
+          <mat-error>A url starting with http:// or https://</mat-error>
+        }
+      </mat-form-field>
+
+      <div class="gf-form-row">
+        <mat-form-field appearance="outline">
+          <mat-label>Name</mat-label>
+          <input matInput formControlName="name" placeholder="taken from the domain" />
+          <mat-hint>Used everywhere the catalog is referred to.</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Category</mat-label>
+          <input matInput formControlName="cat" placeholder="default" />
+          <mat-hint>A label you group by. Nothing depends on it.</mat-hint>
+        </mat-form-field>
+      </div>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Start url</mat-label>
+        <input matInput formControlName="startUrl" placeholder="same as the url" />
+        <mat-hint>
+          A seed and a boundary at once: /a keeps /a/b and /a/c in scope and everything else out.
+        </mat-hint>
+      </mat-form-field>
+    </section>
+
+    <!-- Where what it collects goes. Stacked, not exclusive. -->
+    <section class="gf-panel">
+      <h2 class="gf-panel-title"><mat-icon>call_split</mat-icon> Outputs</h2>
+      <p class="gf-panel-hint">
+        These stack. Files are always written &mdash; the database holds only metadata, so without
+        them there is nothing for the other two to be rebuilt from.
+      </p>
+
+      <div class="gf-output-row">
+        <button type="button" class="gf-output gf-output-on gf-output-locked" disabled>
+          <mat-icon>folder</mat-icon>
+          <span class="gf-output-name">Files</span>
+          <span class="gf-output-note">html, text and images. Always on.</span>
+        </button>
+
+        <button
+          type="button"
+          class="gf-output"
+          [class.gf-output-on]="outputs().includes('index')"
+          (click)="toggleOutput('index')"
+        >
+          <mat-icon>manage_search</mat-icon>
+          <span class="gf-output-name">Index</span>
+          <span class="gf-output-note">Elasticsearch. Search by words.</span>
+        </button>
+
+        <button
+          type="button"
+          class="gf-output"
+          [class.gf-output-on]="outputs().includes('vector')"
+          (click)="toggleOutput('vector')"
+        >
+          <mat-icon>auto_awesome</mat-icon>
+          <span class="gf-output-name">Vector</span>
+          <span class="gf-output-note">Qdrant or Weaviate. Meaning and pictures.</span>
+        </button>
+      </div>
+
+      <div class="gf-form-row gf-form-row-tight">
+        <mat-slide-toggle formControlName="imageEnabled">Fetch images</mat-slide-toggle>
+
+        <mat-form-field appearance="outline">
+          <mat-label>What reaches the index and vectors</mat-label>
+          <mat-select formControlName="contentMode">
+            <mat-option value="text+image">Text and images</mat-option>
+            <mat-option value="text">Text only</mat-option>
+          </mat-select>
+          <mat-hint>Images can be added later with a replay, without crawling again.</mat-hint>
+        </mat-form-field>
+      </div>
+    </section>
+
+    <!-- Everything below starts closed: a first catalog is a url and a Save. -->
+    <mat-accordion class="gf-accordion">
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <mat-panel-title><mat-icon>filter_alt</mat-icon> Which urls</mat-panel-title>
+          <mat-panel-description>Patterns that keep the crawl where you want it</mat-panel-description>
+        </mat-expansion-panel-header>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Included path pattern</mat-label>
+          <input matInput formControlName="pathPattern" placeholder="derived from the url" />
+          <mat-hint>Ant style, comma separated. Only matching urls are followed.</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Excluded path pattern</mat-label>
+          <input matInput formControlName="excludedPathPattern" placeholder="**/tag/**, **/print/**" />
+          <mat-hint>Applied after the included pattern, so it always wins.</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Url path acceptor</mat-label>
+          <input matInput formControlName="urlPathAcceptor" placeholder="a class name, for custom rules" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Sitemap url</mat-label>
+          <input matInput formControlName="sitemapUrl" placeholder="found automatically" />
+          <mat-hint>Only needed when a site keeps its sitemap somewhere unusual.</mat-hint>
+        </mat-form-field>
+      </mat-expansion-panel>
+
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <mat-panel-title><mat-icon>speed</mat-icon> How far, how fast</mat-panel-title>
+          <mat-panel-description>Limits. Blank means the server's default.</mat-panel-description>
+        </mat-expansion-panel-header>
+
+        <div class="gf-form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Max fetch size</mat-label>
+            <input matInput type="number" formControlName="maxFetchSize" placeholder="10000" />
+            <mat-hint>Stop after this many of whatever is counted below.</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Counting type</mat-label>
+            <mat-select formControlName="countingType">
+              @for (type of countingTypes; track type.value) {
+                <mat-option [value]="type.value">{{ type.label }}</mat-option>
+              }
+            </mat-select>
+            <mat-hint>What the limit above counts.</mat-hint>
+          </mat-form-field>
+        </div>
+
+        <div class="gf-form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Fetch duration (minutes)</mat-label>
+            <input matInput type="number" formControlName="duration" placeholder="30" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Depth</mat-label>
+            <input matInput type="number" formControlName="depth" placeholder="-1 for no limit" />
+          </mat-form-field>
+        </div>
+
+        <div class="gf-form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Interval between requests (ms)</mat-label>
+            <input matInput type="number" formControlName="fetchInterval" placeholder="1000" />
+            <mat-hint>Politeness. Lowering it is how a crawl gets a site to block you.</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Retries</mat-label>
+            <input matInput type="number" formControlName="maxRetryCount" placeholder="1" />
+          </mat-form-field>
+        </div>
+      </mat-expansion-panel>
+
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <mat-panel-title><mat-icon>tune</mat-icon> Fetching and versions</mat-panel-title>
+          <mat-panel-description>The engine, the encoding, how many versions to keep</mat-panel-description>
+        </mat-expansion-panel-header>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Extractor</mat-label>
+          <mat-select formControlName="extractor">
+            @for (extractor of extractors; track extractor.value) {
+              <mat-option [value]="extractor.value">
+                {{ extractor.label }}
+                <span class="gf-option-hint">&mdash; {{ extractor.hint }}</span>
+              </mat-option>
+            }
+          </mat-select>
+          <mat-hint>Adaptive pays for a browser only on the pages that came back empty.</mat-hint>
+        </mat-form-field>
+
+        <div class="gf-form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Page encoding</mat-label>
+            <input matInput formControlName="pageEncoding" placeholder="UTF-8" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Versions to keep</mat-label>
+            <input matInput type="number" formControlName="maxVersions" placeholder="10" />
+            <mat-hint>Older ones are pruned once a crawl completes.</mat-hint>
+          </mat-form-field>
+        </div>
+      </mat-expansion-panel>
+    </mat-accordion>
+
+    <div class="gf-form-actions">
+      <a mat-button routerLink="/catalogs">Cancel</a>
+      <button mat-flat-button color="primary" type="submit" [disabled]="saving()">
+        <mat-icon>save</mat-icon>
+        {{ saving() ? 'Saving...' : editing() ? 'Save changes' : 'Create catalog' }}
+      </button>
+    </div>
+  </form>
+</div>

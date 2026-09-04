@@ -1,0 +1,15 @@
+# The build context is this whole directory, and most of it has no business in an image.
+# Without this, `docker build` uploads the data store and the logs before doing anything.
+data/
+logs/
+workers/
+.env
+*.log
+
+# The api image copies lib/greenfinger-api-*.jar by name; the front end image needs neither jar.
+# Excluding them wholesale would break the api build, so they stay -- but everything else that is
+# large and irrelevant does not.
+#
+# Named `dockerignore` in the source tree and copied to deploy/.dockerignore by packaging: docker
+# reads it only at the root of the build context, which is deploy/, and a dotfile in
+# src/main/resources is skipped by the resources plugin.

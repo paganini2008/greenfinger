@@ -1,0 +1,9 @@
+// Everything this page draws is shared furniture, defined once in styles.scss. What is left here
+// is the one thing only the catalog list does: hold the grid to a sensible width on a wide screen.
+:host {
+  display: block;
+}
+
+.gf-grid {
+  align-items: start;
+}

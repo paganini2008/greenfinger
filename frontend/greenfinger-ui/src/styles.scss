@@ -1,0 +1,574 @@
+// Green on white, which is the whole visual idea: the product is called Greenfinger, so green
+// carries identity and everything else stays out of the way.
+//
+// Two systems meet here and they are kept in their lanes. Angular Material owns the components
+// and their colours, through the M3 tokens mat.theme() generates. Tailwind owns layout and
+// spacing. Where a page needs Material's green in a Tailwind-built area, it reads the same
+// --mat-sys-* variable Material itself uses, so there is one definition of the colour and not two.
+@use '@angular/material' as mat;
+
+html {
+  height: 100%;
+  // Both, so mat.theme() emits its tokens as light-dark() pairs and the browser follows the
+  // operating system when nobody has chosen. The two rules below are the choosing.
+  color-scheme: light dark;
+
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$green-palette,
+        tertiary: mat.$spring-green-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    )
+  );
+}
+
+// ThemeService writes this attribute; nothing else in the app knows a colour value.
+html[data-theme='light'] {
+  color-scheme: light;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  height: 100%;
+  background-color: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+}
+
+// The few tokens the pages reach for, named once here rather than repeated as hex values.
+:root {
+  --gf-green: var(--mat-sys-primary);
+  --gf-green-container: var(--mat-sys-primary-container);
+  --gf-on-green: var(--mat-sys-on-primary);
+  --gf-surface: var(--mat-sys-surface);
+  --gf-surface-container: var(--mat-sys-surface-container);
+  --gf-outline: var(--mat-sys-outline-variant);
+  --gf-muted: var(--mat-sys-on-surface-variant);
+}
+
+// A crawl's progress bar and the running dot both mean "this is moving", so they pulse together.
+@keyframes gf-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.gf-running-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: var(--gf-green);
+  animation: gf-pulse 1.2s ease-in-out infinite;
+}
+
+// Long values -- urls above all -- must never widen a table past the viewport.
+.gf-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gf-scroll-x {
+  overflow-x: auto;
+}
+
+// Material's own scrollbars are the platform's; these keep long lists from looking heavy.
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gf-outline) transparent;
+}
+
+// ================================================================================================
+// Page furniture, shared by every page.
+//
+// It lives here rather than in each component because a hero on the catalog page and a hero on the
+// search page must be the same hero -- duplicating it per component is how two pages drift apart.
+// Anything genuinely local to one page stays in that page's own .scss.
+// ================================================================================================
+
+.gf-page {
+  padding: 1.5rem;
+  max-width: 88rem;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+// The one bold surface per page: a deep green field with a soft light behind it. Everything under
+// it is white, so the hero carries the identity and the content stays legible.
+.gf-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  padding: 1.75rem;
+  color: var(--gf-on-green);
+  background:
+    radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--gf-green) 55%, #000 0%) 0%, transparent 60%),
+    linear-gradient(135deg, var(--gf-green) 0%, color-mix(in srgb, var(--gf-green) 70%, #063f22) 100%);
+  box-shadow: 0 10px 30px -12px color-mix(in srgb, var(--gf-green) 60%, transparent);
+}
+
+// A slow drifting highlight. Enough movement to feel alive, far too slow to distract.
+.gf-hero-glow {
+  position: absolute;
+  inset: -40% -10% auto auto;
+  width: 26rem;
+  height: 26rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgb(255 255 255 / 22%) 0%, transparent 65%);
+  animation: gf-drift 14s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes gf-drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(-3rem, 2rem, 0) scale(1.12);
+  }
+}
+
+.gf-hero-inner {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+
+  h1 {
+    margin: 0.15rem 0 0;
+    font-size: 1.875rem;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+  }
+
+  p {
+    margin: 0.35rem 0 0;
+    font-size: 0.875rem;
+    opacity: 0.85;
+    max-width: 42rem;
+  }
+}
+
+.gf-eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.gf-hero-actions {
+  display: flex;
+  gap: 0.5rem;
+  position: relative;
+}
+
+.gf-ghost-button {
+  --mdc-outlined-button-label-text-color: var(--gf-on-green);
+  --mdc-outlined-button-outline-color: color-mix(in srgb, var(--gf-on-green) 45%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.gf-hero-cta {
+  --mdc-filled-button-container-color: var(--gf-on-green);
+  --mdc-filled-button-label-text-color: var(--gf-green);
+  font-weight: 600;
+}
+
+// Numbers, on the hero, in a row. The glass effect is what keeps them reading as part of the
+// green field rather than as four white boxes dropped onto it.
+.gf-stats {
+  position: relative;
+  margin-top: 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.75rem;
+}
+
+.gf-stat {
+  border-radius: 0.875rem;
+  padding: 0.75rem 1rem;
+  background: rgb(255 255 255 / 12%);
+  border: 1px solid rgb(255 255 255 / 16%);
+  backdrop-filter: blur(8px);
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: rgb(255 255 255 / 18%);
+  }
+}
+
+.gf-stat-value {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 1.6rem;
+  font-weight: 650;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.gf-stat-label {
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.gf-stat-live .gf-running-dot {
+  background: #fff;
+}
+
+.gf-top-bar {
+  border-radius: 999px;
+}
+
+// ---- filters ----------------------------------------------------------------------------------
+
+.gf-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.gf-search-field {
+  min-width: 18rem;
+  flex: 1 1 18rem;
+}
+
+.gf-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.gf-pill {
+  border: 1px solid var(--gf-outline);
+  background: transparent;
+  color: var(--gf-muted);
+  border-radius: 999px;
+  padding: 0.3rem 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+
+  &:hover {
+    border-color: var(--gf-green);
+    color: var(--gf-green);
+  }
+}
+
+.gf-pill-on {
+  background: var(--gf-green);
+  border-color: var(--gf-green);
+  color: var(--gf-on-green);
+}
+
+// ---- the tile grid ----------------------------------------------------------------------------
+
+.gf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  gap: 1rem;
+}
+
+.gf-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: 1rem;
+  background: var(--gf-surface);
+  border: 1px solid var(--gf-outline);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
+
+  // A green edge that appears on hover, rather than a permanent one: twelve permanently
+  // highlighted cards highlight nothing.
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    border-radius: 1rem 0 0 1rem;
+    background: linear-gradient(180deg, var(--gf-green), transparent);
+    opacity: 0;
+    transition: opacity 0.18s ease;
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--gf-green) 35%, var(--gf-outline));
+    box-shadow: 0 12px 24px -16px color-mix(in srgb, var(--gf-green) 70%, transparent);
+
+    &::before {
+      opacity: 1;
+    }
+  }
+}
+
+.gf-tile-running {
+  border-color: color-mix(in srgb, var(--gf-green) 45%, var(--gf-outline));
+
+  &::before {
+    opacity: 1;
+  }
+}
+
+.gf-tile-top {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.gf-avatar-tile {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--gf-on-green);
+  background: linear-gradient(135deg, var(--gf-green), color-mix(in srgb, var(--gf-green) 60%, #0b7a45));
+}
+
+.gf-tile-name {
+  display: block;
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--mat-sys-on-surface);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--gf-green);
+  }
+}
+
+.gf-tile-url {
+  font-size: 0.75rem;
+  color: var(--gf-muted);
+}
+
+.gf-tile-more {
+  flex: none;
+  opacity: 0.5;
+
+  .gf-tile:hover & {
+    opacity: 1;
+  }
+}
+
+.gf-tile-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.gf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: var(--gf-surface-container);
+  color: var(--gf-muted);
+}
+
+.gf-chip-icon {
+  font-size: 0.85rem;
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+// One colour per output, so a glance at a card says where its pages went.
+.gf-chip-file {
+  background: color-mix(in srgb, var(--gf-green) 16%, transparent);
+  color: light-dark(color-mix(in srgb, var(--gf-green) 85%, #000), var(--gf-green));
+}
+
+// The blue and the violet are fixed hues rather than theme tokens -- they say "index" and
+// "vector", not "primary" -- so each needs a light and a dark reading of itself to stay legible.
+.gf-chip-index {
+  background: color-mix(in srgb, #2563eb 14%, transparent);
+  color: light-dark(#1d4ed8, #93b4fd);
+}
+
+.gf-chip-vector {
+  background: color-mix(in srgb, #7c3aed 14%, transparent);
+  color: light-dark(#6d28d9, #c9b5fd);
+}
+
+.gf-chip-cat {
+  background: var(--gf-green-container);
+  color: light-dark(color-mix(in srgb, var(--gf-green) 80%, #000), var(--mat-sys-on-primary-container));
+}
+
+.gf-chip-ghost {
+  background: transparent;
+  border: 1px solid var(--gf-outline);
+}
+
+.gf-tile-versions {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.6rem 0.25rem;
+  border-top: 1px dashed var(--gf-outline);
+  border-bottom: 1px dashed var(--gf-outline);
+}
+
+.gf-tile-num {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.gf-tile-cap {
+  display: block;
+  font-size: 0.625rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gf-muted);
+}
+
+.gf-tile-sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--gf-outline);
+}
+
+.gf-tile-live {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.gf-live-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.gf-live-verb {
+  font-weight: 600;
+  color: var(--gf-green);
+  text-transform: capitalize;
+}
+
+.gf-live-counts {
+  margin-left: auto;
+  color: var(--gf-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.gf-live-bar {
+  border-radius: 999px;
+}
+
+.gf-tile-actions {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: auto;
+  padding-top: 0.25rem;
+}
+
+.gf-go {
+  color: var(--gf-green);
+}
+
+.gf-danger {
+  color: var(--mat-sys-error);
+}
+
+.gf-green-icon {
+  color: var(--gf-green);
+}
+
+.gf-muted {
+  color: var(--gf-muted);
+}
+
+.gf-link {
+  color: var(--gf-green);
+  text-decoration: none;
+  font-weight: 500;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.gf-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 3rem 1rem;
+  color: var(--gf-muted);
+  border: 1px dashed var(--gf-outline);
+  border-radius: 1rem;
+
+  mat-icon {
+    font-size: 2.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    color: color-mix(in srgb, var(--gf-green) 45%, transparent);
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+// A plain white card for the pages that are genuinely a form or a list rather than a dashboard.
+.gf-card {
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+// A shorter hero for the pages that are a form or a detail view rather than a dashboard.
+.gf-hero-slim {
+  padding: 1.25rem 1.75rem;
+}
+
+.gf-notice {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  padding: 0.85rem 1rem;
+  border-radius: 0.875rem;
+  font-size: 0.8125rem;
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+}

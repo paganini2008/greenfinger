@@ -1,0 +1,18 @@
+
+${AnsiColor.BRIGHT_GREEN}   ██████╗ ██████╗ ███████╗███████╗███╗   ██╗
+  ██╔════╝ ██╔══██╗██╔════╝██╔════╝████╗  ██║
+  ██║  ███╗██████╔╝█████╗  █████╗  ██╔██╗ ██║
+  ██║   ██║██╔══██╗██╔══╝  ██╔══╝  ██║╚██╗██║
+  ╚██████╔╝██║  ██║███████╗███████╗██║ ╚████║
+   ╚═════╝ ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝  ╚═══╝${AnsiColor.GREEN}
+        ███████╗██╗███╗   ██╗ ██████╗ ███████╗██████╗
+        ██╔════╝██║████╗  ██║██╔════╝ ██╔════╝██╔══██╗
+        █████╗  ██║██╔██╗ ██║██║  ███╗█████╗  ██████╔╝
+        ██╔══╝  ██║██║╚██╗██║██║   ██║██╔══╝  ██╔══██╗
+        ██║     ██║██║ ╚████║╚██████╔╝███████╗██║  ██║
+        ╚═╝     ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝${AnsiColor.DEFAULT}
+
+  ${AnsiStyle.FAINT}────────────────────────────────────────────────────${AnsiStyle.NORMAL}
+  ${AnsiColor.BRIGHT_GREEN}greenfinger${AnsiColor.DEFAULT} ${application.version:2.0.0-SNAPSHOT}  ${AnsiStyle.FAINT}·  a full-web crawler${AnsiStyle.NORMAL}
+  ${AnsiStyle.FAINT}crawl a site, keep every version, search what you kept${AnsiStyle.NORMAL}
+

@@ -1,0 +1,220 @@
+<div class="gf-page">
+  <!--
+    A hero rather than a title bar. The page is the product's front door, and a row of hard
+    numbers on green says more in one glance than a heading and a table header ever do.
+  -->
+  <header class="gf-hero">
+    <div class="gf-hero-glow"></div>
+    <div class="gf-hero-inner">
+      <div>
+        <span class="gf-eyebrow">Crawl tasks</span>
+        <h1>Catalogs</h1>
+        <p>A site, the rules for crawling it, and every version it has produced.</p>
+      </div>
+      <div class="gf-hero-actions">
+        <button mat-stroked-button class="gf-ghost-button" (click)="reload()" [disabled]="loading()">
+          <mat-icon>refresh</mat-icon>
+          Refresh
+        </button>
+        @if (auth.isAdmin()) {
+          <button mat-flat-button class="gf-hero-cta" routerLink="/catalogs/new">
+            <mat-icon>add</mat-icon>
+            New catalog
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="gf-stats">
+      <div class="gf-stat">
+        <span class="gf-stat-value">{{ catalogs().length }}</span>
+        <span class="gf-stat-label">Catalogs</span>
+      </div>
+      <div class="gf-stat" [class.gf-stat-live]="runningCount() > 0">
+        <span class="gf-stat-value">
+          {{ runningCount() }}
+          @if (runningCount() > 0) {
+            <span class="gf-running-dot"></span>
+          }
+        </span>
+        <span class="gf-stat-label">Running now</span>
+      </div>
+      <div class="gf-stat">
+        <span class="gf-stat-value">{{ categories().length }}</span>
+        <span class="gf-stat-label">Categories</span>
+      </div>
+      <div class="gf-stat">
+        <span class="gf-stat-value">{{ searchableCount() }}</span>
+        <span class="gf-stat-label">Searchable</span>
+      </div>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" class="gf-top-bar" />
+  }
+
+  <div class="gf-filters">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="gf-search-field">
+      <mat-icon matPrefix>search</mat-icon>
+      <input
+        matInput
+        [ngModel]="keyword()"
+        (ngModelChange)="keyword.set($event); pageIndex.set(0)"
+        placeholder="Filter by name or url"
+      />
+      @if (keyword()) {
+        <button mat-icon-button matSuffix (click)="keyword.set('')" aria-label="Clear">
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+    </mat-form-field>
+
+    <div class="gf-chip-row">
+      <button class="gf-pill" [class.gf-pill-on]="category() === ''" (click)="category.set(''); pageIndex.set(0)">
+        All
+      </button>
+      @for (cat of categories(); track cat) {
+        <button
+          class="gf-pill"
+          [class.gf-pill-on]="category() === cat"
+          (click)="category.set(cat); pageIndex.set(0)"
+        >
+          {{ cat }}
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (!loading() && filtered().length === 0) {
+    <div class="gf-empty">
+      <mat-icon>eco</mat-icon>
+      @if (catalogs().length === 0) {
+        <p>Nothing has been set up yet.</p>
+        @if (auth.isAdmin()) {
+          <button mat-flat-button color="primary" routerLink="/catalogs/new">Create the first catalog</button>
+        }
+      } @else {
+        <p>Nothing matches that filter.</p>
+      }
+    </div>
+  }
+
+  <div class="gf-grid">
+    @for (catalog of visible(); track catalog.id) {
+      @let status = statusOf(catalog);
+      <article class="gf-tile" [class.gf-tile-running]="status?.running">
+        <div class="gf-tile-top">
+          <div class="gf-avatar-tile">{{ (catalog.name ?? '?')[0]!.toUpperCase() }}</div>
+          <div class="min-w-0 flex-1">
+            <a [routerLink]="['/catalogs', catalog.name, 'monitor']" class="gf-tile-name">{{ catalog.name }}</a>
+            <div class="gf-tile-url gf-truncate" [matTooltip]="catalog.url">{{ catalog.url }}</div>
+          </div>
+          @if (auth.isAdmin()) {
+            <button mat-icon-button [matMenuTriggerFor]="rowMenu" aria-label="More" class="gf-tile-more">
+              <mat-icon>more_horiz</mat-icon>
+            </button>
+            <mat-menu #rowMenu="matMenu">
+              <button mat-menu-item (click)="update(catalog)" [disabled]="status?.running">
+                <mat-icon>sync</mat-icon>
+                <span>Update &mdash; same version, carry on</span>
+              </button>
+              <button mat-menu-item (click)="rebuild(catalog)" [disabled]="status?.running">
+                <mat-icon>restart_alt</mat-icon>
+                <span>Rebuild &mdash; a new version, nothing deleted</span>
+              </button>
+              <button mat-menu-item (click)="replay(catalog)" [disabled]="status?.running">
+                <mat-icon>replay</mat-icon>
+                <span>Replay index and vectors from disk</span>
+              </button>
+              <a mat-menu-item [routerLink]="['/catalogs', catalog.name, 'edit']">
+                <mat-icon>edit</mat-icon>
+                <span>Edit</span>
+              </a>
+              <button mat-menu-item (click)="remove(catalog)" [disabled]="status?.running">
+                <mat-icon class="gf-danger">delete</mat-icon>
+                <span>Delete definition</span>
+              </button>
+            </mat-menu>
+          }
+        </div>
+
+        <div class="gf-tile-meta">
+          <span class="gf-chip gf-chip-cat">{{ catalog.cat }}</span>
+          @for (output of catalog.outputTypes; track output) {
+            <span class="gf-chip gf-chip-{{ output }}">{{ output }}</span>
+          }
+          @if (catalog.imageEnabled) {
+            <span class="gf-chip gf-chip-ghost"><mat-icon class="gf-chip-icon">image</mat-icon>images</span>
+          }
+        </div>
+
+        <div class="gf-tile-versions">
+          <div>
+            <span class="gf-tile-num">v{{ catalog.indexVersion }}</span>
+            <span class="gf-tile-cap">writing</span>
+          </div>
+          <div class="gf-tile-sep"></div>
+          <div>
+            <span class="gf-tile-num">{{ catalog.searchVersion! >= 0 ? 'v' + catalog.searchVersion : '--' }}</span>
+            <span class="gf-tile-cap">searchable</span>
+          </div>
+          <div class="gf-tile-sep"></div>
+          <div>
+            <span class="gf-tile-num">{{ catalog.extractor }}</span>
+            <span class="gf-tile-cap">extractor</span>
+          </div>
+        </div>
+
+        @if (status?.running) {
+          <div class="gf-tile-live">
+            <div class="gf-live-head">
+              <span class="gf-running-dot"></span>
+              <span class="gf-live-verb">{{ status?.runningState }}</span>
+              <span class="gf-live-counts">
+                {{ status?.savedResourceCount ?? 0 }} saved &middot; {{ status?.totalUrlCount ?? 0 }} seen
+              </span>
+            </div>
+            <mat-progress-bar mode="indeterminate" class="gf-live-bar" />
+          </div>
+        }
+
+        <div class="gf-tile-actions">
+          <a mat-button [routerLink]="['/catalogs', catalog.name, 'monitor']">
+            <mat-icon>monitor_heart</mat-icon>
+            Monitor
+          </a>
+          @if (auth.isAdmin()) {
+            @if (status?.running) {
+              <button mat-button class="gf-danger" (click)="interrupt(catalog)">
+                <mat-icon>stop_circle</mat-icon>
+                Stop
+              </button>
+            } @else {
+              <button
+                mat-button
+                class="gf-go"
+                (click)="crawl(catalog)"
+                [disabled]="busyId() === catalog.id"
+                matTooltip="Start from the seed and follow links"
+              >
+                <mat-icon>travel_explore</mat-icon>
+                Crawl
+              </button>
+            }
+          }
+        </div>
+      </article>
+    }
+  </div>
+
+  @if (filtered().length > pageSize()) {
+    <mat-paginator
+      [length]="filtered().length"
+      [pageSize]="pageSize()"
+      [pageIndex]="pageIndex()"
+      [pageSizeOptions]="[9, 18, 36]"
+      (page)="onPage($event)"
+    />
+  }
+</div>
