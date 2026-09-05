@@ -115,7 +115,7 @@ class ClusterDashboardTest {
     @DisplayName("the node that starts a run clears what the last run at this version left behind")
     void theInitiatorResets() throws Exception {
         counters.incrementCount(0L, CountingType.SAVED_RESOURCE_COUNT, 7);
-        counters.incrementCount(0L, CountingType.URL_TOTAL_COUNT, 9);
+        counters.incrementCount(0L, CountingType.TOTAL_URL_COUNT, 9);
         counters.flush();
         counters.setCompleted(true, "reached maxFetchSize");
         assertThat(counters.getDashboard().getSavedResourceCount()).isEqualTo(7);
@@ -163,6 +163,23 @@ class ClusterDashboardTest {
     }
 
     @Test
+    @DisplayName("a crawl that read nothing overwrites the reason a limit already wrote")
+    void readingNothingOutranksHowItStopped() {
+        // The watchdog gets here first and is not wrong -- the frontier really did drain. But it
+        // drained because the one url there was to ask for came back 403, and publishing that as
+        // a finished version would put an empty one over a good one.
+        counters.setCompleted(true, "the site is exhausted: all 1 url(s) handled");
+        assertThat(counters.getDashboard().isInterrupted()).isFalse();
+
+        counters.overrideAsUnproductive("not one of 1 fetch(es) came back with a page");
+
+        assertThat(counters.isCompleted()).isTrue();
+        assertThat(counters.getDashboard().isInterrupted()).isTrue();
+        assertThat(counters.getDashboard().getCompletionReason())
+                .isEqualTo("not one of 1 fetch(es) came back with a page");
+    }
+
+    @Test
     @DisplayName("progress takes whichever limit has advanced further")
     void progressFollowsTheNearerLimit() {
         counters.incrementCount(0L, CountingType.SAVED_RESOURCE_COUNT, 5);
@@ -194,7 +211,7 @@ class ClusterDashboardTest {
 
     @Test
     void isTimeoutMeasuresSinceTheLastWrite() throws Exception {
-        counters.incrementCount(0L, CountingType.URL_TOTAL_COUNT, 1);
+        counters.incrementCount(0L, CountingType.TOTAL_URL_COUNT, 1);
         counters.flush();
 
         assertThat(counters.isTimeout(1, TimeUnit.HOURS)).isFalse();

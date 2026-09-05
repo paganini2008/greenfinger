@@ -42,7 +42,7 @@ public abstract class CatalogFixtures {
         catalog.setName("example");
         catalog.setUrl("https://www.example.com");
         catalog.setStartUrl("https://www.example.com");
-        catalog.setCat("test");
+        catalog.setCat("tech");
         catalog.setPathPattern("**.example.com");
         catalog.setMaxFetchSize(100);
         catalog.setDepth(2);

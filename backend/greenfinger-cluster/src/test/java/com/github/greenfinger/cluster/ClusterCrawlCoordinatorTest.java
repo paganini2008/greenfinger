@@ -195,7 +195,7 @@ class ClusterCrawlCoordinatorTest {
     /** Kept so the counting types are named where somebody reading the test can see them. */
     @Test
     void theTwoCountersAreTheOnesCompletionCompares() {
-        assertThat(CountingType.URL_TOTAL_COUNT.getRepr()).isEqualTo("urlTotalCount");
+        assertThat(CountingType.TOTAL_URL_COUNT.getRepr()).isEqualTo("totalUrlCount");
         assertThat(CountingType.HANDLED_URL_COUNT.getRepr()).isEqualTo("handledUrlCount");
     }
 

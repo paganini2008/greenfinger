@@ -231,7 +231,7 @@ PASS_THROUGH=(
   GF_QDRANT_URL GF_QDRANT_API_KEY GF_WEAVIATE_URL
   GF_EMBEDDING_PROVIDER GF_EMBEDDING_PRELOAD GF_EMBEDDING_OFFLINE GF_MODEL_DIR
   GF_WORK_THREADS GF_MAX_FETCH_SIZE GF_LOG_LEVEL
-  GF_COMPLETION_CHECK_INTERVAL GF_IDLE_TIMEOUT GF_API_BASE_URL
+  GF_COMPLETION_CHECK_INTERVAL GF_IDLE_TIMEOUT GF_MAX_CONSECUTIVE_FAILURES GF_API_BASE_URL
   GF_CORS_ORIGINS GF_USERS GF_TOKEN_SECRET GF_TOKEN_VALIDITY
 )
 
@@ -291,9 +291,15 @@ done
 
 # ---- the front end ---------------------------------------------------------------------------
 if [[ "${WEB}" == "1" ]]; then
-  if [[ ! -d "${DOCKER_DIR}/static" ]]; then
-    echo "  no static/ directory, so no front end container." >&2
-    echo "  Build it with 'npm run build:deploy' in frontend/, or pass --no-web." >&2
+  # index.html rather than the directory, for the same reason run-local.sh checks for it: a
+  # half-finished build leaves a directory behind, and a container serving one is a blank page.
+  if [[ ! -f "${DOCKER_DIR}/static/index.html" ]]; then
+    if [[ -d "${DOCKER_DIR}/static" ]]; then
+      echo "  docker/static has no index.html: the build did not finish. No front end container." >&2
+    else
+      echo "  no docker/static directory, so no front end container." >&2
+    fi
+    echo "  Build it with 'npm run build:deploy' in frontend/greenfinger-ui, or set GF_WEB=0." >&2
   else
     # The nodes just started, by the addresses they were given. The container spreads requests
     # across them; a signed token is checked by whichever one gets it, so any of them will do.

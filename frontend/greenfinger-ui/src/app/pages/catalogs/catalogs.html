@@ -115,15 +115,30 @@
               <mat-icon>more_horiz</mat-icon>
             </button>
             <mat-menu #rowMenu="matMenu">
-              <button mat-menu-item (click)="update(catalog)" [disabled]="status?.running">
+              <button
+                mat-menu-item
+                (click)="update(catalog)"
+                [disabled]="status?.running || !!blockedBy(catalog)"
+                [matTooltip]="blockedBy(catalog) ? 'A crawl of ' + blockedBy(catalog) + ' is running' : ''"
+              >
                 <mat-icon>sync</mat-icon>
                 <span>Update &mdash; same version, carry on</span>
               </button>
-              <button mat-menu-item (click)="rebuild(catalog)" [disabled]="status?.running">
+              <button
+                mat-menu-item
+                (click)="rebuild(catalog)"
+                [disabled]="status?.running || !!blockedBy(catalog)"
+                [matTooltip]="blockedBy(catalog) ? 'A crawl of ' + blockedBy(catalog) + ' is running' : ''"
+              >
                 <mat-icon>restart_alt</mat-icon>
                 <span>Rebuild &mdash; a new version, nothing deleted</span>
               </button>
-              <button mat-menu-item (click)="replay(catalog)" [disabled]="status?.running">
+              <button
+                mat-menu-item
+                (click)="replay(catalog)"
+                [disabled]="status?.running || !!blockedBy(catalog)"
+                [matTooltip]="blockedBy(catalog) ? 'A crawl of ' + blockedBy(catalog) + ' is running' : ''"
+              >
                 <mat-icon>replay</mat-icon>
                 <span>Replay index and vectors from disk</span>
               </button>
@@ -131,6 +146,10 @@
                 <mat-icon>edit</mat-icon>
                 <span>Edit</span>
               </a>
+              <button mat-menu-item (click)="showState(catalog)">
+                <mat-icon>storage</mat-icon>
+                <span>Crawl state &mdash; frontier and dedup size</span>
+              </button>
               <button mat-menu-item (click)="remove(catalog)" [disabled]="status?.running">
                 <mat-icon class="gf-danger">delete</mat-icon>
                 <span>Delete definition</span>
@@ -184,6 +203,15 @@
             <mat-icon>monitor_heart</mat-icon>
             Monitor
           </a>
+          <a
+            mat-button
+            [routerLink]="['/resources']"
+            [queryParams]="{ catalog: catalog.id }"
+            matTooltip="Every page this catalog stored, with filters"
+          >
+            <mat-icon>inventory_2</mat-icon>
+            Resources
+          </a>
           @if (auth.isAdmin()) {
             @if (status?.running) {
               <button mat-button class="gf-danger" (click)="interrupt(catalog)">
@@ -195,8 +223,15 @@
                 mat-button
                 class="gf-go"
                 (click)="crawl(catalog)"
-                [disabled]="busyId() === catalog.id"
-                matTooltip="Start from the seed and follow links"
+                [disabled]="busyId() === catalog.id || !!blockedBy(catalog)"
+                [matTooltip]="
+                  blockedBy(catalog)
+                    ? 'A crawl of ' +
+                      blockedBy(catalog) +
+                      ' is running. One at a time across the whole cluster: two would divide the bandwidth rather than double it.'
+                    : 'Start from the seed and follow links'
+                "
+                matTooltipShowDelay="0"
               >
                 <mat-icon>travel_explore</mat-icon>
                 Crawl

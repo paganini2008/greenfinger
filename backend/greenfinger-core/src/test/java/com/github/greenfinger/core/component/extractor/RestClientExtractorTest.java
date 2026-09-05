@@ -61,7 +61,7 @@ class RestClientExtractorTest {
     }
 
     @Test
-    @DisplayName("a non-2xx response is a failure the caller can inspect")
+    @DisplayName("anything outside 2xx is a failure the caller can inspect")
     void reportsHttpFailures() {
         site.status("/gone", 410);
         assertThatThrownBy(() -> extractor.test(site.url("/gone"), StandardCharsets.UTF_8))
@@ -94,6 +94,49 @@ class RestClientExtractorTest {
         site.page("/nocharset", "text/html", chinese.getBytes(gbk), 200);
 
         assertThat(extractor.test(site.url("/nocharset"), gbk)).contains("\u4e2d\u6587\u5185\u5bb9");
+    }
+
+    @Test
+    @DisplayName("a link straight at a picture is refused rather than stored as a page")
+    void refusesAnythingThatIsNotMarkup() {
+        // apod.nasa.gov links every day's photograph this way, and the link passes every filter
+        site.binary("/photo.jpg", "image/jpeg", new byte[] {(byte) 0xFF, (byte) 0xD8, 0x11, 0x22});
+
+        assertThatThrownBy(() -> extractor.test(site.url("/photo.jpg"), StandardCharsets.UTF_8))
+                .isInstanceOf(ExtractorException.class)
+                .hasMessageContaining("image/jpeg");
+    }
+
+    @Test
+    @DisplayName("a pdf is refused for the same reason, and says which type it was")
+    void refusesDocumentsToo() {
+        site.binary("/paper.pdf", "application/pdf", "%PDF-1.7".getBytes(StandardCharsets.UTF_8));
+
+        assertThatThrownBy(() -> extractor.test(site.url("/paper.pdf"), StandardCharsets.UTF_8))
+                .isInstanceOf(ExtractorException.class)
+                .hasMessageContaining("application/pdf");
+    }
+
+    @Test
+    @DisplayName("xml and plain text are markup enough: a sitemap is worth reading")
+    void acceptsTheOtherKindsOfMarkup() throws Exception {
+        site.text("/sitemap.xml", "application/xml", "<urlset><url><loc>/a</loc></url></urlset>");
+        site.text("/robots.txt", "text/plain", "User-agent: *");
+
+        assertThat(extractor.test(site.url("/sitemap.xml"), StandardCharsets.UTF_8))
+                .contains("urlset");
+        assertThat(extractor.test(site.url("/robots.txt"), StandardCharsets.UTF_8))
+                .contains("User-agent");
+    }
+
+    @Test
+    @DisplayName("a server that declares no type at all is given the benefit of the doubt")
+    void allowsAMissingContentType() throws Exception {
+        site.page("/untyped", null, "<html><body>old server</body></html>"
+                .getBytes(StandardCharsets.UTF_8), 200);
+
+        assertThat(extractor.test(site.url("/untyped"), StandardCharsets.UTF_8))
+                .contains("old server");
     }
 
     @Test

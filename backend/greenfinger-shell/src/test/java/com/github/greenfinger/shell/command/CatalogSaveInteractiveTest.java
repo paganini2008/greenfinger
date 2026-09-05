@@ -128,7 +128,7 @@ class CatalogSaveInteractiveTest {
         // the name defaults to the registrable domain, which is what was in the brackets
         assertThat(saved.getName()).isEqualTo("example");
         assertThat(saved.getStartUrl()).isEqualTo("https://example.com");
-        assertThat(saved.getCat()).isEqualTo("default");
+        assertThat(saved.getCat()).isEqualTo("other");
         assertThat(saved.getExtractorType()).isEqualTo(ExtractorType.ADAPTIVE);
         assertThat(saved.getOutputTypes()).containsExactly(OutputType.FILE);
         assertThat(saved.getContentMode()).isEqualTo(ContentMode.TEXT_IMAGE);
@@ -261,7 +261,7 @@ class CatalogSaveInteractiveTest {
         // no script(): a scripted answer here would mean a question was asked, and none should be
         try (ConsoleCapture captured = new ConsoleCapture()) {
             catalogCommands.save(null, "{\"name\":\"from-json\",\"url\":\"https://example.com\","
-                    + "\"cat\":\"scripted\",\"maxFetchSize\":250}");
+                    + "\"cat\":\"travel\",\"maxFetchSize\":250}");
             assertThat(captured.output()).contains("Saved").contains("Id: ")
                     .contains("catalog-crawl --id=");
         }
@@ -269,7 +269,7 @@ class CatalogSaveInteractiveTest {
         Catalog saved = catalogAdminService.findAll().get(0);
         assertThat(saved.getName()).isEqualTo("from-json");
         assertThat(saved.getUrl()).isEqualTo("https://example.com");
-        assertThat(saved.getCat()).isEqualTo("scripted");
+        assertThat(saved.getCat()).isEqualTo("travel");
         assertThat(saved.getMaxFetchSize()).isEqualTo(250);
         // everything left out took its default, which is what pressing return does in the
         // interview
@@ -281,7 +281,7 @@ class CatalogSaveInteractiveTest {
     @DisplayName("--json with an id changes the fields it names and leaves the rest")
     void jsonWithAnIdIsAPatch() throws Exception {
         catalogCommands.save(null, "{\"name\":\"before\",\"url\":\"https://example.com\","
-                + "\"cat\":\"kept\",\"maxFetchSize\":250}");
+                + "\"cat\":\"health\",\"maxFetchSize\":250}");
         String id = catalogAdminService.findAll().get(0).getId();
 
         catalogCommands.save(id, "{\"maxFetchSize\":900}");
@@ -289,7 +289,7 @@ class CatalogSaveInteractiveTest {
         Catalog saved = catalogAdminService.requireById(id);
         assertThat(saved.getMaxFetchSize()).isEqualTo(900);
         assertThat(saved.getName()).isEqualTo("before");
-        assertThat(saved.getCat()).isEqualTo("kept");
+        assertThat(saved.getCat()).isEqualTo("health");
     }
 
     @Test

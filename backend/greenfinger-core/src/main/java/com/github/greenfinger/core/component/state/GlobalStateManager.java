@@ -70,6 +70,22 @@ public interface GlobalStateManager extends WebCrawlerComponent, ManagedBeanLife
         setCompleted(true, reason, true);
     }
 
+    /**
+     * Overwrites a reason already written, and only for the one fact that outranks every other:
+     * the crawl read nothing.
+     *
+     * <p>
+     * {@link #setCompleted} keeps the first reason on purpose, so a crawl that stopped at a limit
+     * is not relabelled by whatever wound it down afterwards. This is the exception, because it
+     * does not describe how the crawl ended but what it ended with. A site behind a challenge
+     * refuses the one url there is to ask for; the frontier drains, the counters agree, and the
+     * watchdog quite correctly reports a site that ran out of urls -- and an empty version is
+     * published over a good one. What was read has to win over how it stopped.
+     *
+     * @param reason replaces whatever is recorded, and the crawl becomes an intervention.
+     */
+    void overrideAsUnproductive(String reason);
+
     default long incrementCount(long startTime, CountingType countingType) {
         return incrementCount(startTime, countingType, 1);
     }

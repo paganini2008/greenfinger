@@ -69,10 +69,21 @@ the crawl to finish and prints the summary.
 ### The server
 
 ``` shell
-./run-local.sh                # start (the default action), one node, http://localhost:50080
-./run-local.sh status         # which nodes are up, and on which ports
-./run-local.sh stop           # stop them all -- `down` means the same
+./run-local.sh                # the nodes -- the api and nothing else
+./run-local.sh all            # the nodes and the front end, http://localhost:9700
+./run-local.sh status         # what is up, and on which ports
+./run-local.sh stop           # stop it all -- `down` means the same
 ```
+
+**The front end is a process of its own**, on a port of its own, exactly as it is a container of
+its own under `run-docker.sh`. The page and the api are two things: it serves the built app and
+spreads `/v2` and `/actuator` across every node, so a browser talks to the cluster rather than to
+whichever node somebody happened to type.
+
+It needs the build (`npm run build:deploy` in `frontend/greenfinger-ui`) and `node` on the path.
+Without either it says so and the nodes come up regardless. `GF_WEB=1` in `run.conf` makes it the
+default so `all` is not needed every time; `GF_API_BASE_URL` writes the api address into the
+page's `env.js`, and empty is right whenever the front end is forwarding to the api itself.
 
 Nodes are numbered from `GF_BASE_PORT` (50080), so three nodes are 50080, 50081, 50082. Each gets
 its own data directory under `deploy/data/node-N` and, unless `GF_DB_URL` points at a database
@@ -141,8 +152,11 @@ What varies per command is still on the line, which is what `--id` and `--node` 
 | `GF_CLUSTER_PORT` | `22000` | And the port they elect on; both halves matter |
 | `GF_CLUSTER_HOSTS` | `127.0.0.1` | Machines to knock on, comma separated. Only needed across machines |
 | `GF_WORKER_ROOT` | `deploy/workers` | Where `--node=3`'s extra processes keep their data |
+| `GF_LOG_DIR` | `deploy/logs` | Where the log and pid files go. Separate from `GF_DATA_STORE` so logs can live on a disk you are happy to fill |
 | `GF_IDLE_TIMEOUT` | `2m` | How long the counters may stand still before the crawl is wound up |
 | `GF_COMPLETION_CHECK_INTERVAL` | `5s` | How often that is asked |
+| `GF_MAX_CONSECUTIVE_FAILURES` | `20` | How many fetches in a row may come back with nothing before the crawl gives up on the site. 0 never gives up on that alone |
+| `GF_ADAPTIVE_BROWSER` | `playwright` | Which engine `adaptive` renders with when plain http came back as a shell. `playwright`, `htmlunit` or `selenium` |
 
 Anything already exported wins, so a one-off needs no editing:
 

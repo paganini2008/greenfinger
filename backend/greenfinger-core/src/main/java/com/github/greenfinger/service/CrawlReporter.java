@@ -106,6 +106,7 @@ public class CrawlReporter {
         produced.put("savedResourceCount", dashboard.getSavedResourceCount());
         produced.put("savedImageCount", dashboard.getSavedImageCount());
         produced.put("indexedResourceCount", dashboard.getIndexedResourceCount());
+        produced.put("vectoredResourceCount", dashboard.getVectoredResourceCount());
         report.put("produced", produced);
 
         // the pair that says whether anything was left behind, and how much
@@ -117,6 +118,7 @@ public class CrawlReporter {
         urls.put("filtered", dashboard.getFilteredUrlCount());
         urls.put("unreachable", dashboard.getInvalidUrlCount());
         urls.put("duplicateContent", dashboard.getDuplicatedContentCount());
+        urls.put("abandonedAtLimit", dashboard.getAbandonedUrlCount());
         urls.put("failures", result.getFailures());
         report.put("urls", urls);
 

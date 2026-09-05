@@ -17,6 +17,7 @@
 package com.github.greenfinger.core.component.extractor;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -73,10 +74,14 @@ class HtmlUnitPooledExtractorTest {
     }
 
     @Test
-    @DisplayName("a failing status yields the page rather than an exception, so the crawl goes on")
-    void doesNotThrowOnFailingStatus() throws Exception {
+    @DisplayName("a failing status is a failure here too, not an error page stored as content")
+    void throwsOnFailingStatus() throws Exception {
+        // It used to return the page. A browser renders a 404 as willingly as anything else, so
+        // what got stored was the site's error page -- its navigation, its footer and the words
+        // "not found" -- in a row that nothing marked as an error.
         site.status("/missing", 404);
-        assertThat(extractor.test(site.url("/missing"), StandardCharsets.UTF_8)).isNotNull();
+        assertThatThrownBy(() -> extractor.test(site.url("/missing"), StandardCharsets.UTF_8))
+                .isInstanceOf(ExtractorException.class).hasMessageContaining("404");
     }
 
     @Test

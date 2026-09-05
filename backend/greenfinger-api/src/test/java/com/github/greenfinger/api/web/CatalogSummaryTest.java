@@ -172,7 +172,7 @@ class CatalogSummaryTest {
         catalog.setId("catalog-1");
         catalog.setName("books");
         catalog.setUrl("https://books.toscrape.com");
-        catalog.setCat("default");
+        catalog.setCat("other");
         catalog.setIndexVersion(3);
         catalog.setSearchVersion(2);
         return new CatalogDetailsImpl(catalog, new WebCrawlerProperties());
@@ -193,6 +193,11 @@ class CatalogSummaryTest {
             @Override
             public long getHandledUrlCount() {
                 return 100L;
+            }
+
+            @Override
+            public long getAbandonedUrlCount() {
+                return 3L;
             }
 
             @Override
@@ -218,6 +223,11 @@ class CatalogSummaryTest {
             @Override
             public long getIndexedResourceCount() {
                 return 40L;
+            }
+
+            @Override
+            public long getVectoredResourceCount() {
+                return 39L;
             }
 
             @Override

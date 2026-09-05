@@ -86,6 +86,14 @@ public class DefaultGlobalStateManager implements GlobalStateManager {
     }
 
     @Override
+    public void overrideAsUnproductive(String reason) {
+        dashboard.completionReason = reason;
+        dashboard.interrupted = true;
+        dashboard.completed.set(true);
+        dashboard.lastModified = System.currentTimeMillis();
+    }
+
+    @Override
     public long incrementCount(long startTime, CountingType countingType, int delta) {
         long value = dashboard.counterOf(countingType).addAndGet(delta);
         if (startTime > 0) {

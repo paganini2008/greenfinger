@@ -63,7 +63,7 @@ public abstract class OutputFixtures {
         catalog.setName("example");
         catalog.setUrl("https://www.example.com");
         catalog.setStartUrl("https://www.example.com");
-        catalog.setCat("test");
+        catalog.setCat("tech");
         catalog.setPathPattern("**.example.com");
         catalog.setOutputTypes(outputTypes);
         catalog.setContentMode(mode);

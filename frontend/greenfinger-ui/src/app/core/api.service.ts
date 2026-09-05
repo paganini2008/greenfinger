@@ -5,15 +5,20 @@ import { API_PREFIX } from './api.config';
 import {
   ApiResult,
   Catalog,
-  ClusterStatus,
-  CrawlReport,
   CatalogDetails,
   CatalogSummary,
+  ClusterStatus,
+  CrawlReport,
   CrawlStatus,
   DeleteLayer,
   DeleteLine,
+  HealthReport,
+  ProxyNode,
+  ResourcePage,
+  RocksDbUsage,
   SearchResponse,
   ServerVersion,
+  StorageUsage,
   VectorHit,
 } from './api.models';
 
@@ -167,13 +172,122 @@ export class ApiService {
    * shape. Every node answers for itself alone, which is the point -- a page that showed one
    * node's numbers as the cluster's would hide exactly the node that had stopped working.
    */
-  clusterStatus(): Observable<ClusterStatus> {
-    return this.http.get<ClusterStatus>('/actuator/spreader');
+  clusterStatus(node?: number | null): Observable<ClusterStatus> {
+    return this.http.get<ClusterStatus>('/actuator/spreader', { params: pin(node) });
   }
 
-  /** Up or down, from the same endpoint a container orchestrator asks. */
-  health(): Observable<{ status: string }> {
-    return this.http.get<{ status: string }>('/actuator/health');
+  /**
+   * The nodes this front end is in front of, as it can reach them.
+   *
+   * Served by the front end's own proxy, not by the api: a node knows who is in its cluster but
+   * not which of them a browser was pointed at, and it is the front end's list of upstreams that
+   * decides who can be asked. Absent -- 404, or a dev server, or the app served from somewhere
+   * that is not the proxy -- and the System health page simply drops its picker and takes
+   * whichever node answers, which is what it did before there was one.
+   */
+  proxyNodes(): Observable<ProxyNode[]> {
+    return this.http.get<ProxyNode[]>('/__nodes');
+  }
+
+  /**
+   * Up or down, from the same endpoint a container orchestrator asks -- and, when the deployment
+   * lets it, what each of the checks behind that word said.
+   *
+   * The components are flattened into a list here rather than in the template. `show-details` may
+   * be off, in which case the map is simply absent and the page has the one word, which is still
+   * the answer to the question it was asked.
+   */
+  health(node?: number | null): Observable<HealthReport> {
+    return this.http.get<RawHealth>('/actuator/health', { params: pin(node) }).pipe(
+      map((raw) => ({
+        status: raw.status,
+        components: Object.entries(raw.components ?? {})
+          .map(([name, component]) => ({
+            name,
+            status: component?.status ?? 'UNKNOWN',
+            details: component?.details ?? {},
+          }))
+          // anything not UP first: the reason somebody opened this page is at the top
+          .sort((a, b) => {
+            if (a.status !== b.status) {
+              return a.status === 'UP' ? 1 : -1;
+            }
+            return a.name.localeCompare(b.name);
+          }),
+      })),
+    );
+  }
+
+  // ---- what a crawl stored ----------------------------------------------------------------
+
+  /**
+   * A page of rows from the resource table, filtered.
+   *
+   * Not the search index: this reads the database, in crawl order, and can therefore show a
+   * version that was never published -- which is exactly the version somebody wants to look at
+   * when a crawl came back wrong.
+   */
+  resources(options: {
+    catalogId: string;
+    version?: number | null;
+    q?: string;
+    from?: string | null;
+    to?: string | null;
+    page?: number;
+    size?: number;
+    sort?: 'asc' | 'desc';
+  }): Observable<ResourcePage> {
+    let params = new HttpParams().set('catalogId', options.catalogId);
+    if (options.version !== null && options.version !== undefined) {
+      params = params.set('version', options.version);
+    }
+    if (options.q) params = params.set('q', options.q);
+    if (options.from) params = params.set('from', options.from);
+    if (options.to) params = params.set('to', options.to);
+    if (options.page) params = params.set('page', options.page);
+    if (options.size) params = params.set('size', options.size);
+    if (options.sort) params = params.set('sort', options.sort);
+    return this.unwrap(
+      this.http.get<ApiResult<ResourcePage>>(`${API_PREFIX}/resource`, { params }),
+    );
+  }
+
+  /** The versions that actually have rows, which is what the filter offers. */
+  resourceVersions(catalogId: string): Observable<number[]> {
+    const params = new HttpParams().set('catalogId', catalogId);
+    return this.unwrap(
+      this.http.get<ApiResult<number[]>>(`${API_PREFIX}/resource/versions`, { params }),
+    );
+  }
+
+  /**
+   * How much of the blob store the crawls have taken.
+   *
+   * Asked on demand and never polled: on local disk it is a directory walk and on MinIO a paged
+   * list, and neither is something to pay for every few seconds because a page is open.
+   */
+  storageUsage(catalogId?: string): Observable<StorageUsage> {
+    let params = new HttpParams();
+    if (catalogId) params = params.set('catalogId', catalogId);
+    return this.unwrap(
+      this.http.get<ApiResult<StorageUsage>>(`${API_PREFIX}/storage`, { params }),
+    );
+  }
+
+  /**
+   * The crawl's own state rather than its output: the frontier and the two dedup filters.
+   *
+   * Also on demand. The size is a file walk; the key counts mean opening each store, which is
+   * why they come back missing while that catalog is being crawled.
+   */
+  rocksDbUsage(catalogId: string, version?: number | null): Observable<RocksDbUsage> {
+    let params = new HttpParams().set('catalogId', catalogId);
+    if (version !== null && version !== undefined) {
+      params = params.set('version', version);
+    }
+    return this.unwrap(
+      this.http.get<ApiResult<RocksDbUsage>>(`${API_PREFIX}/storage/rocksdb`, { params }),
+    );
   }
 
   // ---- search ---------------------------------------------------------------------------
@@ -254,4 +368,23 @@ export class ApiService {
       }),
     );
   }
+}
+
+/** The actuator's own shape, before {@link ApiService.health} flattens it. */
+interface RawHealth {
+  status: string;
+  components?: Record<string, { status?: string; details?: Record<string, unknown> } | null>;
+}
+
+/**
+ * The query parameter that pins a request to one node, or nothing at all.
+ *
+ * Read by the front end's proxy and stripped there, so it never reaches a node. Only System health
+ * sends it: every other page asks a question any node can answer, and spreading those is the whole
+ * reason there is one address in front of the cluster.
+ */
+function pin(node?: number | null): HttpParams {
+  return node === null || node === undefined
+    ? new HttpParams()
+    : new HttpParams().set('__node', node);
 }

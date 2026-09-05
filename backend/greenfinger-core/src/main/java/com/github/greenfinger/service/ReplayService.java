@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Set;
 import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.core.catalog.CatalogDetailsService;
+import com.github.greenfinger.core.catalog.CatalogStore;
 import com.github.greenfinger.core.model.OutputType;
 import com.github.greenfinger.core.output.BlobStore;
 import com.github.greenfinger.core.output.OutputChannel;
@@ -63,6 +64,7 @@ public class ReplayService {
     private final ResourceRecordStore recordStore;
     private final CatalogDetailsService catalogDetailsService;
     private final FileRestorer fileRestorer;
+    private final CatalogStore catalogStore;
 
     /** What the last restore of the file layer did; empty when this replay did not touch it. */
     @Getter
@@ -73,7 +75,42 @@ public class ReplayService {
      * @return how many pages were replayed
      */
     public long replay(String catalogId, int version, Set<OutputType> layers) throws Exception {
-        return replaySlice(catalogId, version, layers, 0, Integer.MAX_VALUE);
+        long replayed = replaySlice(catalogId, version, layers, 0, Integer.MAX_VALUE);
+        publishReplayed(catalogId, version, layers, replayed);
+        return replayed;
+    }
+
+    /**
+     * Make the version search can see be the one that was just rebuilt.
+     *
+     * <p>
+     * Without this a replay put every page into the index and search still returned nothing, which
+     * is as confusing a state as this system has: the documents are there, they match, and the
+     * catalog is skipped because it says it has no published version. That is not hypothetical --
+     * it is what a catalog looks like after the node that was going to publish it went away
+     * between the last page and the publish, and before this there was no way out of it except
+     * crawling the whole site again.
+     *
+     * <p>
+     * Never backwards. Replaying an old version is a repair of that version, not a decision to
+     * serve it: a catalog searching v3 that has v1 rebuilt keeps searching v3.
+     */
+    protected void publishReplayed(String catalogId, int version, Set<OutputType> layers,
+            long replayed) throws Exception {
+        if (!layers.contains(OutputType.INDEX) || replayed <= 0) {
+            return;
+        }
+        if (catalogStore == null) {
+            return;
+        }
+        Integer published = catalogDetailsService.loadCatalogDetails(catalogId).getSearchVersion();
+        int current = published != null ? published : -1;
+        if (version <= current) {
+            return;
+        }
+        catalogStore.publishSearchVersion(catalogId, version);
+        log.info("Catalog {} now searches version {}, which the replay just rebuilt", catalogId,
+                version);
     }
 
     /**

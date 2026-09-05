@@ -103,7 +103,7 @@ public class ClusterCrawlCoordinator implements CrawlCoordinator {
         // report that within a millisecond, and a handled that arrived before its own dispatch
         // would make the two counters cross -- which is the one thing the completion test relies
         // on never happening.
-        stateManager.incrementCount(task.getTimestamp(), CountingType.URL_TOTAL_COUNT);
+        stateManager.incrementCount(task.getTimestamp(), CountingType.TOTAL_URL_COUNT);
         dispatched.incrementAndGet();
         if (!channel.dispatch(task)) {
             keptLocally.incrementAndGet();

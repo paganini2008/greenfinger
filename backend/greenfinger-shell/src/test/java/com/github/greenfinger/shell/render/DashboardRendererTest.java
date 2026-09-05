@@ -49,7 +49,7 @@ class DashboardRendererTest {
         catalog.setId("0192f0c8-1234-7000-8000-0000000000cc");
         catalog.setName("example");
         catalog.setUrl("https://www.example.com");
-        catalog.setCat("test");
+        catalog.setCat("tech");
         catalog.setPathPattern("**.example.com");
         catalog.setMaxFetchSize(100);
         catalog.setDuration(30L);
@@ -101,7 +101,7 @@ class DashboardRendererTest {
         unlimited.setId("0192f0c8-1234-7000-8000-0000000000cd");
         unlimited.setName("unlimited");
         unlimited.setUrl("https://www.example.com");
-        unlimited.setCat("test");
+        unlimited.setCat("tech");
         unlimited.setMaxFetchSize(0);
         unlimited.setDuration(0L);
         unlimited.setCountingType(CountingType.SAVED_RESOURCE_COUNT);

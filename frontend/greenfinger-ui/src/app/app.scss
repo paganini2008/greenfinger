@@ -78,3 +78,31 @@
 .gf-content {
   background: var(--mat-sys-surface-container-lowest, #fff);
 }
+
+// A crawl is a fact about the whole application, so it is announced above the nav and the page
+// rather than inside either. Amber rather than green: it is not an error, but it is the reason
+// the buttons below it will not respond.
+.gf-running-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  padding: 0.6rem 1.25rem;
+  background: color-mix(in srgb, var(--mat-sys-tertiary) 18%, var(--gf-surface));
+  border-bottom: 1px solid var(--gf-outline);
+  font: var(--mat-sys-body-large);
+}
+
+.gf-running-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.gf-running-dot {
+  flex: 0 0 auto;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: var(--gf-green);
+  animation: gf-pulse 1.6s ease-in-out infinite;
+}

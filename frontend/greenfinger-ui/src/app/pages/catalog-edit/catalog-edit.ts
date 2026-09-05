@@ -1,4 +1,5 @@
-import { Component, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -54,7 +55,23 @@ export class CatalogEditPage {
   private readonly notify = inject(NotifyService);
 
   protected readonly countingTypes = COUNTING_TYPES;
+
+  /**
+   * The chosen option's own explanation, under the field.
+   *
+   * The dropdown is closed most of the time, and the whole point of the hint is that "Urls seen"
+   * and "Pages saved" mean very different things for the number in the box above.
+   */
   protected readonly extractors = EXTRACTORS;
+
+  /**
+   * The nine the server accepts, asked of the server rather than repeated here.
+   *
+   * A list written into the front end is a list that goes stale the first time one is added, and
+   * the failure is silent: the form offers a value the server has never heard of, or omits one it
+   * has. Falling back to the single safe value keeps the form usable if the call fails.
+   */
+  protected readonly categories = signal<string[]>(['other']);
 
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
@@ -65,7 +82,7 @@ export class CatalogEditPage {
     id: this.formBuilder.control<string | null>(null),
     url: ['', [Validators.required, Validators.pattern(/^https?:\/\/.+/i)]],
     name: [''],
-    cat: [''],
+    cat: ['other'],
     startUrl: [''],
     sitemapUrl: [''],
     pathPattern: [''],
@@ -84,7 +101,22 @@ export class CatalogEditPage {
     contentMode: ['text+image'],
   });
 
+  /** The control's value as a signal, so the hint under the field follows the dropdown. */
+  private readonly countingType = toSignal(this.form.controls.countingType.valueChanges, {
+    initialValue: this.form.controls.countingType.value,
+  });
+
+  protected readonly countingHint = computed(() => {
+    const chosen = this.countingType();
+    const found = COUNTING_TYPES.find((type) => type.value === chosen);
+    return found ? found.hint : 'What the limit above counts. Defaults to pages saved.';
+  });
+
   constructor() {
+    this.api.listCategories().subscribe({
+      next: (categories) => this.categories.set(categories.length ? categories : ['other']),
+      error: () => undefined,
+    });
     // input() is set before the first change detection, so reading it here is safe and saves
     // wiring an effect for a value that never changes over the page's life
     queueMicrotask(() => {
@@ -104,7 +136,7 @@ export class CatalogEditPage {
           id: catalog.id ?? null,
           url: catalog.url,
           name: catalog.name ?? '',
-          cat: catalog.cat ?? '',
+          cat: catalog.cat ?? 'other',
           startUrl: catalog.startUrl ?? '',
           sitemapUrl: catalog.sitemapUrl ?? '',
           pathPattern: catalog.pathPattern ?? '',
@@ -153,7 +185,10 @@ export class CatalogEditPage {
       next: (saved) => {
         this.saving.set(false);
         this.notify.ok(`'${saved.name}' saved`);
-        this.router.navigate(['/catalogs']);
+        // The list is served by whichever node answers next, and replication between them is
+        // asynchronous, so it may not know about this catalog yet. Naming it in the url lets that
+        // page wait for its own write instead of opening on a list that is a moment out of date.
+        this.router.navigate(['/catalogs'], { queryParams: { saved: saved.id ?? saved.name } });
       },
       error: (failure) => {
         this.saving.set(false);

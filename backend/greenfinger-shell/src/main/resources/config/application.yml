@@ -137,8 +137,18 @@ greenfinger:
   #                              It is therefore also how long a site smaller than maxFetchSize
   #                              waits after its last page. Lower it for small sites; raise it for
   #                              a slow one where a single fetch can take minutes.
+  #   max-consecutive-failures   how many fetches in a row may come back with nothing -- anything
+  #                              outside 2xx and 3xx, and the requests that never got a status at
+  #                              all -- before the crawl gives up on the site. A challenge in
+  #                              front of a whole domain answers 403 to every request a crawler
+  #                              can make, and without this the crawl asks all the way to
+  #                              fetchDuration. In a row, and reset by the first page that comes
+  #                              back, so a members-only corner of an open site ends nothing.
+  #                              The crawl ends interrupted, so nothing is published. 0 disables
+  #                              it and leaves the timeout as the only backstop.
   completion-check-interval: ${GF_COMPLETION_CHECK_INTERVAL:5s}
   idle-timeout: ${GF_IDLE_TIMEOUT:2m}
+  max-consecutive-failures: ${GF_MAX_CONSECUTIVE_FAILURES:20}
   default-max-versions: ${GF_MAX_VERSIONS:10}
   default-max-fetch-size: ${GF_MAX_FETCH_SIZE:10000}
   default-fetch-interval: ${GF_FETCH_INTERVAL:1000}
@@ -182,9 +192,13 @@ greenfinger:
     # extractor=adaptive fetches over plain http and pays for a browser only when what came back
     # looks like an unrendered shell. The browser is started on first need, never before.
     adaptive:
-      # htmlunit needs nothing installed; playwright downloads browsers on first use,
-      # and selenium drives one that must already be on the machine
-      browser: ${GF_ADAPTIVE_BROWSER:htmlunit}
+      # Which engine renders what plain http could not. playwright is a real browser, so it
+      # renders what a browser renders and reports the http status the page answered with; it
+      # downloads its browser binaries on first use. htmlunit needs nothing downloaded but has
+      # its own javascript engine rather than a browser's, so it manages the simple cases and
+      # quietly fails the rest. selenium drives a browser that must already be on the machine
+      # and cannot report a status at all, so an error page reaches the crawl looking real.
+      browser: ${GF_ADAPTIVE_BROWSER:playwright}
       min-text-length: ${GF_ADAPTIVE_MIN_TEXT:400}
       shell-text-length: ${GF_ADAPTIVE_SHELL_TEXT:120}
     rest-client:

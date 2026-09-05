@@ -119,9 +119,100 @@
     </div>
   }
 
+  <!-- The dashboard proper: what is happening now, and what became of everything so far. -->
+  <section class="gf-panel">
+    <h2 class="gf-panel-title">
+      <mat-icon>insights</mat-icon> Dashboard
+      @if (run?.live) {
+        <span class="gf-chip gf-chip-cat"><span class="gf-running-dot"></span> live</span>
+      }
+    </h2>
+    <div class="gf-dash">
+      <!-- One ring for the single number a run is judged by; the two bars in the hero are the
+           race between the two limits, and are read against each other rather than alone. -->
+      <div class="gf-ring-box">
+        <svg class="gf-ring" viewBox="0 0 60 60" aria-hidden="true">
+          <circle class="gf-ring-track" cx="30" cy="30" r="26" />
+          <circle
+            class="gf-ring-value"
+            cx="30"
+            cy="30"
+            r="26"
+            [attr.stroke-dasharray]="ringCircumference"
+            [attr.stroke-dashoffset]="ringOffset()"
+          />
+        </svg>
+        <div class="gf-ring-label">
+          <span class="gf-ring-value-text">{{ progressPercent() }}%</span>
+          <span class="gf-metric-label">of the limit</span>
+        </div>
+      </div>
+
+      <div class="gf-metric-row gf-dash-metrics">
+        <div class="gf-metric">
+          <span class="gf-metric-value">
+            {{ pageRate() | number: '1.0-1' }}
+            @if (pageRate() > 0) {
+              <span class="gf-running-dot"></span>
+            }
+          </span>
+          <span class="gf-metric-label">pages / s</span>
+          <div class="gf-metric-chart">
+            <gf-sparkline [values]="pageHistory()" />
+          </div>
+        </div>
+        <div class="gf-metric">
+          <span class="gf-metric-value">{{ run?.savedResourceCount ?? 0 | number }}</span>
+          <span class="gf-metric-label">pages saved</span>
+          <div class="gf-metric-chart">
+            <gf-sparkline [values]="imageHistory()" stroke="#7c3aed" />
+          </div>
+        </div>
+        <div class="gf-metric">
+          <span class="gf-metric-value">{{ run?.savedImageCount ?? 0 | number }}</span>
+          <span class="gf-metric-label">images saved</span>
+        </div>
+        <div class="gf-metric">
+          <span class="gf-metric-value">{{ run?.elapsedTime ?? '--' }}</span>
+          <span class="gf-metric-label">elapsed</span>
+        </div>
+      </div>
+    </div>
+
+    @if (outcomes().length) {
+      <p class="gf-seg-title">
+        What became of every url this run touched. The counters below say how many; only the bar
+        says out of what.
+      </p>
+      <div class="gf-segbar">
+        @for (part of outcomes(); track part.label) {
+          <span
+            class="gf-seg"
+            [class]="'gf-seg gf-tone-' + part.tone"
+            [style.width.%]="part.percent"
+            [matTooltip]="part.label + ': ' + part.value"
+          ></span>
+        }
+      </div>
+      <div class="gf-seg-legend">
+        @for (part of outcomes(); track part.label) {
+          <span class="gf-seg-key">
+            <span class="gf-seg-dot" [class]="'gf-seg-dot gf-tone-' + part.tone"></span>
+            {{ part.label }}
+            <strong>{{ part.value | number }}</strong>
+          </span>
+        }
+      </div>
+    }
+  </section>
+
   <section class="gf-counters">
     @for (counter of counters(); track counter.label) {
-      <div class="gf-counter" [class.gf-counter-accent]="counter.accent">
+      <div
+        class="gf-counter"
+        [class.gf-counter-accent]="counter.accent"
+        [matTooltip]="counter.hint ?? ''"
+      >
         <mat-icon>{{ counter.icon }}</mat-icon>
         <span class="gf-counter-value">{{ counter.value }}</span>
         <span class="gf-counter-label">{{ counter.label }}</span>

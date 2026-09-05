@@ -3,22 +3,63 @@
     <div class="gf-hero-glow"></div>
     <div class="gf-hero-inner">
       <div>
-        <span class="gf-eyebrow">Cluster</span>
+        <span class="gf-eyebrow">System health</span>
         <h1>{{ status()?.node?.clusterName || 'This node' }}</h1>
         <p class="gf-hero-sub">
-          What this node can see. Every node answers for itself, so ask each one.
+          What this node can see, and what its stores are holding. Every node answers only for
+          itself &mdash; these are not the cluster's totals &mdash; so ask each one in turn.
         </p>
       </div>
-      @if (status(); as node) {
+      @if (status(); as here) {
         <div class="gf-hero-badges">
-          <span class="gf-chip" [class.gf-chip-cat]="node.node.leader">
-            {{ node.node.leader ? 'leader' : 'follower' }}
+          @if (nodes().length > 1) {
+            <span class="gf-chip gf-chip-ghost-on-green">asking</span>
+            @for (one of nodes(); track one.index) {
+              <button
+                type="button"
+                class="gf-chip gf-node-pick"
+                [class.gf-chip-cat]="node() === one.index"
+                (click)="selectNode(one.index)"
+                [matTooltip]="'Ask ' + one.address + ' for its own numbers'"
+              >
+                {{ one.address }}
+              </button>
+            }
+          }
+          <span class="gf-chip" [class.gf-chip-cat]="here.node.leader">
+            {{ here.node.leader ? 'leader' : 'follower' }}
           </span>
-          <span class="gf-chip">{{ node.node.memberCount }} member(s)</span>
-          <span class="gf-chip" [class.gf-chip-warn]="health() !== 'UP'">{{ health() }}</span>
+          <span class="gf-chip">{{ here.node.memberCount }} member(s)</span>
+          <span class="gf-chip">up {{ uptime() }}</span>
+          <span class="gf-chip" [class.gf-chip-warn]="healthStatus() !== 'UP'">
+            {{ healthStatus() }}
+          </span>
         </div>
       }
     </div>
+
+    <!-- Two halves rather than one long page: the machinery, and the work it is doing. -->
+    <nav class="gf-switch" aria-label="Which half">
+      <button
+        type="button"
+        class="gf-switch-tab"
+        [class.gf-switch-on]="view() === 'cluster'"
+        (click)="view.set('cluster')"
+      >
+        <mat-icon>hub</mat-icon> Cluster
+      </button>
+      <button
+        type="button"
+        class="gf-switch-tab"
+        [class.gf-switch-on]="view() === 'crawler'"
+        (click)="view.set('crawler')"
+      >
+        <mat-icon>travel_explore</mat-icon> Crawler
+        @if (running().length) {
+          <span class="gf-running-dot"></span>
+        }
+      </button>
+    </nav>
   </header>
 
   @if (loading()) {
@@ -32,7 +73,7 @@
     </div>
   }
 
-  <!-- what produces no log line, first -->
+  <!-- what produces no log line, first, on whichever half is showing -->
   @for (warning of warnings(); track warning) {
     <div class="gf-notice gf-notice-warn">
       <mat-icon>warning</mat-icon>
@@ -40,79 +81,409 @@
     </div>
   }
 
-  @if (status(); as status) {
+  <!-- ============================================================================================
+       The cluster: is the machinery working.
+       ========================================================================================= -->
+  @if (view() === 'cluster') {
+    @if (status(); as status) {
+      <section class="gf-panel">
+        <h2 class="gf-panel-title"><mat-icon>speed</mat-icon> Throughput</h2>
+        <p class="gf-panel-hint">
+          Messages a second across every channel, sampled while this page is open. The endpoint
+          reports a rate and keeps no history, so the shape starts when the page does.
+        </p>
+        <div class="gf-metric-row">
+          <div class="gf-metric">
+            <span class="gf-metric-value">
+              {{ status.summary.totalTps | number: '1.0-1' }}
+              @if (status.summary.totalTps > 0) {
+                <span class="gf-running-dot"></span>
+              }
+            </span>
+            <span class="gf-metric-label">messages / s</span>
+            <div class="gf-metric-chart">
+              <gf-sparkline [values]="tpsHistory()" [max]="peakTps()" />
+            </div>
+          </div>
+          <div class="gf-metric">
+            <span class="gf-metric-value">{{ totals().sent | number }}</span>
+            <span class="gf-metric-label">sent, all time</span>
+          </div>
+          <div class="gf-metric">
+            <span class="gf-metric-value">{{ totals().received | number }}</span>
+            <span class="gf-metric-label">received</span>
+          </div>
+          <div class="gf-metric" [class.gf-metric-bad]="totals().failures > 0">
+            <span class="gf-metric-value">{{ totals().failures | number }}</span>
+            <span class="gf-metric-label">failed</span>
+          </div>
+          <div class="gf-metric">
+            <span class="gf-metric-value">{{ percent(status.summary.errorRate) }}</span>
+            <span class="gf-metric-label">error rate</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="gf-panel">
+        <h2 class="gf-panel-title"><mat-icon>swap_horiz</mat-icon> Channels</h2>
+        <p class="gf-panel-hint">
+          One row per kind of message. The crawl channel carries urls, the replication channels
+          carry rows and files, the rest belong to the cluster itself. Latency is the
+          <strong>outbound</strong> percentile in milliseconds &mdash; an average hides the one
+          message in a hundred that took a second, and that one is why anybody is reading this.
+        </p>
+        @if (!channels().length) {
+          <div class="gf-empty">
+            <mat-icon>inbox</mat-icon>
+            <p>
+              Nothing has been sent yet. A channel appears here once it carries something, so an
+              idle node shows none &mdash; start a crawl and the crawl channel will be the first.
+            </p>
+          </div>
+        }
+        <div class="gf-table-scroll" [hidden]="!channels().length">
+          <table class="gf-plan-table">
+            <thead>
+              <tr>
+                <th>Channel</th>
+                <th class="text-right">Now</th>
+                <th class="text-right">Peak</th>
+                <th class="text-right">Sent</th>
+                <th class="text-right">Received</th>
+                <th class="text-right">Retries</th>
+                <th class="text-right">Failed</th>
+                <th class="text-right">Errors</th>
+                <th class="text-right">p50</th>
+                <th class="text-right">p95</th>
+                <th class="text-right">p99</th>
+                <th class="gf-spark-cell">Last 5 min</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (channel of channels(); track channel.channel) {
+                <tr
+                  [class.gf-plan-error]="
+                    channel.counters.sendFailures + channel.counters.receiveFailures > 0
+                  "
+                >
+                  <td>
+                    {{ channel.channel }}
+                    @if (channel.systemChannel) {
+                      <span class="gf-muted">&nbsp;system</span>
+                    }
+                  </td>
+                  <td class="text-right">{{ channel.throughput.tps | number: '1.0-1' }}</td>
+                  <td class="text-right gf-muted">
+                    {{ channel.throughput.peakTps | number: '1.0-1' }}
+                  </td>
+                  <td class="text-right">{{ channel.counters.sent | number }}</td>
+                  <td class="text-right">{{ channel.counters.received | number }}</td>
+                  <td class="text-right">{{ channel.counters.retries | number }}</td>
+                  <td class="text-right">
+                    {{ channel.counters.sendFailures + channel.counters.receiveFailures | number }}
+                  </td>
+                  <td class="text-right">{{ percent(channel.rates?.errorRate) }}</td>
+                  <td class="text-right">
+                    {{ channel.latencyMillis?.outbound?.p50 | number: '1.0-2' }}
+                  </td>
+                  <td class="text-right">
+                    {{ channel.latencyMillis?.outbound?.p95 | number: '1.0-2' }}
+                  </td>
+                  <td class="text-right">
+                    {{ channel.latencyMillis?.outbound?.p99 | number: '1.0-2' }}
+                  </td>
+                  <td class="gf-spark-cell">
+                    <gf-sparkline [values]="history(channel)" [max]="peakTps()" />
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="gf-panel">
+        <h2 class="gf-panel-title"><mat-icon>inbox</mat-icon> Buffers</h2>
+        <p class="gf-panel-hint">
+          The queues in front of the handlers. A full one discards rather than blocks &mdash;
+          blocking the producer would take the dispatch chain down with it &mdash; so a dropped
+          count is work that is gone and this is the only place that says so.
+        </p>
+        @if (!buffers().length) {
+          <p class="gf-panel-note">This node reports no buffers.</p>
+        }
+        <div class="gf-bars">
+          @for (buffer of buffers(); track buffer.name) {
+            <div class="gf-bar-row" [class.gf-bar-row-bad]="buffer.hasDropped">
+              <span class="gf-bar-name">{{ buffer.name }}</span>
+              <span
+                class="gf-node-bar"
+                [matTooltip]="buffer.size + ' of ' + buffer.capacity + ' in use'"
+              >
+                <i [style.width.%]="bufferPercent(buffer)"></i>
+              </span>
+              <span class="gf-bar-value">{{ bufferPercent(buffer) }}%</span>
+              <span class="gf-bar-note">
+                {{ buffer.handled | number }} handled
+                @if (buffer.dropped > 0) {
+                  <strong class="gf-plan-error">
+                    &middot; {{ buffer.dropped | number }} dropped
+                  </strong>
+                }
+              </span>
+            </div>
+          }
+        </div>
+      </section>
+
+      <section class="gf-panel">
+        <h2 class="gf-panel-title"><mat-icon>hub</mat-icon> This node</h2>
+        <dl class="gf-defs">
+          <div><dt>Name</dt><dd>{{ status.node.nodeName }}</dd></div>
+          <div><dt>Address</dt><dd>{{ status.node.address }}</dd></div>
+          <div><dt>Leader</dt><dd>{{ status.node.leaderAddress || '--' }}</dd></div>
+          <div><dt>Members</dt><dd>{{ status.node.memberCount }}</dd></div>
+          <div><dt>Up for</dt><dd>{{ uptime() }}</dd></div>
+          <div><dt>Messages/s</dt><dd>{{ status.summary.totalTps | number: '1.0-1' }}</dd></div>
+          @if (splitBrain(); as split) {
+            <div>
+              <dt>Split brain</dt>
+              <dd [class.gf-plan-error]="!split.healthy">
+                {{ split.splitting ? 'splitting now' : split.everSplit ? 'healed' : 'never' }}
+                @if (split.occurrences) {
+                  &nbsp;({{ split.occurrences }}&times;)
+                }
+              </dd>
+            </div>
+            <div><dt>Port held by</dt><dd>{{ split.holders.join(', ') || '--' }}</dd></div>
+          }
+          <div class="gf-defs-wide">
+            <dt>Id</dt>
+            <dd class="gf-mono">{{ status.node.nodeId }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      @if (components().length) {
+        <section class="gf-panel">
+          <h2 class="gf-panel-title"><mat-icon>dataset</mat-icon> Replicated stores</h2>
+          <p class="gf-panel-hint">
+            Each node holds a complete copy and replication keeps the copies the same. These are
+            the copies: what has been applied, what is still in the outbox, and how far behind.
+          </p>
+          <div class="gf-checks">
+            @for (component of components(); track component.name) {
+              <div class="gf-check">
+                <mat-icon>storage</mat-icon>
+                <div class="gf-check-body">
+                  <div class="gf-check-name">{{ component.name }}</div>
+                  <div class="gf-check-detail">
+                    @for (entry of component.entries; track entry.key) {
+                      <span class="gf-kv">
+                        <span class="gf-kv-key">{{ entry.key }}</span>
+                        <span class="gf-kv-value">{{ entry.value }}</span>
+                      </span>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        </section>
+      }
+    }
+
+    @if (health(); as health) {
+      @if (health.components.length) {
+        <section class="gf-panel">
+          <h2 class="gf-panel-title"><mat-icon>health_and_safety</mat-icon> Checks</h2>
+          <p class="gf-panel-hint">
+            Everything behind the one word at the top. Anything not UP is listed first, because it
+            is why somebody opened this page.
+          </p>
+          <div class="gf-checks">
+            @for (component of health.components; track component.name) {
+              <div class="gf-check" [class.gf-check-bad]="component.status !== 'UP'">
+                <mat-icon>{{ component.status === 'UP' ? 'check_circle' : 'error' }}</mat-icon>
+                <div class="gf-check-body">
+                  <div class="gf-check-name">{{ component.name }}</div>
+                  <div class="gf-check-detail">{{ detail(component) }}</div>
+                </div>
+                <span class="gf-chip" [class.gf-chip-warn]="component.status !== 'UP'">
+                  {{ component.status }}
+                </span>
+              </div>
+            }
+          </div>
+        </section>
+      }
+    }
+  }
+
+  <!-- ============================================================================================
+       The crawler: is the work getting done.
+       ========================================================================================= -->
+  @if (view() === 'crawler') {
     <section class="gf-panel">
-      <h2 class="gf-panel-title"><mat-icon>hub</mat-icon> This node</h2>
-      <dl class="gf-defs">
-        <div><dt>Name</dt><dd>{{ status.node.nodeName }}</dd></div>
-        <div><dt>Address</dt><dd>{{ status.node.address }}</dd></div>
-        <div><dt>Leader</dt><dd>{{ status.node.leaderAddress || '--' }}</dd></div>
-        <div><dt>Members</dt><dd>{{ status.node.memberCount }}</dd></div>
-        <div><dt>Up for</dt><dd>{{ uptime() }}</dd></div>
-        <div><dt>Messages/s</dt><dd>{{ status.summary.totalTps | number: '1.0-1' }}</dd></div>
-        <div class="gf-defs-wide"><dt>Id</dt><dd class="gf-mono">{{ status.node.nodeId }}</dd></div>
-      </dl>
+      <h2 class="gf-panel-title">
+        <mat-icon>trending_up</mat-icon> Live
+        @if (running().length) {
+          <span class="gf-chip gf-chip-cat">
+            <span class="gf-running-dot"></span>
+            {{ running()[0].name }}
+          </span>
+        }
+      </h2>
+      <p class="gf-panel-hint">
+        Every catalog's counters added up, read every two seconds. The rate is the difference
+        between the last two readings, so it is what the cluster is doing now rather than an
+        average over the run.
+      </p>
+      <div class="gf-metric-row">
+        <div class="gf-metric">
+          <span class="gf-metric-value">
+            {{ pageRate() | number: '1.0-1' }}
+            @if (pageRate() > 0) {
+              <span class="gf-running-dot"></span>
+            }
+          </span>
+          <span class="gf-metric-label">pages / s</span>
+          <div class="gf-metric-chart">
+            <gf-sparkline [values]="pageHistory()" />
+          </div>
+        </div>
+        <div class="gf-metric">
+          <span class="gf-metric-value">{{ imageRate() | number: '1.0-1' }}</span>
+          <span class="gf-metric-label">images / s</span>
+          <div class="gf-metric-chart">
+            <gf-sparkline [values]="imageHistory()" />
+          </div>
+        </div>
+        <div class="gf-metric">
+          <span class="gf-metric-value">{{ crawlTotals().pages | number }}</span>
+          <span class="gf-metric-label">pages saved</span>
+        </div>
+        <div class="gf-metric">
+          <span class="gf-metric-value">{{ crawlTotals().images | number }}</span>
+          <span class="gf-metric-label">images saved</span>
+        </div>
+        <div class="gf-metric">
+          <span class="gf-metric-value">{{ crawlTotals().urls | number }}</span>
+          <span class="gf-metric-label">urls dispatched</span>
+        </div>
+      </div>
     </section>
 
     <section class="gf-panel">
-      <h2 class="gf-panel-title"><mat-icon>swap_horiz</mat-icon> Channels</h2>
-      <p class="gf-panel-hint">
-        One row per kind of message. The crawl channel carries urls, the replication channels
-        carry rows and files, the rest belong to the cluster itself.
-      </p>
-      @if (!channels().length) {
+      <h2 class="gf-panel-title"><mat-icon>list_alt</mat-icon> Catalogs</h2>
+      @if (!crawls().length) {
         <div class="gf-empty">
           <mat-icon>inbox</mat-icon>
-          <p>
-            Nothing has been sent yet. A channel appears here once it carries something, so an
-            idle node shows none &mdash; start a crawl and the crawl channel will be the first.
-          </p>
+          <p>Nothing has been set up yet.</p>
+        </div>
+      } @else {
+        <div class="gf-table-scroll">
+          <table class="gf-plan-table">
+            <thead>
+              <tr>
+                <th>Catalog</th>
+                <th>State</th>
+                <th class="text-right">Pages</th>
+                <th class="text-right">Images</th>
+                <th class="text-right">Urls</th>
+                <th class="text-right">Handled</th>
+                <th class="text-right">Writing</th>
+                <th class="text-right">Searchable</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (crawl of crawls(); track crawl.id) {
+                <tr>
+                  <td>{{ crawl.name }}</td>
+                  <td>
+                    @if (crawl.running) {
+                      <span class="gf-chip gf-chip-cat">
+                        <span class="gf-running-dot"></span> {{ crawl.runningState }}
+                      </span>
+                    } @else {
+                      <span class="gf-muted">idle</span>
+                    }
+                  </td>
+                  <td class="text-right">{{ crawl.savedResourceCount ?? 0 | number }}</td>
+                  <td class="text-right">{{ crawl.savedImageCount ?? 0 | number }}</td>
+                  <td class="text-right">{{ crawl.totalUrlCount ?? 0 | number }}</td>
+                  <td class="text-right">{{ crawl.handledUrlCount ?? 0 | number }}</td>
+                  <td class="text-right">v{{ crawl.indexVersion }}</td>
+                  <td class="text-right">
+                    {{ crawl.searchVersion >= 0 ? 'v' + crawl.searchVersion : '--' }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
         </div>
       }
-      <div class="gf-table-scroll" [hidden]="!channels().length">
-        <table class="gf-plan-table">
-          <thead>
-            <tr>
-              <th>Channel</th>
-              <th class="text-right">Sent</th>
-              <th class="text-right">Received</th>
-              <th class="text-right">Failed</th>
-              <th class="text-right">Dropped</th>
-              <th>Buffer</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (channel of channels(); track channel.channel) {
-              <tr [class.gf-plan-error]="(channel.buffer?.dropped ?? 0) > 0">
-                <td>
-                  {{ channel.channel }}
-                  @if (channel.systemChannel) {
-                    <span class="gf-muted">&nbsp;system</span>
-                  }
-                </td>
-                <td class="text-right">{{ channel.counters.sent | number }}</td>
-                <td class="text-right">{{ channel.counters.received | number }}</td>
-                <td class="text-right">
-                  {{ channel.counters.sendFailures + channel.counters.receiveFailures | number }}
-                </td>
-                <td class="text-right">{{ channel.buffer?.dropped ?? 0 | number }}</td>
-                <td>
-                  @if (channel.buffer) {
-                    <span
-                      class="gf-node-bar"
-                      [matTooltip]="channel.buffer.pending + ' of ' + channel.buffer.capacity"
-                    >
-                      <i [style.width.%]="bufferPercent(channel)"></i>
-                    </span>
-                  } @else {
-                    <span class="gf-muted">--</span>
-                  }
-                </td>
-              </tr>
+    </section>
+
+    <section class="gf-panel">
+      <h2 class="gf-panel-title">
+        <mat-icon>folder</mat-icon> Storage
+        <button
+          mat-icon-button
+          class="gf-panel-action"
+          (click)="measure()"
+          [disabled]="measuring()"
+          matTooltip="Walk the store again. Not polled: on MinIO this is a paged list call."
+          aria-label="Measure again"
+        >
+          <mat-icon>refresh</mat-icon>
+        </button>
+      </h2>
+      @if (measuring()) {
+        <mat-progress-bar mode="indeterminate" />
+      }
+      @if (storage(); as storage) {
+        <p class="gf-panel-hint">
+          Pages and images as they sit in <strong>{{ storage.target }}</strong>, across every
+          version that has not been pruned -- which is the number that fills a disk unnoticed.
+          Measured on demand, so it does not move on its own.
+        </p>
+        <div class="gf-stat-row">
+          <div class="gf-stat">
+            <span class="gf-stat-value">{{ storage.pageCount | number }}</span>
+            <span class="gf-stat-label">pages</span>
+          </div>
+          <div class="gf-stat">
+            <span class="gf-stat-value">{{ storage.imageCount | number }}</span>
+            <span class="gf-stat-label">images</span>
+          </div>
+          <div class="gf-stat">
+            <span class="gf-stat-value">{{ bytes(storage.bytes) }}</span>
+            <span class="gf-stat-label">on {{ storage.target }}</span>
+          </div>
+        </div>
+        @if (storageBars().length) {
+          <div class="gf-bars">
+            @for (row of storageBars(); track row.catalogId) {
+              <div class="gf-bar-row">
+                <span class="gf-bar-name">{{ row.catalogName }}</span>
+                <span
+                  class="gf-node-bar"
+                  [matTooltip]="row.pageCount + ' page(s), ' + row.imageCount + ' image(s)'"
+                >
+                  <i [style.width.%]="row.percent"></i>
+                </span>
+                <span class="gf-bar-value">{{ bytes(row.bytes) }}</span>
+                <span class="gf-bar-note">
+                  {{ row.pageCount | number }} pages &middot; {{ row.imageCount | number }} images
+                </span>
+              </div>
             }
-          </tbody>
-        </table>
-      </div>
+          </div>
+        }
+      } @else if (!measuring()) {
+        <p class="gf-panel-note">The store could not be measured.</p>
+      }
     </section>
   }
 </div>

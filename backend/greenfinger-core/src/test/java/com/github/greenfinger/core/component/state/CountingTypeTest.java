@@ -34,12 +34,28 @@ class CountingTypeTest {
     @Test
     @DisplayName("the stored ordinals are the ones 1.x wrote, so existing rows keep their meaning")
     void storedValuesAreStable() {
-        assertThat(CountingType.URL_TOTAL_COUNT.getValue()).isZero();
+        assertThat(CountingType.TOTAL_URL_COUNT.getValue()).isZero();
         assertThat(CountingType.INVALID_URL_COUNT.getValue()).isEqualTo(1);
         assertThat(CountingType.EXISTING_URL_COUNT.getValue()).isEqualTo(2);
         assertThat(CountingType.FILTERED_URL_COUNT.getValue()).isEqualTo(3);
         assertThat(CountingType.SAVED_RESOURCE_COUNT.getValue()).isEqualTo(4);
         assertThat(CountingType.INDEXED_RESOURCE_COUNT.getValue()).isEqualTo(5);
+        assertThat(CountingType.SAVED_IMAGE_COUNT.getValue()).isEqualTo(6);
+        assertThat(CountingType.DUPLICATED_CONTENT_COUNT.getValue()).isEqualTo(7);
+        assertThat(CountingType.HANDLED_URL_COUNT.getValue()).isEqualTo(8);
+        assertThat(CountingType.ABANDONED_URL_COUNT.getValue()).isEqualTo(9);
+        assertThat(CountingType.VECTORED_RESOURCE_COUNT.getValue()).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("the two outputs are counted apart: an index that works says nothing about vectors")
+    void indexAndVectorAreCountedApart() {
+        DefaultDashboard dashboard = new DefaultDashboard(CatalogFixtures.details());
+        dashboard.counterOf(CountingType.INDEXED_RESOURCE_COUNT).addAndGet(2);
+        dashboard.counterOf(CountingType.VECTORED_RESOURCE_COUNT).incrementAndGet();
+
+        assertThat(CountingType.INDEXED_RESOURCE_COUNT.getValue(dashboard)).isEqualTo(2);
+        assertThat(CountingType.VECTORED_RESOURCE_COUNT.getValue(dashboard)).isEqualTo(1);
     }
 
     @Test

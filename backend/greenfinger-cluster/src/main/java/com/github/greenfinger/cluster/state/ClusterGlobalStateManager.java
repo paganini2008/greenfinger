@@ -134,9 +134,9 @@ public class ClusterGlobalStateManager implements GlobalStateManager {
      */
     @Override
     public void flush() {
-        drain(CountingType.URL_TOTAL_COUNT);
+        drain(CountingType.TOTAL_URL_COUNT);
         for (CountingType countingType : CountingType.values()) {
-            if (countingType != CountingType.URL_TOTAL_COUNT
+            if (countingType != CountingType.TOTAL_URL_COUNT
                     && countingType != CountingType.HANDLED_URL_COUNT) {
                 drain(countingType);
             }
@@ -221,6 +221,12 @@ public class ClusterGlobalStateManager implements GlobalStateManager {
         // flush behind the flag that ends the crawl
         flushQuietly();
         dashboard.setCompleted(completed, reason, interrupted);
+    }
+
+    @Override
+    public void overrideAsUnproductive(String reason) {
+        flushQuietly();
+        dashboard.overrideAsUnproductive(reason);
     }
 
     /**

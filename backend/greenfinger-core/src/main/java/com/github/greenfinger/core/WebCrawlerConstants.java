@@ -66,17 +66,17 @@ public abstract class WebCrawlerConstants {
     public static final String CLASS_SELENIUM = "org.openqa.selenium.WebDriver";
 
     /**
-     * Which browser to fall back to when the configured one is not on the classpath, in the order
-     * tried.
+     * Which browser to reach for when the configured one is not on the classpath, best first.
      *
      * <p>
-     * HtmlUnit first, because it is the only one of the three that needs nothing installed: the
-     * engine is in the jar. Playwright downloads its own browsers on first use and Selenium drives
-     * one that has to already be on the machine, so either can be missing at runtime on a host
-     * where the dependency itself is present.
+     * Playwright leads because it renders what a real browser renders and reports the http status
+     * a page answered with. HtmlUnit comes next: its javascript engine is its own rather than a
+     * browser's, so it renders the simple cases and quietly fails the rest. Selenium is last
+     * because it cannot report a status at all -- WebDriver has no call for one -- so an error
+     * page reaches the crawl looking exactly like a real one.
      */
     public static final List<String> BROWSER_FALLBACK_ORDER =
-            List.of(ENGINE_HTMLUNIT, ENGINE_SELENIUM, ENGINE_PLAYWRIGHT);
+            List.of(ENGINE_PLAYWRIGHT, ENGINE_HTMLUNIT, ENGINE_SELENIUM);
 
     /**
      * The url dedup that ships. It is not the only one there can be: a catalog names its filter,

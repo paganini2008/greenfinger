@@ -23,6 +23,11 @@ import {
 import { AuthService } from '../../core/auth.service';
 import { NotifyService } from '../../core/notify.service';
 import { ConfirmDialog, ConfirmData } from '../../shared/confirm-dialog';
+import { Sparkline } from '../../shared/sparkline';
+
+/** How many samples the live charts keep, and how often they are taken while a run is live. */
+const HISTORY = 120;
+const POLL_MILLIS = 2000;
 
 /**
  * One catalog, watched: the counters of the run in flight, or of the last one.
@@ -46,6 +51,7 @@ import { ConfirmDialog, ConfirmData } from '../../shared/confirm-dialog';
     MatSelectModule,
     MatInputModule,
     MatDialogModule,
+    Sparkline,
   ],
   templateUrl: './monitor.html',
   styleUrl: './monitor.scss',
@@ -163,15 +169,90 @@ export class MonitorPage {
     return [
       { label: 'Pages saved', value: summary.savedResourceCount, icon: 'description', accent: true },
       { label: 'Images saved', value: summary.savedImageCount, icon: 'image' },
+      {
+        label: 'Pages indexed',
+        value: summary.indexedResourceCount ?? 0,
+        icon: 'manage_search',
+        hint: 'Pages handed to the search index. Zero whenever the index output is off.',
+      },
+      {
+        label: 'Pages vectorised',
+        value: summary.vectoredResourceCount ?? 0,
+        icon: 'auto_awesome',
+        hint: 'Pages handed to the vector store. Counted apart from the index, because either output can be off, behind or failing on its own.',
+      },
       { label: 'Urls dispatched', value: summary.totalUrlCount, icon: 'link' },
       { label: 'Urls handled', value: summary.handledUrlCount ?? 0, icon: 'task_alt' },
       { label: 'Already known', value: summary.existingUrlCount, icon: 'history' },
       { label: 'Filtered out', value: summary.filteredUrlCount, icon: 'filter_alt' },
       { label: 'Invalid', value: summary.invalidUrlCount, icon: 'link_off' },
       { label: 'Duplicate content', value: summary.duplicatedContentCount, icon: 'content_copy' },
+      {
+        label: 'Dropped at the limit',
+        value: summary.abandonedUrlCount ?? 0,
+        icon: 'do_not_disturb_on',
+        hint: 'Fetched, then dropped because maxFetchSize or the duration was reached first. They are still on the frontier, so a resume finishes them.',
+      },
       { label: 'Still queued', value: summary.remainingUrlCount, icon: 'pending' },
     ];
   });
+
+  /**
+   * Pages and images as they were on each poll, for the two live charts.
+   *
+   * The api reports running totals and keeps no history of its own, so this is the history: it
+   * begins when the page is opened and is lost when it is closed. That is the honest cost of not
+   * writing a time series for something almost nobody watches for more than a few minutes.
+   */
+  protected readonly pageHistory = signal<number[]>([]);
+  protected readonly imageHistory = signal<number[]>([]);
+
+  /** Pages a second, from the last two samples. See {@link pageHistory}. */
+  protected readonly pageRate = computed(() => {
+    const series = this.pageHistory();
+    if (series.length < 2) {
+      return 0;
+    }
+    // floored, because a rebuild restarts the count and a crawl never runs backwards
+    return Math.max(0, (series[series.length - 1] - series[series.length - 2]) / (POLL_MILLIS / 1000));
+  });
+
+  /**
+   * What became of every url this run has touched, as one bar.
+   *
+   * Seven numbers that are each printed above as a counter, drawn together because the counters
+   * answer "how many" and only the bar answers "out of what" -- a crawl that filtered out nine
+   * urls in ten is a scope problem, and nine separate numbers never say so.
+   */
+  protected readonly outcomes = computed(() => {
+    const summary = this.summary();
+    if (!summary) {
+      return [];
+    }
+    const parts = [
+      { label: 'Saved', value: summary.savedResourceCount ?? 0, tone: 'saved' },
+      { label: 'Duplicate', value: summary.duplicatedContentCount ?? 0, tone: 'duplicate' },
+      { label: 'Already known', value: summary.existingUrlCount ?? 0, tone: 'known' },
+      { label: 'Filtered out', value: summary.filteredUrlCount ?? 0, tone: 'filtered' },
+      { label: 'Invalid', value: summary.invalidUrlCount ?? 0, tone: 'invalid' },
+      { label: 'Dropped at the limit', value: summary.abandonedUrlCount ?? 0, tone: 'dropped' },
+      { label: 'Still queued', value: summary.remainingUrlCount ?? 0, tone: 'queued' },
+    ].filter((part) => part.value > 0);
+    const total = parts.reduce((sum, part) => sum + part.value, 0) || 1;
+    return parts.map((part) => ({ ...part, percent: (part.value / total) * 100 }));
+  });
+
+  /**
+   * The progress ring, as the stroke-dasharray of one circle.
+   *
+   * A ring rather than a fourth progress bar: the two bars above it are a race between two limits
+   * and are read against each other, while this is the single number the run is judged by.
+   */
+  protected readonly ringCircumference = 2 * Math.PI * 26;
+
+  protected readonly ringOffset = computed(
+    () => this.ringCircumference * (1 - Math.min(1, Math.max(0, this.summary()?.progress ?? 0))),
+  );
 
   protected readonly progressPercent = computed(() =>
     Math.round((this.summary()?.progress ?? 0) * 100),
@@ -201,7 +282,7 @@ export class MonitorPage {
     this.loadReports();
     // Two seconds while a crawl is live, ten when it is not: the page is often left open for an
     // hour, and a finished catalog does not change under it.
-    this.poll = interval(2000)
+    this.poll = interval(POLL_MILLIS)
       .pipe(
         startWith(0),
         switchMap(() => this.api.getSummary(this.ref())),
@@ -210,6 +291,7 @@ export class MonitorPage {
         next: (summary) => {
           const wasLive = this.summary()?.live;
           this.summary.set(summary);
+          this.remember(summary);
           this.loading.set(false);
           if (summary.live) {
             // it is running again, so whatever it writes when it stops is not read yet
@@ -229,6 +311,12 @@ export class MonitorPage {
           this.notify.failed(failure, 'Could not read the run');
         },
       });
+  }
+
+  /** One sample onto the end of each series, and the oldest off the front. */
+  private remember(summary: CatalogSummary): void {
+    this.pageHistory.update((series) => [...series, summary.savedResourceCount ?? 0].slice(-HISTORY));
+    this.imageHistory.update((series) => [...series, summary.savedImageCount ?? 0].slice(-HISTORY));
   }
 
   /** Read once, and again when a run ends: a report only appears after the crawl is over. */

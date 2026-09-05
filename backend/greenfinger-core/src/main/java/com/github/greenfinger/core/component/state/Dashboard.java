@@ -47,9 +47,15 @@ public interface Dashboard {
 
     long getIndexedResourceCount();
 
+    /** Pages handed to the vector store. Zero whenever the vector output is off. */
+    long getVectoredResourceCount();
+
     long getSavedImageCount();
 
     long getDuplicatedContentCount();
+
+    /** Urls dropped because a limit fired while they were in flight. See the counting type. */
+    long getAbandonedUrlCount();
 
     long getStartTime();
 

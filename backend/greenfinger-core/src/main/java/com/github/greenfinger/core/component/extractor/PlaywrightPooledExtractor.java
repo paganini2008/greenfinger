@@ -21,6 +21,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.pool2.BasePooledObjectFactory;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
+import org.springframework.http.HttpStatusCode;
 import com.github.greenfinger.core.WebCrawlerConstants;
 import com.github.greenfinger.core.WebCrawlerExtractorProperties;
 import com.github.greenfinger.core.catalog.CatalogDetails;
@@ -31,6 +32,7 @@ import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.BrowserType;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
+import com.microsoft.playwright.Response;
 import com.microsoft.playwright.options.Proxy;
 
 /**
@@ -77,7 +79,16 @@ public class PlaywrightPooledExtractor extends PooledExtractor<PlaywrightPooledE
         Page page = null;
         try {
             page = session.context.newPage();
-            page.navigate(url, new Page.NavigateOptions().setTimeout(config.getTimeout()));
+            Response response =
+                    page.navigate(url, new Page.NavigateOptions().setTimeout(config.getTimeout()));
+            // The browser renders an error page as willingly as a real one, so without this a 404
+            // is stored as content -- its navigation, its footer and the words "not found". The
+            // status is the one at the end of the redirect chain, which the browser follows on
+            // its own. Null means the navigation produced no response of its own, which is what
+            // an anchor-only navigation does; there is nothing to judge and the content stands.
+            if (response != null && !HttpStatusCode.valueOf(response.status()).is2xxSuccessful()) {
+                throw new ExtractorException(url, HttpStatusCode.valueOf(response.status()));
+            }
             if (config.getLoadingTimeout() > 0) {
                 ThreadUtils.sleep(config.getLoadingTimeout());
             }

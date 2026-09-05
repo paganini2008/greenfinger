@@ -300,7 +300,7 @@ class CommandsIntegrationTest {
         }
         try (ConsoleCapture console = new ConsoleCapture()) {
             catalogCommands.categories();
-            assertThat(console.output()).contains("default");
+            assertThat(console.output()).contains("other");
         }
     }
 

@@ -267,13 +267,13 @@ class ReplicatedStoresTest {
         Catalog catalog = new Catalog();
         catalog.setId("cat-1");
         catalog.setName("books");
-        catalog.setCat("default");
+        catalog.setCat("other");
         delegate.save(catalog);
         ReplicatedCatalogStore replicated = new ReplicatedCatalogStore(delegate, sink);
 
         assertThat(replicated.findByName("books")).isPresent();
         assertThat(replicated.findAll()).hasSize(1);
-        assertThat(replicated.findAllCategories()).containsExactly("default");
+        assertThat(replicated.findAllCategories()).containsExactly("other");
         assertThat(replicated.findRunning()).isEmpty();
         assertThat(replicated.getName()).startsWith("replicated:");
     }

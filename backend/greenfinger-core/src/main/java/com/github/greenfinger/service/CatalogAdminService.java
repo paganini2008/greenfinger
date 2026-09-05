@@ -17,6 +17,7 @@
 package com.github.greenfinger.service;
 
 import java.util.Date;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -30,6 +31,7 @@ import com.github.greenfinger.core.catalog.CatalogStore;
 import com.github.greenfinger.core.component.state.CountingType;
 import com.github.greenfinger.core.engine.CrawlRegistry;
 import com.github.greenfinger.core.model.Catalog;
+import com.github.greenfinger.core.model.Category;
 import com.github.greenfinger.core.model.ContentMode;
 import com.github.greenfinger.core.model.ExtractorType;
 import com.github.greenfinger.core.model.OutputType;
@@ -80,7 +82,7 @@ public class CatalogAdminService {
             catalog.setStartUrl(catalog.getUrl());
         }
         if (StringUtils.isBlank(catalog.getCat())) {
-            catalog.setCat("default");
+            catalog.setCat(Category.OTHER.getRepr());
         }
         if (StringUtils.isBlank(catalog.getPathPattern())) {
             catalog.setPathPattern(UrlPathPatterns.defaultPathPattern(catalog.getUrl()));
@@ -200,8 +202,16 @@ public class CatalogAdminService {
         return catalogStore.findAll();
     }
 
+    /**
+     * The categories that exist, which is now a fixed list rather than whatever has been typed.
+     *
+     * <p>
+     * It used to be {@code select distinct cat}, which answered a different question: what has
+     * been used so far. That is the wrong answer for the thing asking -- a picker offering only
+     * the values already in the table can never be used to choose a new one.
+     */
     public List<String> findAllCategories() {
-        return catalogStore.findAllCategories();
+        return Arrays.stream(Category.values()).map(Category::getRepr).toList();
     }
 
     public List<Catalog> findRunning() {

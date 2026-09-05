@@ -42,7 +42,7 @@ class CatalogDetailsImplTest {
         assertThat(details.getId()).isEqualTo(CatalogFixtures.CATALOG_ID);
         assertThat(details.getName()).isEqualTo("example");
         assertThat(details.getUrl()).isEqualTo("https://www.example.com");
-        assertThat(details.getCategory()).isEqualTo("test");
+        assertThat(details.getCategory()).isEqualTo("tech");
         assertThat(details.getMaxFetchSize()).isEqualTo(100);
         assertThat(details.getMaxFetchDepth()).isEqualTo(2);
     }

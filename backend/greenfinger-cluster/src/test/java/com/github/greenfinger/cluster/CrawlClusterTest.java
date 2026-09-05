@@ -295,7 +295,7 @@ class CrawlClusterTest {
      * A replay service that only records that it was asked to restore a version's files.
      */
     private ObjectProvider<ReplayService> replayThatRecords(List<String> restoredOn) {
-        ReplayService replayService = new ReplayService(null, null, null, null) {
+        ReplayService replayService = new ReplayService(null, null, null, null, null) {
 
             @Override
             public long replaySlice(String catalogId, int version, Set<OutputType> layers,

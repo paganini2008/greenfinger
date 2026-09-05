@@ -143,6 +143,20 @@ public class GreenfingerConfiguration {
 
     @ConditionalOnMissingBean
     @Bean
+    public StorageUsageService storageUsageService(OutputFactory outputFactory,
+            CatalogAdminService catalogAdminService) {
+        return new StorageUsageService(outputFactory, catalogAdminService);
+    }
+
+    @ConditionalOnMissingBean
+    @Bean
+    public RocksDbUsageService rocksDbUsageService(WebCrawlerProperties webCrawlerProperties,
+            CrawlRegistry crawlRegistry) {
+        return new RocksDbUsageService(webCrawlerProperties, crawlRegistry);
+    }
+
+    @ConditionalOnMissingBean
+    @Bean
     public CrawlReportService crawlReportService(OutputFactory outputFactory,
             CatalogDetailsService catalogDetailsService, CatalogAdminService catalogAdminService,
             CrawlReportStore crawlReportStore, ResourceRecordStore recordStore) {
@@ -154,8 +168,9 @@ public class GreenfingerConfiguration {
     @Bean
     public ReplayService replayService(OutputFactory outputFactory,
             ResourceRecordStore recordStore, CatalogDetailsService catalogDetailsService,
-            FileRestorer fileRestorer) {
-        return new ReplayService(outputFactory, recordStore, catalogDetailsService, fileRestorer);
+            FileRestorer fileRestorer, CatalogStore catalogStore) {
+        return new ReplayService(outputFactory, recordStore, catalogDetailsService, fileRestorer,
+                catalogStore);
     }
 
     @ConditionalOnMissingBean

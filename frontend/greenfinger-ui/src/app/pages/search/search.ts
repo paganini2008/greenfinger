@@ -1,5 +1,5 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -52,6 +52,22 @@ export class SearchPage {
   protected readonly keyword = signal('');
   protected readonly catalog = signal('');
   protected readonly catalogs = signal<Catalog[]>([]);
+
+  /**
+   * Whether anything on this installation is indexed at all.
+   *
+   * Without it "nothing matched" is the only thing an empty result can say, and it blames the
+   * query for a catalog that was never asked to write an index. The file output is always on and
+   * the index one is not, so a perfectly successful crawl can leave search with nothing to read.
+   */
+  protected readonly nothingIndexed = computed(
+    () =>
+      this.catalogs().length > 0 &&
+      !this.catalogs().some(
+        (catalog) =>
+          (catalog.searchVersion ?? -1) >= 0 && (catalog.outputTypes ?? []).includes('index'),
+      ),
+  );
 
   protected readonly searching = signal(false);
   protected readonly searched = signal(false);

@@ -10,10 +10,17 @@
 #
 # run-docker.sh is this in containers, and nothing else.
 #
-#     ./run-local.sh                 start what run.conf describes
+#     ./run-local.sh                 the nodes -- the api and nothing else
+#     ./run-local.sh all             the nodes and the front end, on 9700
 #     ./run-local.sh status          what is running
 #     ./run-local.sh stop            stop them all ('down' is the same thing)
 #     ./run-local.sh help            this
+#
+# The front end is a separate process on a port of its own, which is the shape it has in
+# run-docker.sh too: it serves the built page and spreads /v2 and /actuator across every node, so
+# a browser talks to the cluster rather than to whichever node somebody typed. It needs the build
+# (`npm run build:deploy` in frontend/greenfinger-ui) and node on the path; without either it says
+# so and the nodes come up anyway. GF_WEB=1 in run.conf makes it the default.
 #
 # How many nodes, on which ports, where the data goes: run.conf, beside this script. There are no
 # options -- the shape of a run belongs in a file you can read back later rather than in a line
@@ -89,14 +96,21 @@ load_settings() {
 load_settings
 
 COMMAND="start"
+# The front end is off unless asked for: a node serves the api, and the page is a separate thing
+# somebody may or may not want here. `all` turns it on, and GF_WEB=1 in run.conf makes that the
+# default for an installation that always wants both.
+WEB="${GF_WEB:-0}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     # down is stop: docker compose's word for it, and the one people reach for
     start|stop|down|status) COMMAND="$1"; shift ;;
+    # the front end as well, as its own process on its own port -- the shape run-docker.sh has,
+    # where it is its own container. Without it this starts nodes and nothing else.
+    all) COMMAND="start"; WEB=1; shift ;;
     help) sed -n '2,26p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *)
       echo "Unknown argument: $1" >&2
-      echo "This script takes a verb and nothing else: start, stop (down), status, help." >&2
+      echo "This script takes a verb and nothing else: start, all, stop (down), status, help." >&2
       echo "Everything else is in run.conf beside it." >&2
       exit 1
       ;;
@@ -105,6 +119,9 @@ done
 
 NODES="${GF_NODES:-1}"
 BASE_PORT="${GF_BASE_PORT:-50080}"
+WEB_PORT="${GF_WEB_PORT:-9700}"
+# The built app. npm run build:deploy in frontend/greenfinger-ui puts it here.
+WEB_STATIC="${GF_STATIC:-${SCRIPT_DIR}/docker/static}"
 DATA_ROOT="${GF_DATA_ROOT:-${SCRIPT_DIR}/data}"
 CLUSTER_HOSTS="${GF_CLUSTER_HOSTS:-}"
 # One directory for every launcher's log; the file name inside it says which process wrote it.
@@ -130,6 +147,7 @@ RUN_DIR="${LOG_DIR}"
 mkdir -p "${RUN_DIR}"
 
 node_pid_file() { echo "${RUN_DIR}/node-$1.pid"; }
+web_pid_file() { echo "${RUN_DIR}/web.pid"; }
 
 status() {
   local any=0
@@ -146,7 +164,18 @@ status() {
       rm -f "${pid_file}"
     fi
   done
-  [[ "${any}" -eq 1 ]] || echo "No greenfinger nodes running."
+  local web_pid
+  if [[ -e "$(web_pid_file)" ]]; then
+    web_pid="$(cat "$(web_pid_file)")"
+    if kill -0 "${web_pid}" 2>/dev/null; then
+      echo "web     pid ${web_pid}  running  http://localhost:${WEB_PORT}"
+      any=1
+    else
+      echo "web     pid ${web_pid}  gone"
+      rm -f "$(web_pid_file)"
+    fi
+  fi
+  [[ "${any}" -eq 1 ]] || echo "Nothing running."
 }
 
 stop_all() {
@@ -165,7 +194,14 @@ stop_all() {
   done
   # the locks go with them, so a restart is not refused by a node that is no longer there
   find "${SCRIPT_DIR}/data" -maxdepth 2 -name '.node.lock' -delete 2>/dev/null || true
-  echo "Stopped ${stopped} node(s)."
+  local web_stopped=""
+  if [[ -e "$(web_pid_file)" ]]; then
+    local web_pid
+    web_pid="$(cat "$(web_pid_file)")"
+    kill "${web_pid}" 2>/dev/null && web_stopped=" and the front end"
+    rm -f "$(web_pid_file)"
+  fi
+  echo "Stopped ${stopped} node(s)${web_stopped}."
 }
 
 case "${COMMAND}" in
@@ -244,6 +280,31 @@ if [[ "${NODES}" -gt 1 && -n "${GF_USER_DATA_DIR:-}" ]]; then
   exit 1
 fi
 
+# A token is signed by the node that issued it and checked by whichever node the next request
+# reaches. Without a shared secret each node generates its own, so signing in works -- one node
+# answered -- and the request after it is a 401 from a different node that has never seen that
+# signature. In a browser behind the front end, which spreads requests across all of them, that
+# looks like a login that failed for no reason.
+#
+# So one is made here and given to all of them. Kept in a file rather than made fresh each time,
+# because a new secret invalidates every token that is still in a browser: restarting the nodes
+# would silently sign everybody out. GF_TOKEN_SECRET in .env still wins, and is what a real
+# deployment sets -- this is for the machine you are sitting at.
+if [[ -z "${GF_TOKEN_SECRET:-}" ]]; then
+  SECRET_FILE="${DATA_ROOT}/.token-secret"
+  if [[ ! -s "${SECRET_FILE}" ]]; then
+    mkdir -p "${DATA_ROOT}"
+    if command -v openssl >/dev/null 2>&1; then
+      openssl rand -base64 48 > "${SECRET_FILE}"
+    else
+      head -c 36 /dev/urandom | base64 > "${SECRET_FILE}"
+    fi
+    chmod 600 "${SECRET_FILE}" 2>/dev/null || true
+    echo "Generated a signing secret for these nodes: ${SECRET_FILE}"
+  fi
+  export GF_TOKEN_SECRET="$(cat "${SECRET_FILE}")"
+fi
+
 echo "Starting ${NODES} node(s) from port ${BASE_PORT}."
 for ((i = 0; i < NODES; i++)); do
   port=$((BASE_PORT + i))
@@ -289,6 +350,84 @@ for ((i = 0; i < NODES; i++)); do
   echo "  ${node}  http://localhost:${port}  data ${data_dir}"
 done
 
+# ---- the front end ---------------------------------------------------------------------------
+#
+# Its own process on its own port, which is the shape run-docker.sh gives it as well: the page and
+# the api are two things, and a browser pointed at one node is talking to that node rather than to
+# the cluster. This one spreads its requests across all of them, so a token signed by any node is
+# accepted by whichever answers.
+#
+# The same server.js the container runs -- one file, no dependencies, node only.
+#
+# What was asked for is not always what happened: the page may have no build to serve, or no node
+# to run it with. Printing its address regardless sends somebody to a port nothing is listening on,
+# so the summary at the end goes by this rather than by GF_WEB.
+WEB_STARTED=0
+if [[ "${WEB}" == "1" ]]; then
+  # index.html rather than the directory: a build that failed part way, or a directory somebody
+  # made by hand, passes a test for the directory and then serves a blank page on 9700 with
+  # nothing to say why. The entry point is what "built" means.
+  if [[ ! -f "${WEB_STATIC}/index.html" ]]; then
+    echo >&2
+    if [[ -d "${WEB_STATIC}" ]]; then
+      echo "${WEB_STATIC} has no index.html, so there is no page to serve." >&2
+      echo "The directory is there but the build is not finished -- run it again." >&2
+    else
+      echo "No front end build at ${WEB_STATIC}, so the page is not being served." >&2
+    fi
+    echo "Build it with 'npm run build:deploy' in frontend/greenfinger-ui, or set GF_STATIC." >&2
+    echo "The nodes are up either way; the api is on http://localhost:${BASE_PORT}." >&2
+  elif ! command -v node >/dev/null 2>&1; then
+    echo >&2
+    echo "node is not on the path, so the front end cannot be started here." >&2
+    echo "The nodes are up; run-docker.sh serves the page without needing node installed." >&2
+  else
+    web_pid="$(cat "$(web_pid_file)" 2>/dev/null || true)"
+    if [[ -n "${web_pid}" ]] && kill -0 "${web_pid}" 2>/dev/null; then
+      echo >&2
+      echo "A front end is already running (pid ${web_pid}). Stop it first." >&2
+      exit 1
+    fi
+
+    # One address is enough: the front end asks it who else is in the cluster and forwards to all
+    # of them, refreshing every few seconds. Every node publishes its http port as cluster
+    # metadata, so a node started later joins the rotation on its own and a node that stops leaves
+    # it -- without this script listing them and without the front end being restarted.
+    #
+    # Every node is still listed here rather than only the first, because they are all seeds: the
+    # list is where discovery starts, and starting from a node that happens to be down is a front
+    # end that cannot find the cluster until it comes back.
+    #
+    # GF_UPSTREAMS overrides it, and GF_DISCOVER=0 makes whatever it says the whole list rather
+    # than a starting point -- which is what to reach for when the nodes are behind addresses they
+    # do not know they have, a port mapping or a tunnel, and the address they advertise to each
+    # other is not one this process can dial.
+    upstreams="${GF_UPSTREAMS:-}"
+    if [[ -z "${upstreams}" ]]; then
+      for ((i = 0; i < NODES; i++)); do
+        upstreams="${upstreams}${upstreams:+,}localhost:$((BASE_PORT + i))"
+      done
+    fi
+
+    # The api address the browser uses, written where the page reads it. Empty is right here --
+    # this server forwards /v2 itself, so the page and the api are one origin -- and
+    # GF_API_BASE_URL overrides it for an api reached at some other address.
+    printf 'window.__GF__ = { apiBaseUrl: "%s" };\n' "${GF_API_BASE_URL:-}" \
+        > "${WEB_STATIC}/env.js"
+
+    PORT="${WEB_PORT}" GF_STATIC="${WEB_STATIC}" GF_UPSTREAMS="${upstreams}" GF_DISCOVER="${GF_DISCOVER:-1}" \
+      nohup node "${SCRIPT_DIR}/docker/server.js" > "${LOG_DIR}/web.out" 2>&1 &
+    echo $! > "$(web_pid_file)"
+    WEB_STARTED=1
+    echo "  web     http://localhost:${WEB_PORT}  -> ${upstreams}"
+  fi
+fi
+
 echo
+if [[ "${WEB_STARTED}" == "1" ]]; then
+  echo "Open the app:      http://localhost:${WEB_PORT}"
+else
+  echo "The api:           http://localhost:${BASE_PORT}"
+fi
 echo "Watch them join:   tail -f ${LOG_DIR}/node-1.out | grep -i cluster"
 echo "Stop them:         ./run-local.sh stop"

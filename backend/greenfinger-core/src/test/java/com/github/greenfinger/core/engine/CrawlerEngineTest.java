@@ -33,6 +33,7 @@ import com.github.greenfinger.core.TestSite;
 import com.github.greenfinger.core.WebCrawlerExtractorProperties;
 import com.github.greenfinger.core.WebCrawlerProperties;
 import com.github.greenfinger.core.catalog.CatalogDetails;
+import com.github.greenfinger.core.component.state.Dashboard;
 import com.github.greenfinger.core.catalog.CatalogDetailsImpl;
 import com.github.greenfinger.core.component.DefaultWebCrawlerComponentFactory;
 import com.github.greenfinger.core.component.state.CountingType;
@@ -113,7 +114,7 @@ class CrawlerEngineTest {
         catalog.setId("0192f0c8-1234-7000-8000-0000000000bb");
         catalog.setName("test");
         catalog.setUrl(site.baseUrl());
-        catalog.setCat("test");
+        catalog.setCat("tech");
         catalog.setPathPattern(site.baseUrl() + "/**");
         catalog.setMaxFetchSize(maxFetchSize);
         catalog.setDepth(depth);
@@ -335,6 +336,174 @@ class CrawlerEngineTest {
     }
 
     @Test
+    @DisplayName("pages dropped because the limit fired are counted, not left unexplained")
+    void countsWhatTheLimitThrewAway() throws Exception {
+        // The dispatcher runs ahead of the workers, so when a limit fires there are pages already
+        // fetched and parsed with nowhere to go. They are dropped -- correctly, the limit is the
+        // limit -- but they used to be dropped in silence: not invalid, not duplicates, not
+        // filtered, just absent. The only sign was the gap between handled and saved, and a run
+        // reporting "36 handled, 1 saved" gave nobody a way to find out why.
+        site.html("/", "<html><head><title>Index</title></head><body>"
+                + "<p>An index linking to more pages than the limit will let through.</p>"
+                + "<a href='/a'>a</a><a href='/b'>b</a><a href='/c'>c</a>"
+                + "<a href='/d'>d</a><a href='/e'>e</a></body></html>");
+        for (String path : new String[] {"/a", "/b", "/c", "/d", "/e"}) {
+            site.html(path, "<html><head><title>Page " + path + "</title></head><body>"
+                    + "<p>Distinct words on page " + path + ", enough of them to be worth "
+                    + "keeping and not a duplicate of anything else here.</p></body></html>");
+        }
+
+        // one page saved, five more fetched behind it
+        CrawlerEngine.Result result = crawl(catalogDetails(1, 5));
+
+        Dashboard dashboard = result.getDashboard();
+        assertThat(dashboard.getSavedResourceCount()).isPositive();
+        assertThat(dashboard.getAbandonedUrlCount()).isPositive();
+        // the pages are still on the frontier, so a resume finishes them rather than losing them
+        assertThat(result.getRemaining()).isPositive();
+        // and none of them was miscounted as something it was not
+        assertThat(dashboard.getInvalidUrlCount()).isZero();
+        assertThat(dashboard.getFilteredUrlCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("a site whose robots.txt forbids everything is not crawled at all")
+    void doesNotCrawlASiteThatDisallowsEverything() throws Exception {
+        // The entry point used to be exempt from the acceptor chain, and the exemption was wrong
+        // in exactly the case that matters: every link on the page was refused, so the crawl
+        // fetched the one page the rules forbade most plainly, stored its text and its images,
+        // and published the result.
+        site.text("/robots.txt", "text/plain", "User-agent: *\nDisallow: /\n");
+        threePageSite();
+
+        CrawlerEngine.Result result = crawl(catalogDetails(1000, 5));
+
+        assertThat(outputChannel.getPages()).isEmpty();
+        assertThat(result.getDashboard().getTotalUrlCount()).isZero();
+        assertThat(result.getDashboard().isInterrupted()).isTrue();
+        assertThat(result.isSelfTerminated()).isFalse();
+        assertThat(result.getReason()).contains("entry point", "refused", "nothing is published");
+    }
+
+    @Test
+    @DisplayName("a robots.txt that allows the site is not in the way of anything")
+    void crawlsNormallyWhenRobotsAllows() throws Exception {
+        site.text("/robots.txt", "text/plain", "User-agent: *\nAllow: /\n");
+        threePageSite();
+
+        CrawlerEngine.Result result = crawl(catalogDetails(1000, 5));
+
+        assertThat(outputChannel.getPages()).hasSize(3);
+        assertThat(result.getDashboard().isInterrupted()).isFalse();
+    }
+
+    @Test
+    @DisplayName("a site that refuses everything ends the crawl instead of being asked all day")
+    void stopsWhenTheSiteRefusesEverything() throws Exception {
+        // Cloudflare in front of a whole domain answers every request a crawler can make with
+        // 403. Without this the crawl fetched nothing and sat there until fetchDuration ran out.
+        site.html("/", "<html><head><title>Index</title></head><body>"
+                + "<p>An index whose every link is behind the door that is shut.</p>"
+                + "<a href='/a'>a</a><a href='/b'>b</a><a href='/c'>c</a>"
+                + "<a href='/d'>d</a><a href='/e'>e</a></body></html>");
+        for (String path : new String[] {"/a", "/b", "/c", "/d", "/e"}) {
+            site.status(path, 403);
+        }
+        webCrawlerProperties.setMaxConsecutiveFailures(3);
+
+        CrawlerEngine.Result result = crawl(catalogDetails(1000, 5));
+
+        assertThat(result.getDashboard().isInterrupted()).isTrue();
+        assertThat(result.getReason()).contains("in a row", "403");
+        // interrupted is what stops the version being published: an empty crawl must not replace
+        // a good previous one
+        assertThat(result.getDashboard().getInvalidUrlCount()).isGreaterThanOrEqualTo(3);
+        // nothing behind the door was readable, so the index is all there is
+        assertThat(outputChannel.getPages()).extracting(CrawledPage::getTitle)
+                .containsExactly("Index");
+    }
+
+    @Test
+    @DisplayName("a crawl that read nothing publishes nothing, even with only one url to try")
+    void doesNotPublishWhenNoFetchEverSucceeded() throws Exception {
+        // A challenge in front of the whole domain: the seed is refused, so there are no links,
+        // so there is never a second request and no threshold to cross. The counters agree and
+        // the watchdog would call it a site that ran out of urls -- and publish an empty version
+        // over a good one.
+        site.status("/", 403);
+
+        CrawlerEngine.Result result = crawl(catalogDetails(1000, 5));
+
+        assertThat(result.getDashboard().isInterrupted()).isTrue();
+        assertThat(result.isSelfTerminated()).isFalse();
+        assertThat(result.getReason()).contains("not one of", "nothing is published");
+        assertThat(outputChannel.getPages()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("a refusal here and there is a private page, not a closed door")
+    void keepsCrawlingWhenOnlyOnePageRefuses() throws Exception {
+        site.html("/", "<html><head><title>Index</title></head><body>"
+                + "<p>An index with one members-only corner and two pages anyone may read.</p>"
+                + "<a href='/private'>private</a><a href='/a'>a</a>"
+                + "<a href='/b'>b</a></body></html>");
+        site.status("/private", 403);
+        site.html("/a", "<html><head><title>Page A</title></head><body>"
+                + "<p>Alpha content, distinct from anything else on this small test site.</p>"
+                + "</body></html>");
+        site.html("/b", "<html><head><title>Page B</title></head><body>"
+                + "<p>Bravo content, also distinct, so neither page is a duplicate.</p>"
+                + "</body></html>");
+        webCrawlerProperties.setMaxConsecutiveFailures(3);
+
+        CrawlerEngine.Result result = crawl(catalogDetails(1000, 5));
+
+        assertThat(result.getDashboard().isInterrupted()).isFalse();
+        assertThat(outputChannel.getPages()).extracting(CrawledPage::getTitle)
+                .containsExactlyInAnyOrder("Index", "Page A", "Page B");
+        assertThat(result.getDashboard().getInvalidUrlCount()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("a page that fails with an Error is reported, and the crawl still concludes")
+    void doesNotStrandAUrlWhoseWorkerHitAnError() throws Exception {
+        // An engine missing from the classpath arrives as NoClassDefFoundError, which is not an
+        // Exception. Uncaught, it left the url dispatched and never handled, and the crawl idled
+        // until the watchdog called it stalled -- with not one line in the log to say why.
+        threePageSite();
+        AtomicInteger errorsLeft = new AtomicInteger(1);
+
+        CrawlerEngine.Result result = crawl(catalogDetails(1000, 5), failsWithAnError(errorsLeft));
+
+        assertThat(errorsLeft.get()).isZero();
+        assertThat(result.getFailures()).isEqualTo(1);
+        // every dispatch answered for, so the crawl ends on its own rather than being given up on
+        assertThat(result.getDashboard().getHandledUrlCount())
+                .isGreaterThanOrEqualTo(result.getDashboard().getTotalUrlCount());
+        assertThat(result.getOutstanding()).isZero();
+        assertThat(result.getReason()).contains("exhausted");
+        // the two that did not hit it are still crawled
+        assertThat(outputChannel.getPages()).hasSize(2);
+    }
+
+    /** A store that throws an Error rather than an Exception, once. */
+    private ResourceRecordStore failsWithAnError(AtomicInteger errorsLeft) {
+        return (ResourceRecordStore) java.lang.reflect.Proxy.newProxyInstance(
+                ResourceRecordStore.class.getClassLoader(),
+                new Class<?>[] {ResourceRecordStore.class}, (proxy, method, args) -> {
+                    if ("save".equals(method.getName())
+                            && errorsLeft.getAndUpdate(n -> Math.max(0, n - 1)) > 0) {
+                        throw new NoClassDefFoundError("com/example/AnEngineThatIsNotPackaged");
+                    }
+                    try {
+                        return method.invoke(recordStore, args);
+                    } catch (java.lang.reflect.InvocationTargetException e) {
+                        throw e.getCause();
+                    }
+                });
+    }
+
+    @Test
     @DisplayName("the extracted text is carried on the page, not left in the html")
     void extractsTextOnce() throws Exception {
         threePageSite();
@@ -345,7 +514,7 @@ class CrawlerEngineTest {
         assertThat(page.getHtml()).contains("<title>Page A</title>");
         assertThat(page.getContentHash()).isNotBlank();
         assertThat(page.getCatalogName()).isEqualTo("test");
-        assertThat(page.getCat()).isEqualTo("test");
+        assertThat(page.getCat()).isEqualTo("tech");
     }
 
 

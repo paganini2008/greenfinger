@@ -41,3 +41,6 @@ Thumbs.db
 
 # Angular workspace: node_modules/ dist/ .angular/ above already match at any depth
 greenfinger-ui/out-tsc/
+
+#Other
+change_logs

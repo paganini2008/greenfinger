@@ -26,6 +26,7 @@ import org.htmlunit.Page;
 import org.htmlunit.ProxyConfig;
 import org.htmlunit.WebClient;
 import org.htmlunit.html.HtmlPage;
+import org.springframework.http.HttpStatusCode;
 import com.github.greenfinger.core.WebCrawlerConstants;
 import com.github.greenfinger.core.WebCrawlerExtractorProperties;
 import com.github.greenfinger.core.catalog.CatalogDetails;
@@ -78,6 +79,13 @@ public class HtmlUnitPooledExtractor extends PooledExtractor<WebClient> {
         WebClient webClient = objectPool.borrowObject();
         try {
             Page page = webClient.getPage(url);
+            // Same reason as the other engines: a browser renders a 404 as readily as a page, and
+            // stored, that error page becomes a row nothing marks as one. HtmlUnit follows
+            // redirects itself, so this is the status the chain ended on.
+            int status = page.getWebResponse().getStatusCode();
+            if (!HttpStatusCode.valueOf(status).is2xxSuccessful()) {
+                throw new ExtractorException(url, HttpStatusCode.valueOf(status));
+            }
             if (config.isJavaScriptEnabled()) {
                 webClient.waitForBackgroundJavaScript(config.getJavaScriptTimeout());
             }

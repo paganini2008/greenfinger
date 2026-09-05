@@ -33,6 +33,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
+import com.github.greenfinger.core.catalog.CatalogStore;
 import com.github.greenfinger.core.model.Catalog;
 import com.github.greenfinger.core.model.OutputType;
 
@@ -91,6 +92,9 @@ class ReplayServiceIntegrationTest {
 
     @Autowired
     private ReplayService replayService;
+
+    @Autowired
+    private CatalogStore catalogStore;
 
     private LocalSite site;
 
@@ -153,6 +157,43 @@ class ReplayServiceIntegrationTest {
                 .anyMatch(r -> r.startsWith("POST /greenfinger-" + catalog.getId() + "/_bulk"));
         // nothing was fetched again: the input came from what was already stored
         assertThat(site.requestCount()).isEqualTo(before);
+    }
+
+    @Test
+    @DisplayName("a version that was never published becomes searchable once it is replayed")
+    void aReplayPublishesTheVersionItRebuilt() throws Exception {
+        Catalog catalog = crawled("rep-publish");
+        // what a catalog looks like when the node that was going to publish it went away between
+        // the last page and the publish: every row and every file is there, and search skips it
+        catalogAdminService.require(catalog.getId());
+        catalogStore.resetVersions(catalog.getId());
+        assertThat(catalogAdminService.require(catalog.getId()).getSearchVersion()).isEqualTo(-1);
+
+        replayService.replay(catalog.getId(), 0, Set.of(OutputType.INDEX));
+
+        assertThat(catalogAdminService.require(catalog.getId()).getSearchVersion()).isZero();
+    }
+
+    @Test
+    @DisplayName("replaying an older version never demotes the one search is already serving")
+    void aReplayNeverPublishesBackwards() throws Exception {
+        Catalog catalog = crawled("rep-no-demote");
+        catalogStore.publishSearchVersion(catalog.getId(), 3);
+
+        replayService.replay(catalog.getId(), 0, Set.of(OutputType.INDEX));
+
+        assertThat(catalogAdminService.require(catalog.getId()).getSearchVersion()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("a replay of the files alone changes nothing about what search is serving")
+    void restoringFilesDoesNotPublishAnything() throws Exception {
+        Catalog catalog = crawled("rep-files-only");
+        catalogStore.resetVersions(catalog.getId());
+
+        replayService.replay(catalog.getId(), 0, Set.of(OutputType.FILE));
+
+        assertThat(catalogAdminService.require(catalog.getId()).getSearchVersion()).isEqualTo(-1);
     }
 
     @Test

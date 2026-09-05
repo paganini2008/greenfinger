@@ -155,7 +155,7 @@ class ClusterReplayServiceTest {
         private boolean ranWholeThingLocally;
 
         Replay(ProcessingPool pool, long pages) {
-            super(null, new CountingStore(pages), null, null, pool, "clusterReplayService");
+            super(null, new CountingStore(pages), null, null, null, pool, "clusterReplayService");
             this.pages = pages;
         }
 

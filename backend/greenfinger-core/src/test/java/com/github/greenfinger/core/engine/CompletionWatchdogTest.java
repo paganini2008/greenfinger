@@ -154,7 +154,7 @@ class CompletionWatchdogTest {
         DefaultWebCrawlerExecutionContext context = contextOf(details, state);
         context.afterPropertiesSet();
         try {
-            state.incrementCount(0L, CountingType.URL_TOTAL_COUNT, 12);
+            state.incrementCount(0L, CountingType.TOTAL_URL_COUNT, 12);
             state.incrementCount(0L, CountingType.HANDLED_URL_COUNT, 12);
 
             // still moving: nothing is decided while the counters are alive
@@ -180,7 +180,7 @@ class CompletionWatchdogTest {
         DefaultWebCrawlerExecutionContext context = contextOf(details, state);
         context.afterPropertiesSet();
         try {
-            state.incrementCount(0L, CountingType.URL_TOTAL_COUNT, 40);
+            state.incrementCount(0L, CountingType.TOTAL_URL_COUNT, 40);
             state.incrementCount(0L, CountingType.HANDLED_URL_COUNT, 31);
             state.idle = true;
 

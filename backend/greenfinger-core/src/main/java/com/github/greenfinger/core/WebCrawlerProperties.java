@@ -40,7 +40,7 @@ public class WebCrawlerProperties {
     private int defaultMaxFetchSize = 10000;
     private int defaultMaxFetchDepth = -1;
     /** Minutes. Long enough to be useful, short enough that a first run cannot run away. */
-    private long defaultFetchDuration = 30L;
+    private long defaultFetchDuration = 10L;
     /** One retry: a transient network blip is common, a broken page is not worth chasing. */
     private int defaultMaxRetryCount = 1;
     private long defaultFetchInterval = 1000L;
@@ -115,6 +115,25 @@ public class WebCrawlerProperties {
      * had in the same place.
      */
     private Duration idleTimeout = Duration.ofMinutes(2);
+
+    /**
+     * How many failed fetches in a row end the crawl, or 0 to never end it on that alone.
+     *
+     * <p>
+     * A fetch that did not come back as a page counts, whatever the reason: anything outside 2xx
+     * and 3xx, and the requests that never got a status at all. A site is entitled to say no, and
+     * some say it to everything -- a challenge in front of the whole domain answers 403 to every
+     * request a crawler can make, so the crawl fetches nothing, learns nothing, and keeps asking
+     * until {@code fetchDuration} runs out. A host that has gone away looks the same from here.
+     *
+     * <p>
+     * In a row, not in total, and reset by the first page that comes back: a members-only corner
+     * of an otherwise open site is a handful of 403s scattered among successes and must not end
+     * anything, while a door closed to the whole site gives an unbroken run of them. The duration
+     * timeout remains the backstop underneath -- this only decides how much sooner it is obvious,
+     * and it ends the crawl the way a person asking for it does, so nothing is published.
+     */
+    private int maxConsecutiveFailures = 20;
 
 
     private Dedup dedup = new Dedup();

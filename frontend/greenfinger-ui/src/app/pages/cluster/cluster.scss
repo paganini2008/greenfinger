@@ -1,24 +1,4 @@
-.gf-mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.85em;
-}
-
 /* a wide table on a narrow screen scrolls inside its own box rather than moving the page */
 .gf-table-scroll {
   overflow-x: auto;
-}
-
-.gf-node-bar {
-  display: block;
-  width: 6rem;
-  height: 0.5rem;
-  border-radius: 999px;
-  background: light-dark(rgb(232 236 232), rgb(48 54 49));
-}
-
-.gf-node-bar i {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: light-dark(rgb(88 156 102), rgb(118 176 130));
 }

@@ -27,7 +27,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import org.apache.commons.lang3.StringUtils;
+import com.github.greenfinger.core.WebCrawlerConstants;
 import crawlercommons.filters.basic.BasicURLNormalizer;
 import lombok.experimental.UtilityClass;
 
@@ -132,14 +134,38 @@ public class UrlUtils {
         return context.toURI().resolve(spec).toURL();
     }
 
+    /**
+     * The side requests -- robots.txt and the sitemaps -- as opposed to the pages themselves.
+     *
+     * It identifies itself. Left to itself {@link URLConnection} sends {@code Java/17.0.2} as the
+     * user agent, and a number of large sites answer that with 403 before looking at the path --
+     * Wikimedia among them. That produced the worst possible failure: robots.txt came back
+     * unreadable, {@link com.github.greenfinger.core.component.acceptor.RobotRuleUrlPathAcceptor}
+     * fell back to "no rules" as the protocol says it should for an absent file, and the crawl went
+     * ahead ignoring rules the site was publishing all along. The one request that decides whether
+     * we are allowed to crawl has to be the one that introduces itself properly.
+     *
+     * The agent is one of the same {@link WebCrawlerConstants#USER_AGENTS} the extractors send, so
+     * a site sees one client rather than a browser asking for pages and something else asking for
+     * the rules -- and so the rules that come back are the rules that apply to us.
+     */
     public InputStream openStream(URL url, int connectTimeout, int readTimeout) throws IOException {
         URLConnection connection = url.openConnection();
         connection.setConnectTimeout(connectTimeout);
         connection.setReadTimeout(readTimeout);
+        connection.setRequestProperty("User-Agent", randomUserAgent());
+        connection.setRequestProperty("Accept", "text/plain,text/xml,application/xml,*/*;q=0.8");
+        connection.setRequestProperty("Accept-Language", "en-US,en;q=0.9");
         if (connection instanceof HttpURLConnection) {
             ((HttpURLConnection) connection).setInstanceFollowRedirects(true);
         }
         return connection.getInputStream();
+    }
+
+    /** One of the pool, so a site is not handed the same string by every node at once. */
+    public String randomUserAgent() {
+        List<String> agents = WebCrawlerConstants.USER_AGENTS;
+        return agents.get(ThreadLocalRandom.current().nextInt(agents.size()));
     }
 
     /**

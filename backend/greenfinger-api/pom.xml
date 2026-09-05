@@ -102,7 +102,12 @@
       <artifactId>ojdbc11</artifactId>
       <scope>runtime</scope>
     </dependency>
-    <!-- htmlunit is the only engine that needs nothing installed, so adaptive works out of the box -->
+    <!--
+      Every extractor engine ships, so any of them can be named on a catalog without
+      installing anything first. Playwright's driver-bundle is most of the jar's size and
+      is the price of that: an engine left out is not a smaller download, it is a catalog
+      that fails at the first url with a NoClassDefFoundError.
+    -->
     <dependency>
       <groupId>org.htmlunit</groupId>
       <artifactId>htmlunit</artifactId>
@@ -110,17 +115,14 @@
     <dependency>
       <groupId>com.microsoft.playwright</groupId>
       <artifactId>playwright</artifactId>
-      <optional>true</optional>
     </dependency>
     <dependency>
       <groupId>org.seleniumhq.selenium</groupId>
       <artifactId>selenium-java</artifactId>
-      <optional>true</optional>
     </dependency>
     <dependency>
       <groupId>io.github.bonigarcia</groupId>
       <artifactId>webdrivermanager</artifactId>
-      <optional>true</optional>
     </dependency>
 
     <dependency>

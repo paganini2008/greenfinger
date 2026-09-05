@@ -43,6 +43,18 @@
       </mat-menu>
     </mat-toolbar>
 
+    @if (running().length) {
+      <div class="gf-running-banner">
+        <span class="gf-running-dot"></span>
+        <span class="gf-running-text">
+          Crawling <strong>{{ runningName() }}</strong
+          >. One crawl runs at a time across the whole cluster, so nothing else can be started
+          until it finishes or is stopped.
+        </span>
+        <a mat-button [routerLink]="['/catalogs', runningName(), 'monitor']">Watch it</a>
+      </div>
+    }
+
     <mat-sidenav-container class="min-h-0 flex-1">
       <mat-sidenav mode="side" [opened]="sidenavOpen()" class="gf-sidenav">
         <mat-nav-list>
@@ -60,9 +72,13 @@
               <span matListItemTitle>New catalog</span>
             </a>
           }
+          <a mat-list-item routerLink="/resources" routerLinkActive="gf-active">
+            <mat-icon matListItemIcon>inventory_2</mat-icon>
+            <span matListItemTitle>Resources</span>
+          </a>
           <a mat-list-item routerLink="/cluster" routerLinkActive="gf-active">
-            <mat-icon matListItemIcon>hub</mat-icon>
-            <span matListItemTitle>Cluster</span>
+            <mat-icon matListItemIcon>monitor_heart</mat-icon>
+            <span matListItemTitle>System health</span>
           </a>
           <a mat-list-item routerLink="/about" routerLinkActive="gf-active">
             <mat-icon matListItemIcon>info</mat-icon>

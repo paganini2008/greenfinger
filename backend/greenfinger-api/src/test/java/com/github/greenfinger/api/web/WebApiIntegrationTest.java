@@ -31,6 +31,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.greenfinger.core.model.Category;
 import com.github.greenfinger.core.model.Catalog;
 import com.github.greenfinger.service.CatalogAdminService;
 
@@ -122,8 +123,13 @@ class WebApiIntegrationTest {
     void listsCategories() throws Exception {
         saved("epsilon");
 
+        // the fixed list the enum defines, in its own order, rather than whatever has been saved:
+        // a picker fed by distinct values can never be used to choose one nobody has used yet
         mockMvc.perform(get("/v2/catalog/cats")).andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0]").value("default"));
+                .andExpect(jsonPath("$.data[0]").value("news"))
+                .andExpect(jsonPath("$.data.length()").value(Category.values().length))
+                .andExpect(jsonPath("$.data[" + (Category.values().length - 1) + "]")
+                        .value("other"));
     }
 
     @Test

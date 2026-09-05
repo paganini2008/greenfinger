@@ -32,6 +32,7 @@ import com.github.greenfinger.core.WebCrawlerProperties;
 import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.core.catalog.CatalogDetailsService;
 import com.github.greenfinger.core.model.Catalog;
+import com.github.greenfinger.core.model.Category;
 import com.github.greenfinger.core.model.ContentMode;
 import com.github.greenfinger.core.model.ExtractorType;
 import com.github.greenfinger.core.model.OutputType;
@@ -265,7 +266,7 @@ public class CatalogCommands {
                 StringUtils.defaultIfBlank(catalog.getName(),
                         UrlUtils.getDomainName(catalog.getUrl())),
                 true));
-        catalog.setCat(interview.text("cat", "your own label", catalog.getCat(), false));
+        catalog.setCat(interview.category(catalog.getCategoryType()).getRepr());
         catalog.setStartUrl(interview.text("start-url",
                 "seed, and the prefix everything crawled stays under",
                 StringUtils.defaultIfBlank(catalog.getStartUrl(), catalog.getUrl()), true));
@@ -331,7 +332,7 @@ public class CatalogCommands {
      */
     private Catalog blank() {
         Catalog catalog = new Catalog();
-        catalog.setCat("default");
+        catalog.setCat(Category.OTHER.getRepr());
         catalog.setPageEncoding(webCrawlerProperties.getDefaultPageEncoding());
         catalog.setExtractorType(ExtractorType.of(webCrawlerProperties.getDefaultExtractor()));
         catalog.setMaxFetchSize(webCrawlerProperties.getDefaultMaxFetchSize());

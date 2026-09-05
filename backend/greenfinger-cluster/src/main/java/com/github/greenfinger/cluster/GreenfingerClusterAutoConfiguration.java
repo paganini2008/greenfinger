@@ -229,13 +229,13 @@ public class GreenfingerClusterAutoConfiguration {
     @ConditionalOnBean(ProcessingPool.class)
     public ReplayService clusterReplayService(OutputFactory outputFactory,
             ResourceRecordStore recordStore, CatalogDetailsService catalogDetailsService,
-            FileRestorer fileRestorer,
+            FileRestorer fileRestorer, CatalogStore catalogStore,
             // the plain method-dispatch pool, not the fork/join one: what travels here is a
             // range of pages, and splitting a range further would only add round trips
             @Qualifier("defaultProcessingPool") ProcessingPool pool,
             ObjectProvider<CrawlCluster> crawlCluster) {
         ClusterReplayService replayService = new ClusterReplayService(outputFactory, recordStore,
-                catalogDetailsService, fileRestorer, pool, "clusterReplayService");
+                catalogDetailsService, fileRestorer, catalogStore, pool, "clusterReplayService");
         // late, and through a provider: the cluster is a bean that depends on this one
         replayService.setAnnouncer((catalogId, version) -> crawlCluster.getObject()
                 .announceRestoreFiles(catalogId, version));

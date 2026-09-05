@@ -47,8 +47,10 @@ public class DefaultDashboard implements Dashboard, ManagedBeanLifeCycle {
     final AtomicLong filteredUrlCount = new AtomicLong(0);
     final AtomicLong savedResourceCount = new AtomicLong(0);
     final AtomicLong indexedResourceCount = new AtomicLong(0);
+    final AtomicLong vectoredResourceCount = new AtomicLong(0);
     final AtomicLong savedImageCount = new AtomicLong(0);
     final AtomicLong duplicatedContentCount = new AtomicLong(0);
+    final AtomicLong abandonedUrlCount = new AtomicLong(0);
 
     final AtomicBoolean completed = new AtomicBoolean(false);
     volatile String completionReason;
@@ -78,14 +80,16 @@ public class DefaultDashboard implements Dashboard, ManagedBeanLifeCycle {
         filteredUrlCount.set(0);
         savedResourceCount.set(0);
         indexedResourceCount.set(0);
+        vectoredResourceCount.set(0);
         savedImageCount.set(0);
         duplicatedContentCount.set(0);
+        abandonedUrlCount.set(0);
         elapsed.clear();
     }
 
     AtomicLong counterOf(CountingType countingType) {
         switch (countingType) {
-            case URL_TOTAL_COUNT:
+            case TOTAL_URL_COUNT:
                 return totalUrlCount;
             case HANDLED_URL_COUNT:
                 return handledUrlCount;
@@ -99,10 +103,14 @@ public class DefaultDashboard implements Dashboard, ManagedBeanLifeCycle {
                 return savedResourceCount;
             case INDEXED_RESOURCE_COUNT:
                 return indexedResourceCount;
+            case VECTORED_RESOURCE_COUNT:
+                return vectoredResourceCount;
             case SAVED_IMAGE_COUNT:
                 return savedImageCount;
             case DUPLICATED_CONTENT_COUNT:
                 return duplicatedContentCount;
+            case ABANDONED_URL_COUNT:
+                return abandonedUrlCount;
             default:
                 throw new UnsupportedOperationException(
                         "Unknown incremental counting type: " + countingType);
@@ -140,6 +148,11 @@ public class DefaultDashboard implements Dashboard, ManagedBeanLifeCycle {
     }
 
     @Override
+    public long getVectoredResourceCount() {
+        return vectoredResourceCount.get();
+    }
+
+    @Override
     public long getIndexedResourceCount() {
         return indexedResourceCount.get();
     }
@@ -152,6 +165,11 @@ public class DefaultDashboard implements Dashboard, ManagedBeanLifeCycle {
     @Override
     public long getDuplicatedContentCount() {
         return duplicatedContentCount.get();
+    }
+
+    @Override
+    public long getAbandonedUrlCount() {
+        return abandonedUrlCount.get();
     }
 
     @Override

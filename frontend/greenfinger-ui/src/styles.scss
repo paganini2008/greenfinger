@@ -9,6 +9,11 @@
 
 html {
   height: 100%;
+  // 17px rather than the browser's 16. The pages are dense -- tables of counters, lists of urls
+  // -- and dense is what makes small type unreadable rather than merely small. Set here rather
+  // than per class so the paddings, which are all in rem, grow with the text instead of leaving
+  // larger words in the same cramped boxes.
+  font-size: 106.25%;
   // Both, so mat.theme() emits its tokens as light-dark() pairs and the browser follows the
   // operating system when nobody has chosen. The two rules below are the choosing.
   color-scheme: light dark;
@@ -39,7 +44,7 @@ body {
   height: 100%;
   background-color: var(--mat-sys-surface);
   color: var(--mat-sys-on-surface);
-  font: var(--mat-sys-body-medium);
+  font: var(--mat-sys-body-large);
 }
 
 // The few tokens the pages reach for, named once here rather than repeated as hex values.
@@ -166,7 +171,7 @@ body {
 }
 
 .gf-eyebrow {
-  font-size: 0.6875rem;
+  font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -225,7 +230,7 @@ body {
 }
 
 .gf-stat-label {
-  font-size: 0.6875rem;
+  font-size: 0.8rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   opacity: 0.75;
@@ -265,7 +270,7 @@ body {
   color: var(--gf-muted);
   border-radius: 999px;
   padding: 0.3rem 0.85rem;
-  font-size: 0.8125rem;
+  font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
   transition:
@@ -371,7 +376,7 @@ body {
 }
 
 .gf-tile-url {
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   color: var(--gf-muted);
 }
 
@@ -396,7 +401,7 @@ body {
   gap: 0.2rem;
   border-radius: 999px;
   padding: 0.1rem 0.55rem;
-  font-size: 0.6875rem;
+  font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.02em;
   background: var(--gf-surface-container);
@@ -455,7 +460,7 @@ body {
 
 .gf-tile-cap {
   display: block;
-  font-size: 0.625rem;
+  font-size: 0.78rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--gf-muted);
@@ -477,7 +482,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
 }
 
 .gf-live-verb {
@@ -568,7 +573,573 @@ body {
   align-items: flex-start;
   padding: 0.85rem 1rem;
   border-radius: 0.875rem;
-  font-size: 0.8125rem;
+  font-size: 0.9rem;
   background: var(--mat-sys-tertiary-container);
   color: var(--mat-sys-on-tertiary-container);
+}
+
+// A plain table, for the places where the data really is rows and columns of the same shape:
+// storage per catalog, and the three stores a crawl keeps. Material's table brings a datasource
+// and sorting with it, and neither of those is wanted for eight rows that never change.
+.gf-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.75rem;
+  font: var(--mat-sys-body-large);
+
+  th,
+  td {
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid var(--gf-outline);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  th {
+    color: var(--gf-muted);
+    font: var(--mat-sys-label-large);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+}
+
+// Numbers align on their right edge or they cannot be compared at a glance, which is the only
+// reason to put them in a column.
+.gf-num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.gf-panel-note {
+  margin: 0 0 0.5rem;
+  color: var(--gf-muted);
+  font: var(--mat-sys-body-medium);
+}
+
+// Pushed to the right of the panel heading it belongs to.
+.gf-panel-action {
+  margin-left: auto;
+}
+
+.gf-checks {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.gf-check {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--gf-outline);
+  border-radius: 0.6rem;
+
+  > mat-icon {
+    flex: 0 0 auto;
+    color: var(--gf-green);
+  }
+
+  &.gf-check-bad {
+    border-color: var(--mat-sys-error);
+
+    > mat-icon {
+      color: var(--mat-sys-error);
+    }
+  }
+}
+
+.gf-check-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.gf-check-name {
+  font: var(--mat-sys-title-small);
+}
+
+// Each check invents its own keys, so this is a line of key=value rather than a pretend table.
+.gf-check-detail {
+  color: var(--gf-muted);
+  font: var(--mat-sys-body-medium);
+  overflow-wrap: anywhere;
+}
+
+// A select option that carries an explanation under its label. Material sizes options for one
+// line, so the height has to be given back or the second line is clipped.
+.mat-mdc-option:has(.gf-option-hint) {
+  height: auto;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+
+  .mdc-list-item__primary-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+}
+
+.gf-option-label {
+  font: var(--mat-sys-body-large);
+  line-height: 1.3;
+}
+
+.gf-option-hint {
+  color: var(--gf-muted);
+  font: var(--mat-sys-body-medium);
+  line-height: 1.3;
+  white-space: normal;
+}
+
+// ================================================================================================
+// Panels, tables and definition lists.
+//
+// These were each written once inside the page that first needed them, which is how the cluster
+// page ended up drawing a definition list and a table of channels with no styling at all: the
+// rules existed, in monitor.scss, behind Angular's view encapsulation where no other page could
+// reach them. Shared furniture belongs in the one stylesheet every page already loads. Anything
+// still living in a page's own .scss is genuinely that page's.
+// ================================================================================================
+
+// The white counterpart of the hero: everything that is not the one bold surface sits in one of
+// these. The shadow is barely there on purpose -- a page carries six or seven panels, and a
+// shadow strong enough to admire on one is noise on seven.
+.gf-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem 1.35rem;
+  border-radius: 1rem;
+  border: 1px solid var(--gf-outline);
+  background: var(--gf-surface);
+  box-shadow: 0 1px 2px -1px color-mix(in srgb, var(--gf-green) 22%, transparent);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--gf-green) 22%, var(--gf-outline));
+    box-shadow: 0 10px 26px -20px color-mix(in srgb, var(--gf-green) 75%, transparent);
+  }
+}
+
+// The icon sits in a tinted square rather than loose beside the words: it gives the heading a
+// left edge to start from, so seven panels down a page line up on something.
+.gf-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 0.85rem;
+  font-size: 0.95rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+
+  mat-icon {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 0.6rem;
+    font-size: 1.1rem;
+    color: var(--gf-green);
+    background: color-mix(in srgb, var(--gf-green) 12%, transparent);
+  }
+}
+
+.gf-panel-hint {
+  margin: -0.5rem 0 0.85rem;
+  color: var(--gf-muted);
+  font: var(--mat-sys-body-medium);
+}
+
+// key over value, wrapping into as many columns as fit. Used for anything whose keys are fixed
+// and whose values are short: what a catalog runs with, what a node is.
+.gf-defs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 0.85rem 1.25rem;
+  margin: 0;
+
+  > div {
+    min-width: 0;
+    padding-left: 0.6rem;
+    border-left: 2px solid color-mix(in srgb, var(--gf-green) 22%, transparent);
+  }
+
+  dt {
+    font-size: 0.68rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--gf-muted);
+  }
+
+  dd {
+    margin: 0.15rem 0 0;
+    font-size: 0.9rem;
+    font-weight: 550;
+    word-break: break-word;
+  }
+}
+
+.gf-defs-wide {
+  grid-column: 1 / -1;
+}
+
+// A denser table than .gf-table, for the panels that really are a grid of numbers: the delete
+// plan, the channel counters. Micro-caps headings and tabular figures, so columns of digits line
+// up on their own and need no rules between them.
+.gf-plan-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+
+  th {
+    position: sticky;
+    top: 0;
+    text-align: left;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--gf-muted);
+    padding: 0.45rem 0.6rem;
+    background: var(--gf-surface);
+    border-bottom: 1px solid var(--gf-outline);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 0.45rem 0.6rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--gf-outline) 60%, transparent);
+  }
+
+  tbody tr {
+    transition: background 0.12s ease;
+
+    &:hover {
+      background: color-mix(in srgb, var(--gf-green) 5%, transparent);
+    }
+
+    &:last-child td {
+      border-bottom: 0;
+    }
+  }
+}
+
+.gf-plan-error {
+  color: var(--mat-sys-error);
+}
+
+// Numbers in a table head as well as a cell, which .gf-num alone cannot do because Material's
+// reset wins on th. Named for what it does rather than where it is used.
+.text-right {
+  text-align: right !important;
+}
+
+.gf-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85em;
+}
+
+// Three or four big numbers inside a white panel -- the hero has .gf-stats for the same job on
+// green. Kept apart because the green one is glass over a gradient and this one is not.
+.gf-stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.75rem;
+  margin: 0.25rem 0 0.5rem;
+
+  .gf-stat {
+    background: color-mix(in srgb, var(--gf-green) 6%, transparent);
+    border: 1px solid color-mix(in srgb, var(--gf-green) 14%, transparent);
+    backdrop-filter: none;
+
+    &:hover {
+      background: color-mix(in srgb, var(--gf-green) 10%, transparent);
+    }
+  }
+
+  .gf-stat-value {
+    color: light-dark(color-mix(in srgb, var(--gf-green) 88%, #000), var(--gf-green));
+    letter-spacing: -0.02em;
+  }
+
+  .gf-stat-label {
+    color: var(--gf-muted);
+    opacity: 1;
+  }
+}
+
+// ---- hero extras -------------------------------------------------------------------------------
+
+.gf-hero-sub {
+  margin: 0.4rem 0 0;
+  font-size: 0.9rem;
+  opacity: 0.85;
+  max-width: 46rem;
+}
+
+.gf-hero-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+
+  // on green, a chip has to be glass or it disappears
+  .gf-chip {
+    background: rgb(255 255 255 / 16%);
+    color: var(--gf-on-green);
+    border: 1px solid rgb(255 255 255 / 22%);
+    backdrop-filter: blur(6px);
+  }
+
+  .gf-chip-cat {
+    background: var(--gf-on-green);
+    color: var(--gf-green);
+    border-color: transparent;
+  }
+}
+
+// Anything that is not UP, anywhere: a health check, a badge, a notice.
+.gf-chip-warn {
+  background: color-mix(in srgb, var(--mat-sys-error) 16%, transparent) !important;
+  color: light-dark(var(--mat-sys-error), #ffb4ab) !important;
+  border-color: color-mix(in srgb, var(--mat-sys-error) 35%, transparent) !important;
+}
+
+.gf-notice-warn {
+  background: color-mix(in srgb, var(--mat-sys-error) 10%, var(--gf-surface));
+  color: light-dark(color-mix(in srgb, var(--mat-sys-error) 90%, #000), #ffb4ab);
+  border: 1px solid color-mix(in srgb, var(--mat-sys-error) 30%, transparent);
+
+  mat-icon {
+    color: var(--mat-sys-error);
+  }
+}
+
+// ---- the segmented switch ----------------------------------------------------------------------
+//
+// Two or three views of one page, chosen inside the hero rather than with Material's tabs. Tabs
+// draw their own bar in their own colour and would need overriding to sit on green; this is the
+// same pill vocabulary the filters already use, in the hero's glass.
+
+.gf-switch {
+  position: relative;
+  display: inline-flex;
+  gap: 0.25rem;
+  margin-top: 1.25rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 12%);
+  border: 1px solid rgb(255 255 255 / 16%);
+  backdrop-filter: blur(8px);
+}
+
+.gf-switch-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--gf-on-green);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0.8;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    opacity 0.18s ease;
+
+  mat-icon {
+    font-size: 1.05rem;
+    width: 1.05rem;
+    height: 1.05rem;
+  }
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.gf-switch-on {
+  background: var(--gf-on-green);
+  color: var(--gf-green);
+  opacity: 1;
+
+  .gf-running-dot {
+    background: var(--gf-green);
+  }
+}
+
+// ---- metric tiles ------------------------------------------------------------------------------
+//
+// A number, what it is, and -- where the number is a rate -- the shape it has been making. The
+// chart is the whole reason these are not .gf-stat: a rate without its recent history says
+// nothing about whether it is rising or has just stopped.
+
+.gf-metric-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.75rem;
+}
+
+.gf-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 0.875rem;
+  border: 1px solid color-mix(in srgb, var(--gf-green) 14%, transparent);
+  background: color-mix(in srgb, var(--gf-green) 5%, transparent);
+}
+
+.gf-metric-bad {
+  border-color: color-mix(in srgb, var(--mat-sys-error) 35%, transparent);
+  background: color-mix(in srgb, var(--mat-sys-error) 7%, transparent);
+
+  .gf-metric-value {
+    color: var(--mat-sys-error);
+  }
+}
+
+.gf-metric-value {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 1.65rem;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: light-dark(color-mix(in srgb, var(--gf-green) 88%, #000), var(--gf-green));
+}
+
+.gf-metric-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gf-muted);
+}
+
+.gf-metric-chart {
+  height: 2.5rem;
+  margin-top: 0.4rem;
+}
+
+// A sparkline inside a table cell: narrow, short, and never the reason the table is wide.
+.gf-spark-cell {
+  width: 7rem;
+  min-width: 7rem;
+
+  gf-sparkline {
+    height: 1.5rem;
+  }
+}
+
+// ---- labelled bars -----------------------------------------------------------------------------
+//
+// name, bar, value, and a note: buffer usage and storage per catalog are the same shape, and one
+// row style for both is what makes the two panels read as one page.
+
+.gf-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.gf-bar-row {
+  display: grid;
+  grid-template-columns: minmax(7rem, 14rem) minmax(4rem, 1fr) 5rem auto;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.gf-bar-row-bad .gf-node-bar i {
+  background: var(--mat-sys-error);
+}
+
+.gf-bar-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 550;
+}
+
+.gf-bar-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.gf-bar-note {
+  color: var(--gf-muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+// The bar itself. Also used by the monitor page for per-node share, which is the same picture.
+.gf-node-bar {
+  display: block;
+  height: 0.5rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--gf-green) 12%, var(--gf-surface-container));
+}
+
+.gf-node-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gf-green) 70%, #7bd88f), var(--gf-green));
+  transition: width 0.4s ease;
+}
+
+// A key and its value as one inline pill, for the components that each invent their own keys.
+.gf-kv {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  margin: 0.1rem 0.35rem 0.1rem 0;
+  padding: 0.05rem 0.45rem;
+  border-radius: 0.4rem;
+  background: var(--gf-surface-container);
+  font-size: 0.78rem;
+}
+
+.gf-kv-key {
+  color: var(--gf-muted);
+}
+
+.gf-kv-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+// A chip that is also a button: the node picker on System health. Same shape as the badges beside
+// it, because it is one of them -- the difference is that this one can be pressed.
+.gf-node-pick {
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.gf-chip-ghost-on-green {
+  background: transparent !important;
+  border-color: transparent !important;
+  opacity: 0.7;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.7rem;
 }

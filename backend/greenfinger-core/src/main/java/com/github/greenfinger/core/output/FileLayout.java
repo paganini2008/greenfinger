@@ -58,8 +58,9 @@ public final class FileLayout {
 
     public static final String SETTINGS_NAME = "settings.json";
 
-    private static final String PAGES = "pages";
-    private static final String IMAGES = "images";
+    /** Public because the storage report tells the two apart by the path they are under. */
+    public static final String PAGES = "pages";
+    public static final String IMAGES = "images";
 
     private final String catalogId;
     private final int version;

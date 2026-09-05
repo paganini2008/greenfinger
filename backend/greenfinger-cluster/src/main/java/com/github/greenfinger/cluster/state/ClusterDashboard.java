@@ -217,6 +217,14 @@ public class ClusterDashboard implements Dashboard, ManagedBeanLifeCycle {
         }
     }
 
+    /** See {@code GlobalStateManager.overrideAsUnproductive}: the one reason that overwrites. */
+    void overrideAsUnproductive(String reason) {
+        set(key("completionReason"), reason == null ? "" : reason);
+        set(key("interrupted"), "1");
+        set(key("completed"), "1");
+        lastModified = System.currentTimeMillis();
+    }
+
     void setCompleted(boolean completed, String reason, boolean interrupted) {
         // The reason before the flag, and only if nobody has written one: a node that reads the
         // flag reads the reason with it, and a crawl that stopped at a limit keeps the limit as
@@ -252,7 +260,7 @@ public class ClusterDashboard implements Dashboard, ManagedBeanLifeCycle {
 
     @Override
     public long getTotalUrlCount() {
-        return read(CountingType.URL_TOTAL_COUNT);
+        return read(CountingType.TOTAL_URL_COUNT);
     }
 
     @Override
@@ -286,6 +294,11 @@ public class ClusterDashboard implements Dashboard, ManagedBeanLifeCycle {
     }
 
     @Override
+    public long getVectoredResourceCount() {
+        return read(CountingType.VECTORED_RESOURCE_COUNT);
+    }
+
+    @Override
     public long getSavedImageCount() {
         return read(CountingType.SAVED_IMAGE_COUNT);
     }
@@ -293,6 +306,11 @@ public class ClusterDashboard implements Dashboard, ManagedBeanLifeCycle {
     @Override
     public long getDuplicatedContentCount() {
         return read(CountingType.DUPLICATED_CONTENT_COUNT);
+    }
+
+    @Override
+    public long getAbandonedUrlCount() {
+        return read(CountingType.ABANDONED_URL_COUNT);
     }
 
     @Override

@@ -103,7 +103,17 @@
       @if (result.results.length === 0 && searched()) {
         <div class="gf-empty">
           <mat-icon>search_off</mat-icon>
-          <p>Nothing matched. Try the Meaning mode &mdash; it finds pages that never say the words.</p>
+          @if (nothingIndexed()) {
+            <p>
+              Nothing is indexed yet, so there is nothing here to match &mdash; the query is not
+              the problem. Every catalog on this installation writes files and no index. Turn
+              <strong>Index</strong> on in a catalog's outputs, then
+              <strong>Replay index and vectors from disk</strong> on its Monitor page puts the
+              pages already crawled into it without fetching the site again.
+            </p>
+          } @else {
+            <p>Nothing matched. Try the Meaning mode &mdash; it finds pages that never say the words.</p>
+          }
         </div>
       }
 

@@ -135,7 +135,10 @@ public class TestSite implements AutoCloseable {
                     return;
                 }
             }
-            exchange.getResponseHeaders().set("Content-Type", page.contentType);
+            // null means the server declares nothing, which some old ones genuinely do
+            if (page.contentType != null) {
+                exchange.getResponseHeaders().set("Content-Type", page.contentType);
+            }
             if (page.body.length == 0) {
                 exchange.sendResponseHeaders(page.status, -1);
                 return;

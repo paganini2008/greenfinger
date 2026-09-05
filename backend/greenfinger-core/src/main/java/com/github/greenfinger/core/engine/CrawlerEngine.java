@@ -40,6 +40,7 @@ import com.github.greenfinger.core.output.OutputChannel;
 import com.github.greenfinger.core.output.FileLayout;
 import com.github.greenfinger.core.output.OutputPayload;
 import com.github.greenfinger.core.component.extractor.ConditionalGet;
+import com.github.greenfinger.core.component.extractor.ExtractorException;
 import com.github.greenfinger.core.component.extractor.FetchedPage;
 import com.github.greenfinger.core.record.ResourceRecord;
 import com.github.greenfinger.core.record.ResourceRecordStore;
@@ -111,6 +112,16 @@ public class CrawlerEngine {
     private final AtomicLong failures = new AtomicLong(0);
 
     /**
+     * Fetches that came back as nothing since the last one that came back as a page. See
+     * {@link WebCrawlerProperties#getMaxConsecutiveFailures()}.
+     */
+    private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
+
+    /** Fetches attempted, and the subset of them that came back as a page. */
+    private final AtomicLong fetchesAttempted = new AtomicLong(0);
+    private final AtomicLong fetchesSucceeded = new AtomicLong(0);
+
+    /**
      * This run's worker count, overriding the configured one. Zero to use the configuration.
      *
      * <p>
@@ -177,6 +188,23 @@ public class CrawlerEngine {
             log.info("Resuming catalog '{}' with {} url(s) left from the previous run.",
                     catalogDetails.getName(), recovered);
         } else {
+            // The entry point is asked the same question every link it finds will be asked.
+            //
+            // It used to be exempt, and the exemption was wrong in the one case that matters: a
+            // site whose robots.txt says "Disallow: /" refuses every link on the page, so the
+            // crawl fetched exactly one page -- the one the rules forbade most plainly -- stored
+            // its text and its images, and published the result. Being told no is not a reason
+            // to take the first page anyway.
+            String refusedBy = context.rejectedBy(seed.getReferUrl(), seed.getUrl(), seed);
+            if (refusedBy != null) {
+                String reason = String.format(
+                        "the entry point %s was refused by %s; nothing was crawled and nothing "
+                                + "is published",
+                        seed.getUrl(), refusedBy);
+                log.warn("Catalog '{}': {}", catalogDetails.getName(), reason);
+                stateManager.interrupt(reason);
+                return finish(catalogDetails, stateManager, frontier);
+            }
             // The seed skips the dedup gate rather than the dispatch. On an incremental update
             // its url has been seen before, and refusing to revisit the entry point would mean
             // never discovering what has been added to it since -- but it is still one url that
@@ -222,19 +250,29 @@ public class CrawlerEngine {
                     boolean handled = false;
                     try {
                         handled = handle(task);
-                    } catch (Exception e) {
+                    } catch (Throwable e) {
+                        // Throwable rather than Exception on purpose. Nobody reads the future
+                        // this returns, so whatever is not caught here is lost in silence -- and
+                        // the failures that arrive as an Error rather than an Exception are
+                        // exactly the ones worth seeing, an engine missing from the classpath
+                        // being the one that cost a morning.
                         failures.incrementAndGet();
                         if (log.isErrorEnabled()) {
                             log.error("Failed to handle '{}': {}", task.getUrl(), e.getMessage(),
                                     e);
                         }
                     } finally {
-                        // a task abandoned because a limit fired stays in the frontier, so a
-                        // later resume picks it up instead of losing the page for good
+                        // A task abandoned rather than concluded stays in the frontier, so a
+                        // later resume picks it up instead of losing the page for good. It is
+                        // still reported handled, and that is not a contradiction: the counters
+                        // answer "is anything still owed in this run", and this url is not --
+                        // it left the queue, no worker will see it again before the run ends,
+                        // and leaving it unanswered idles the crawl until the watchdog gives up
+                        // on a node that never went anywhere.
                         if (handled) {
                             completeQuietly(frontier, task);
-                            coordinator.afterHandled(task);
                         }
+                        coordinator.afterHandled(task);
                         inFlight.decrementAndGet();
                         permits.release();
                     }
@@ -257,11 +295,39 @@ public class CrawlerEngine {
             if (!stateManager.isCompleted()) {
                 stateManager.interrupt("the run ended without reaching a limit");
             }
+            // A crawl that read nothing has nothing to publish, however tidily it ended. One url
+            // behind a challenge is the whole crawl: the 403 leaves no links to follow, so the
+            // frontier drains, the counters agree, and the watchdog calls it a site that ran out
+            // of urls -- which would publish an empty version over a good one. There is no
+            // threshold to cross here because there was never more than one request to make.
+            if (fetchesAttempted.get() > 0 && fetchesSucceeded.get() == 0) {
+                String reason = String.format(
+                        "not one of %d fetch(es) came back with a page; nothing was read and "
+                                + "nothing is published",
+                        fetchesAttempted.get());
+                if (log.isWarnEnabled()) {
+                    log.warn("Catalog '{}': {}", catalogDetails.getName(), reason);
+                }
+                stateManager.overrideAsUnproductive(reason);
+            }
             // before the result is read: a batched counter is up to one flush interval behind,
             // and the report is rendered the instant this returns
             stateManager.flush();
         }
 
+        return finish(catalogDetails, stateManager, frontier);
+    }
+
+    /**
+     * The same ending whichever way the run got here.
+     *
+     * <p>
+     * Reached twice: after the loop, and by the entry point being refused before there was a loop
+     * to run. Nothing in it touches the workers or the output channel, so it is safe on the path
+     * where neither was ever created.
+     */
+    private Result finish(CatalogDetails catalogDetails, GlobalStateManager stateManager,
+            CrawlFrontier frontier) throws Exception {
         Dashboard dashboard = stateManager.getDashboard();
         // Whoever ended the crawl wrote why, in the shared state, so every node reports the same
         // sentence rather than each one guessing from what it happened to see.
@@ -276,6 +342,50 @@ public class CrawlerEngine {
                 .remaining(frontier.remaining()).outstanding(outstanding)
                 .selfTerminated(!context.isInterrupted())
                 .failures(failures.get()).build();
+    }
+
+    /**
+     * Counts a fetch that came back as nothing, and ends the crawl once enough of them have come
+     * back in a row.
+     *
+     * <p>
+     * Ended the way a person asking for it is: interrupted, so the version is not published. A
+     * crawl that could not read the site has nothing worth publishing, and calling it a completion
+     * would replace a good previous version with an empty one.
+     */
+    private void noteFailedFetch(CrawlTask task, Exception e) {
+        int limit = webCrawlerProperties.getMaxConsecutiveFailures();
+        int inARow = consecutiveFailures.incrementAndGet();
+        if (limit <= 0 || inARow < limit) {
+            return;
+        }
+        GlobalStateManager stateManager = context.getGlobalStateManager();
+        if (stateManager.isCompleted()) {
+            return;
+        }
+        String reason = String.format(
+                "%d fetch(es) in a row came back with nothing (last: %s); the site is not "
+                        + "serving this crawler",
+                inARow, describe(e));
+        if (log.isWarnEnabled()) {
+            log.warn("Ending the crawl of '{}': {}", context.getCatalogDetails().getName(),
+                    reason);
+        }
+        stateManager.interrupt(reason);
+    }
+
+    /** The http status when there was one, and the message when the request never got that far. */
+    private String describe(Throwable e) {
+        for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ExtractorException extractorException
+                    && extractorException.getHttpStatus() != null) {
+                return String.valueOf(extractorException.getHttpStatus());
+            }
+            if (cause.getCause() == cause) {
+                break;
+            }
+        }
+        return StringUtils.defaultIfBlank(e.getMessage(), e.getClass().getSimpleName());
     }
 
     private void completeQuietly(CrawlFrontier frontier, CrawlTask task) {
@@ -297,6 +407,10 @@ public class CrawlerEngine {
         CatalogDetails catalogDetails = context.getCatalogDetails();
         GlobalStateManager stateManager = context.getGlobalStateManager();
         if (context.isCompleted()) {
+            // Same thing one step earlier: the limit fired while this task was queued, so it is
+            // dropped before it costs a fetch. Counted the same way, because from outside it is
+            // the same fact -- a url that was dispatched and produced nothing.
+            stateManager.incrementCount(task.getTimestamp(), CountingType.ABANDONED_URL_COUNT);
             return false;
         }
 
@@ -307,11 +421,15 @@ public class CrawlerEngine {
         Optional<PageState> lastCrawl = refresh ? findPageState(task) : Optional.empty();
 
         FetchedPage fetched;
+        fetchesAttempted.incrementAndGet();
         try {
             fetched = context.getExtractor().fetch(catalogDetails, task.getReferUrl(),
                     task.getUrl(), charset, task, conditionsOf(lastCrawl));
+            fetchesSucceeded.incrementAndGet();
+            consecutiveFailures.set(0);
         } catch (Exception e) {
             stateManager.incrementCount(task.getTimestamp(), CountingType.INVALID_URL_COUNT);
+            noteFailedFetch(task, e);
             fetched = FetchedPage.of(context.getExtractor().defaultHtml(catalogDetails,
                     task.getReferUrl(), task.getUrl(), charset, task, e));
         }
@@ -403,6 +521,7 @@ public class CrawlerEngine {
         // in-flight batch rather than by at most one page per worker. Reporting the task as
         // unhandled leaves it in the frontier for a resume to finish.
         if (context.checkCompletion()) {
+            stateManager.incrementCount(task.getTimestamp(), CountingType.ABANDONED_URL_COUNT);
             return false;
         }
 
@@ -420,6 +539,11 @@ public class CrawlerEngine {
             // incremented this until 2026-09-02, so the Monitor page reported "0 indexed" through
             // every crawl that indexed perfectly well
             stateManager.incrementCount(task.getTimestamp(), CountingType.INDEXED_RESOURCE_COUNT);
+        }
+        if (catalogDetails.hasOutput(com.github.greenfinger.core.model.OutputType.VECTOR)) {
+            // and its counterpart, for the same reason: two outputs that can each be off, behind
+            // or failing on their own need two numbers, or a crawl reports the healthy one
+            stateManager.incrementCount(task.getTimestamp(), CountingType.VECTORED_RESOURCE_COUNT);
         }
 
         if (log.isInfoEnabled()) {

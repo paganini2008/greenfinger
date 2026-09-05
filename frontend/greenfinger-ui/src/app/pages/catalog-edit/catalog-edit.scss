@@ -4,36 +4,6 @@
   gap: 1rem;
 }
 
-.gf-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 1.25rem;
-  border-radius: 1rem;
-  border: 1px solid var(--gf-outline);
-  background: var(--gf-surface);
-}
-
-.gf-panel-title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0 0 0.75rem;
-  font-size: 0.9rem;
-  font-weight: 650;
-  letter-spacing: 0.01em;
-
-  mat-icon {
-    color: var(--gf-green);
-  }
-}
-
-.gf-panel-hint {
-  margin: -0.35rem 0 0.85rem;
-  font-size: 0.8125rem;
-  color: var(--gf-muted);
-}
-
 .gf-form-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));

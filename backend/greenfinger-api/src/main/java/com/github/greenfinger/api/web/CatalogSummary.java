@@ -61,8 +61,10 @@ public class CatalogSummary {
     private final long invalidUrlCount;
     private final long savedResourceCount;
     private final long indexedResourceCount;
+    private final long vectoredResourceCount;
     private final long savedImageCount;
     private final long duplicatedContentCount;
+    private final long abandonedUrlCount;
     private final long remainingUrlCount;
     private final long elapsedMillis;
     private final String elapsedTime;
@@ -111,8 +113,10 @@ public class CatalogSummary {
         this.invalidUrlCount = dashboard.getInvalidUrlCount();
         this.savedResourceCount = dashboard.getSavedResourceCount();
         this.indexedResourceCount = dashboard.getIndexedResourceCount();
+        this.vectoredResourceCount = dashboard.getVectoredResourceCount();
         this.savedImageCount = dashboard.getSavedImageCount();
         this.duplicatedContentCount = dashboard.getDuplicatedContentCount();
+        this.abandonedUrlCount = dashboard.getAbandonedUrlCount();
         this.remainingUrlCount = 0L;
         this.completionReason = dashboard.getCompletionReason();
         this.interrupted = dashboard.isInterrupted();
@@ -179,8 +183,10 @@ public class CatalogSummary {
         this.invalidUrlCount = number(lastRun, "invalidUrlCount");
         this.savedResourceCount = number(lastRun, "savedResourceCount");
         this.indexedResourceCount = number(lastRun, "indexedResourceCount");
+        this.vectoredResourceCount = number(lastRun, "vectoredResourceCount");
         this.savedImageCount = number(lastRun, "savedImageCount");
         this.duplicatedContentCount = number(lastRun, "duplicatedContentCount");
+        this.abandonedUrlCount = number(lastRun, "abandonedUrlCount");
         this.remainingUrlCount = number(lastRun, "remainingUrlCount");
         this.completionReason = reason instanceof String text ? text : null;
         this.elapsedTime = format(this.elapsedMillis);

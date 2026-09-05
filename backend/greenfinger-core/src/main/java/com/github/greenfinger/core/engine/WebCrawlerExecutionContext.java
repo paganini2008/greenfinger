@@ -54,6 +54,21 @@ public interface WebCrawlerExecutionContext extends ManagedBeanLifeCycle {
 
     boolean isUrlAcceptable(String referUrl, String url, CrawlTask task);
 
+    /**
+     * The same question, answered with the name of whoever said no.
+     *
+     * <p>
+     * A link that is refused is one link and the count is enough. The entry point being refused
+     * is the whole crawl, and "nothing was crawled" is not a message anybody can act on -- being
+     * out of scope, being too deep and being forbidden by robots.txt are three different
+     * problems with three different answers.
+     *
+     * @return null when the url is acceptable.
+     */
+    default String rejectedBy(String referUrl, String url, CrawlTask task) {
+        return isUrlAcceptable(referUrl, url, task) ? null : "a url path acceptor";
+    }
+
     boolean isCompleted();
 
     /**

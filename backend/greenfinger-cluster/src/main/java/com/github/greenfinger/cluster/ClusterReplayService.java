@@ -23,6 +23,7 @@ import java.util.concurrent.CompletableFuture;
 import com.chaconneai.openspreader.pooling.MultiProcessingCall;
 import com.chaconneai.openspreader.pooling.ProcessingPool;
 import com.github.greenfinger.core.catalog.CatalogDetailsService;
+import com.github.greenfinger.core.catalog.CatalogStore;
 import com.github.greenfinger.core.model.OutputType;
 import com.github.greenfinger.core.record.ResourceRecordStore;
 import com.github.greenfinger.output.OutputFactory;
@@ -95,8 +96,8 @@ public class ClusterReplayService extends ReplayService {
 
     public ClusterReplayService(OutputFactory outputFactory, ResourceRecordStore recordStore,
             CatalogDetailsService catalogDetailsService, FileRestorer fileRestorer,
-            ProcessingPool pool, String beanName) {
-        super(outputFactory, recordStore, catalogDetailsService, fileRestorer);
+            CatalogStore catalogStore, ProcessingPool pool, String beanName) {
+        super(outputFactory, recordStore, catalogDetailsService, fileRestorer, catalogStore);
         this.recordStore = recordStore;
         this.pool = pool;
         this.beanName = beanName;
@@ -163,6 +164,12 @@ public class ClusterReplayService extends ReplayService {
         for (int i = 0; i < pending.size(); i++) {
             replayed += collect(pending.get(i), catalogId, version, layers, offsets.get(i), size);
         }
+        // The slices each rebuilt their own part and none of them is in a position to decide the
+        // catalog is whole again -- so the node that split the work is the one that says so, once
+        // every slice has come back. Without this a replay spread across the cluster left the
+        // index complete and search still returning nothing, while the same replay on one node
+        // published perfectly well.
+        publishReplayed(catalogId, version, layers, replayed);
         return replayed;
     }
 

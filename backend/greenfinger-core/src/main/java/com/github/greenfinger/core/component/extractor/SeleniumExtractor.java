@@ -77,6 +77,12 @@ public class SeleniumExtractor extends PooledExtractor<WebDriver> {
         WebCrawlerExtractorProperties.Selenium config = extractorProperties.getSelenium();
         WebDriver webDriver = objectPool.borrowObject();
         try {
+            // No status check here, and it is not an oversight. WebDriver does not expose the
+            // http status at all -- the protocol has no call for it, by design, because it drives
+            // a browser rather than a http client. Reading it would mean the devtools protocol,
+            // which is Chrome only, or a proxy in front of the browser, which is a moving part
+            // nobody asked for. So this engine alone will store an error page as content: prefer
+            // playwright when that matters, which is what the adaptive engine already does.
             webDriver.get(url);
             if (config.getLoadingTimeout() > 0) {
                 ThreadUtils.sleep(config.getLoadingTimeout());

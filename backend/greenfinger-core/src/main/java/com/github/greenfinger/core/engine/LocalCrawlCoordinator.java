@@ -47,7 +47,7 @@ public class LocalCrawlCoordinator implements CrawlCoordinator {
         // counted before it is queued, never after: the moment it is on a frontier it may be
         // taken and finished by somebody else, and a handled that arrives before its own dispatch
         // would make the two counters cross
-        stateManager.incrementCount(task.getTimestamp(), CountingType.URL_TOTAL_COUNT);
+        stateManager.incrementCount(task.getTimestamp(), CountingType.TOTAL_URL_COUNT);
         if (!frontier.put(task)) {
             // queued before, so nobody will report it handled -- and a dispatch nothing answers
             // for is one the completion test waits on for ever

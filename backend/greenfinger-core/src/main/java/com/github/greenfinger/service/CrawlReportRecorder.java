@@ -143,6 +143,7 @@ public class CrawlReportRecorder {
         counters.put("savedResourceCount", dashboard.getSavedResourceCount());
         counters.put("savedImageCount", dashboard.getSavedImageCount());
         counters.put("indexedResourceCount", dashboard.getIndexedResourceCount());
+        counters.put("vectoredResourceCount", dashboard.getVectoredResourceCount());
         counters.put("startTime", new Date(dashboard.getStartTime()));
         counters.put("elapsedMillis", dashboard.getElapsedTime());
         counters.put("averageExecutionTime", dashboard.getAverageExecutionTime());

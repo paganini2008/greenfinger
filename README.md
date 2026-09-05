@@ -13,6 +13,15 @@ written in Java. It fetches a site's pages **and its images**, and writes them t
 destination the job calls for: plain files you can open, an Elasticsearch index you can search, or a
 vector collection you can ask questions of. One command with one url is enough to start.
 
+<p align="center">
+  <img src="docs/snapshots/monitor-live.jpg" alt="Greenfinger watching a crawl: a progress ring, live pages-per-second, and what became of every url" width="100%">
+</p>
+
+<p align="center">
+  <em>A crawl of <a href="https://apod.nasa.gov/apod/">NASA's Astronomy Picture of the Day</a>, three nodes sharing the work.
+  Every screenshot in this README is from that run &mdash; see <a href="#the-pages">the pages</a>.</em>
+</p>
+
 
 ## 🌟 What it does
 ------------------------------
@@ -213,6 +222,29 @@ server, and both `run-*.sh` scripts. They describe the installation rather than 
 prompt and the server started side by side are one installation and see each other's catalogs.
 Secrets and the addresses of databases and stores stay in `deploy/.env`.
 
+### Four sites to start with
+
+An empty page is a bad first impression, and picking a site to crawl is a decision nobody should
+have to make in the first five minutes. `deploy/examples/catalogs.json` holds four that are worth
+crawling: each publishes a permissive robots.txt, each finishes in a minute or two, and each shows
+a different part of the crawler doing something.
+
+``` shell
+cd deploy
+./examples/seed-catalogs.sh              # localhost:50080, admin/admin123
+./examples/seed-catalogs.sh http://host:50080
+```
+
+It creates the definitions and stops; press **Crawl** in the front end, or
+`./greenfinger-cli.sh catalog-crawl --id=<id>`, when you want one to run.
+
+| Catalog | Why it is here |
+| --- | --- |
+| [APOD](https://apod.nasa.gov/apod/) | Plain static html and one large public-domain photograph per page: the example that shows the image pipeline doing something. |
+| [Hackaday](https://hackaday.com/) | A busy WordPress site — article text wrapped in a lot of furniture, a dozen images a page. Good for watching the readability extraction and the image filters work. |
+| [Rust Blog](https://blog.rust-lang.org/) | Small, static, entirely article text. The fastest to finish and the one to point an index or a vector store at first. |
+| [Wikinews](https://en.wikinews.org/wiki/) | Note the url ends at `/wiki/` and not at `/wiki/Main_Page`. **The url is the boundary as well as the seed**, so a deep entry point puts the rest of the site out of scope and the crawl saves exactly one page. |
+
 ### What lands on disk
 
 ```
@@ -257,14 +289,15 @@ jar, not four programs: the same crawler, the same configuration, the same data 
 |---|---|
 | `./greenfinger-cli.sh <command>` | One command, printed, done |
 | `./greenfinger-face.sh` | A prompt: type commands, watch a crawl live |
-| `./run-local.sh` | The server — api and web app — as background processes here |
+| `./run-local.sh` | The nodes here as background processes; `all` adds the front end |
 | `./run-docker.sh` | The same, one container per node, plus the front end container |
 
 ``` shell
 cd deploy
 ./greenfinger-face.sh                  # define a catalog, crawl it, watch it
-./run-local.sh                         # the server, http://localhost:50080
-GF_NODES=3 ./run-local.sh              # three nodes sharing the crawl
+./run-local.sh                         # the nodes, http://localhost:50080
+./run-local.sh all                     # and the front end, http://localhost:9700
+GF_NODES=3 ./run-local.sh all          # three nodes sharing the crawl, one page in front
 ./run-docker.sh                        # the same in containers, front end on 9700
 ./run-local.sh stop                    # or ./run-docker.sh down
 ```
@@ -730,6 +763,23 @@ The jar serves the api and the built page from one origin, so there is no second
 no CORS to configure in production. Deep links work on reload: `/catalogs` and `/search` are routes
 the browser owns, and anything that is not a file and not an api call is answered with the page.
 
+`./run-local.sh all` additionally starts the front end on a port of its own, which is what to do
+with more than one node: it serves the built page and spreads `/v2` and `/actuator` across the
+cluster, so a browser talks to the cluster rather than to whichever node somebody typed.
+
+**It only needs one address.** Every node publishes its http port as cluster metadata, so the front
+end asks whoever answers who else is in the cluster and forwards to all of them, checking again
+every ten seconds. A node started later joins the rotation on its own; a node that stops leaves it;
+and the entry point it was given can itself go away, because by then it has two other nodes to ask.
+
+``` shell
+GF_UPSTREAMS=localhost:50080 ./run-local.sh all   # one seed is enough
+GF_DISCOVER=0 ./run-local.sh all                  # take GF_UPSTREAMS as the whole list instead
+```
+
+Turn discovery off when the nodes are reachable at addresses they do not know they have — a port
+mapping, a tunnel — and the address they advertise to each other is not one the front end can dial.
+
 ### Signing in
 
 Two accounts, handed out up front in `.env`. There is no registration, no user table and no
@@ -747,6 +797,8 @@ GF_SERVER_PORT=8080
 GF_TOKEN_VALIDITY=8h
 GF_CORS_ORIGINS=http://localhost:4200   # only needed for the dev server below
 ```
+
+![Signing in](docs/snapshots/login.jpg)
 
 Login returns a bearer token; every later call carries it in `Authorization`. Logging out revokes
 it on the server, so the button means something rather than merely clearing the browser.
@@ -768,11 +820,99 @@ on. `GET /v2/version` is open without signing in, so the login page can say whic
 | **Catalogs** | Every crawl task as a card: outputs, versions, and the live counters of anything running. Crawl, update, rebuild, replay, edit and delete from here. |
 | **New / Edit catalog** | A url is the whole requirement; every limit and pattern below it has a working default, and the form leaves them blank rather than inventing values. |
 | **Monitor** | One catalog watched: the counters of the run in flight, or of the last one, from the same fields either way. Also the only place versions are deleted, behind a dry run and a confirmation. |
-| **Search** | Words (Elasticsearch, highlighted, cursor-paged past the ten thousandth result), Meaning (text vectors), and Pictures (describe one and get it). The two vector modes page by offset — a similarity ranking exists only for the query that produced it, so there is no cursor to carry. |
+| **Resources** | The rows themselves, in crawl order, for any version — including one that was never published. Where a page's file went, and every picture it carried. |
+| **Search** | Words (Elasticsearch or Lucene, highlighted, cursor-paged past the ten thousandth result), Meaning (text vectors), and Pictures (describe one and get it). The two vector modes page by offset — a similarity ranking exists only for the query that produced it, so there is no cursor to carry. |
+| **System health** | Two halves: the cluster (throughput, channels, buffers, replicated stores, the health checks) and the crawler (what is running, how fast, and what the stores are holding). |
 
 Light or dark, or whatever the machine says — one button in the toolbar, remembered per browser.
 Every colour comes from a Material system token, so the switch is a single attribute on the page
 rather than a second palette.
+
+#### Catalogs
+
+One card per site. The chips say where its pages go, the numbers say which version is being written
+and which one search is serving, and a card that is crawling right now shows its progress in place.
+While a crawl is running the other cards' buttons are disabled and say why: one crawl runs at a
+time across the whole cluster.
+
+![The catalog list](docs/snapshots/catalogs.jpg)
+
+#### New catalog
+
+A url is the only required field. Everything else — the limits, the patterns, the engine, how many
+versions to keep — is left blank on purpose and takes the server's default, so a first crawl needs
+one line and a careful crawl has somewhere to say so.
+
+![Creating a catalog](docs/snapshots/new-catalog.jpg)
+
+Files are always written, because the database keeps metadata only and the other two outputs are
+rebuilt from what the files hold. Index and Vector stack on top of it, and either can be added later
+to a crawl that has already run — a replay reads the pages back off disk rather than fetching the
+site again.
+
+![Choosing where a crawl's output goes](docs/snapshots/new-catalog-outputs.jpg)
+
+#### Monitor
+
+The dashboard of one run: a ring for the limit it will stop on, pages a second as it is happening,
+and one bar for what became of every url the run has touched. The counters underneath are the same
+numbers the command line prints.
+
+![A crawl's counters, and where every url went](docs/snapshots/monitor-counters.jpg)
+
+#### Resources
+
+What actually got saved, filtered by version, by words in the url or title, and by when it was
+crawled. Open a row and it says where the page was written, where its extracted text went, and what
+the server said about it — and, for a page that carried pictures, every one of them with its own
+source url and its own path in the store.
+
+![Rows from the resource table](docs/snapshots/resources.jpg)
+
+![A page's images, with where each one came from and where it went](docs/snapshots/resources-images.jpg)
+
+#### Search
+
+Words are exact and highlighted; Meaning finds pages that never say them; Pictures takes a
+description and returns photographs.
+
+![Searching what was crawled](docs/snapshots/search.jpg)
+
+#### System health
+
+The cluster half is this node's own account of itself — and only this node's, which is why the
+node being asked is named at the top and can be switched. Ask a different one and everything on the
+page is dropped and read again, because none of it was that node's.
+
+![System health, pinned to one of three nodes](docs/snapshots/system-health-cluster.jpg)
+
+Throughput is sampled while the page is open, because the endpoint reports a rate and keeps no
+history of its own — the shape starts when the page does, and is gone when it is closed.
+
+![Throughput across the cluster's channels](docs/snapshots/system-health-throughput.jpg)
+
+One row per kind of message, with the p50/p95/p99 of how long each took and the shape of the last
+five minutes. A channel that has dropped anything is coloured, and a dropped message is work that
+is gone: dropping is silent by design, so this is the only place it is ever said.
+
+![Every channel, its latency and its recent shape](docs/snapshots/system-health-channels.jpg)
+
+The crawler half is the work rather than the machinery: what is running, how fast pages and images
+are arriving, and how much of the store each catalog has taken.
+
+![What the cluster is crawling right now](docs/snapshots/system-health-crawler.jpg)
+
+![Storage per catalog](docs/snapshots/system-health-storage.jpg)
+
+The same panel when the pages are going to an object store instead of local disk — the layout is
+identical, so moving from one to the other is a setting rather than a migration.
+
+![The same crawl, written to MinIO](docs/snapshots/storage-minio.jpg)
+
+Nothing else about the page changes: the thumbnails below are the same pictures, fetched out of the
+object store instead of off a disk.
+
+![A page's picture, served from MinIO](docs/snapshots/resources-minio.jpg)
 
 ### Working on the front end
 

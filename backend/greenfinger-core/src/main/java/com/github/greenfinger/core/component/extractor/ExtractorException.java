@@ -41,6 +41,13 @@ public class ExtractorException extends WebCrawlerException {
         this.httpStatus = httpStatus;
     }
 
+    /** A url that answered, but with something that is not a page. */
+    public ExtractorException(String url, String reason) {
+        super("Refused '" + url + "': " + reason);
+        this.url = url;
+        this.httpStatus = null;
+    }
+
     public ExtractorException(String url, Throwable e) {
         super("Failed to extract '" + url + "'", e);
         this.url = url;

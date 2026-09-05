@@ -11,13 +11,18 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Observable, Subscription, forkJoin, interval, startWith, switchMap } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { Catalog, CrawlStatus } from '../../core/api.models';
 import { AuthService } from '../../core/auth.service';
 import { NotifyService } from '../../core/notify.service';
 import { ConfirmDialog, ConfirmData } from '../../shared/confirm-dialog';
+import { CrawlStateDialog } from '../../shared/crawl-state-dialog';
+
+/** How hard reload() tries to see its own write, and how long it waits between attempts. */
+const RELOAD_RETRIES = 4;
+const RELOAD_RETRY_MILLIS = 500;
 
 /**
  * The catalog list: what exists, what is running, and every verb that acts on one.
@@ -52,6 +57,7 @@ export class CatalogsPage {
   private readonly notify = inject(NotifyService);
   private readonly dialog = inject(MatDialog);
   protected readonly auth = inject(AuthService);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly catalogs = signal<Catalog[]>([]);
   protected readonly statuses = signal<Record<string, CrawlStatus>>({});
@@ -92,13 +98,43 @@ export class CatalogsPage {
 
   protected readonly anyRunning = computed(() => this.runningCount() > 0);
 
-  /** How many catalogs have a published version, which is what search can actually see. */
+  /**
+   * What is in the way, if anything. Only one crawl runs at a time across every node, so a
+   * catalog being crawled is the reason every other catalog's verbs are refused -- and the
+   * server refuses them with that same sentence, so the button says it before the click rather
+   * than the snackbar afterwards.
+   */
+  protected readonly busyWith = computed(
+    () => Object.values(this.statuses()).find((status) => status.running)?.name ?? '',
+  );
+
+  /** True for every catalog except the one actually running. */
+  protected blockedBy(catalog: Catalog): string {
+    const running = this.busyWith();
+    return running && running !== catalog.name ? running : '';
+  }
+
+  /**
+   * How many catalogs the Search page can actually find anything in.
+   *
+   * Both halves are needed and neither is enough. `searchVersion` is the version that finished and
+   * was published, and it is set whatever the outputs were -- so counting it alone promised search
+   * on catalogs written to files and nothing else, and the search page then had to explain a
+   * result of zero as though the query were at fault. The index output is what puts words
+   * anywhere they can be looked up.
+   */
   protected readonly searchableCount = computed(
-    () => this.catalogs().filter((catalog) => (catalog.searchVersion ?? -1) >= 0).length,
+    () =>
+      this.catalogs().filter(
+        (catalog) =>
+          (catalog.searchVersion ?? -1) >= 0 && (catalog.outputTypes ?? []).includes('index'),
+      ).length,
   );
 
   constructor() {
-    this.reload();
+    // catalog-edit names what it just wrote, so the first read can wait for that node's copy
+    const saved = this.route.snapshot.queryParamMap.get('saved');
+    this.reload(saved ? (rows) => rows.some((row) => row.id === saved || row.name === saved) : undefined);
     inject(DestroyRef).onDestroy(() => this.stopPolling());
     // Poll only while something is moving, and stop the moment nothing is: an idle page should
     // not be sending a request every three seconds for the rest of the afternoon.
@@ -120,7 +156,16 @@ export class CatalogsPage {
     });
   }
 
-  protected reload(): void {
+  /**
+   * Read the list again.
+   *
+   * `settled` is what makes this safe to call straight after a write. The front end spreads /v2
+   * across every node and replication between them is asynchronous, so a delete answered by one
+   * node and a list served by another can genuinely disagree for a moment -- which showed up as a
+   * deleted catalog still sitting on the page. Given a predicate, this retries a few times until
+   * the list agrees with what was just done, rather than painting a stale answer and stopping.
+   */
+  protected reload(settled?: (catalogs: Catalog[]) => boolean, attempt = 0): void {
     this.loading.set(true);
     forkJoin({
       catalogs: this.api.listCatalogs(),
@@ -128,6 +173,11 @@ export class CatalogsPage {
       statuses: this.api.status(),
     }).subscribe({
       next: ({ catalogs, categories, statuses }) => {
+        if (settled && !settled(catalogs) && attempt < RELOAD_RETRIES) {
+          // another node has not caught up yet; ask again rather than show what it still thinks
+          setTimeout(() => this.reload(settled, attempt + 1), RELOAD_RETRY_MILLIS);
+          return;
+        }
         this.catalogs.set(catalogs);
         this.categories.set(categories);
         this.acceptStatus(statuses);
@@ -175,6 +225,14 @@ export class CatalogsPage {
     );
   }
 
+  /** The frontier and dedup sizes, which nothing else in the app shows. */
+  protected showState(catalog: Catalog): void {
+    this.dialog.open(CrawlStateDialog, {
+      data: { catalogId: catalog.id!, catalogName: catalog.name! },
+      width: '38rem',
+    });
+  }
+
   protected remove(catalog: Catalog): void {
     const data: ConfirmData = {
       title: `Delete '${catalog.name}'?`,
@@ -193,7 +251,10 @@ export class CatalogsPage {
           this.api.deleteCatalog(catalog.name!).subscribe({
             next: () => {
               this.notify.ok(`'${catalog.name}' deleted`);
-              this.reload();
+              // gone from this node's answer; keep asking until whichever node serves the list
+              // agrees, so the row does not sit there looking undeleted
+              this.catalogs.update((rows) => rows.filter((row) => row.id !== catalog.id));
+              this.reload((rows) => !rows.some((row) => row.id === catalog.id));
             },
             error: (failure) => this.notify.failed(failure),
           });

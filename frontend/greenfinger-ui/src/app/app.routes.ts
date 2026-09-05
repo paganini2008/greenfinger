@@ -40,6 +40,12 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/monitor/monitor').then((m) => m.MonitorPage),
   },
   {
+    path: 'resources',
+    title: 'Resources - Greenfinger',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/resources/resources').then((m) => m.ResourcesPage),
+  },
+  {
     path: 'search',
     title: 'Search - Greenfinger',
     canActivate: [authGuard],
@@ -47,7 +53,7 @@ export const routes: Routes = [
   },
   {
     path: 'cluster',
-    title: 'Cluster - Greenfinger',
+    title: 'System health - Greenfinger',
     canActivate: [authGuard],
     loadComponent: () => import('./pages/cluster/cluster').then((m) => m.ClusterPage),
   },

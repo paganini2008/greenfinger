@@ -111,46 +111,6 @@
   color: var(--gf-muted);
 }
 
-.gf-notice {
-  display: flex;
-  gap: 0.6rem;
-  align-items: flex-start;
-  padding: 0.85rem 1rem;
-  border-radius: 0.875rem;
-  font-size: 0.8125rem;
-  background: var(--mat-sys-tertiary-container);
-  color: var(--mat-sys-on-tertiary-container);
-}
-
-.gf-defs {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
-  gap: 0.75rem 1.25rem;
-  margin: 0;
-
-  > div {
-    min-width: 0;
-  }
-
-  dt {
-    font-size: 0.65rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--gf-muted);
-  }
-
-  dd {
-    margin: 0.1rem 0 0;
-    font-size: 0.875rem;
-    font-weight: 500;
-    word-break: break-word;
-  }
-}
-
-.gf-defs-wide {
-  grid-column: 1 / -1;
-}
-
 .gf-danger-zone {
   border-color: color-mix(in srgb, var(--mat-sys-error) 30%, var(--gf-outline));
 }
@@ -209,32 +169,6 @@
   flex-direction: column;
   gap: 0.75rem;
   align-items: flex-start;
-}
-
-.gf-plan-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.8125rem;
-  font-variant-numeric: tabular-nums;
-
-  th {
-    text-align: left;
-    font-size: 0.65rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--gf-muted);
-    padding: 0.35rem 0.5rem;
-    border-bottom: 1px solid var(--gf-outline);
-  }
-
-  td {
-    padding: 0.35rem 0.5rem;
-    border-bottom: 1px solid var(--gf-outline);
-  }
-}
-
-.gf-plan-error {
-  color: var(--mat-sys-error);
 }
 
 /* ---------------------------------------------------------------------------------------------
@@ -359,20 +293,103 @@
   color: light-dark(rgb(90 100 92), rgb(160 170 162));
 }
 
-.gf-node-bar {
-  height: 0.5rem;
-  border-radius: 999px;
-  background: light-dark(rgb(232 236 232), rgb(48 54 49));
-}
-
-.gf-node-bar i {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: light-dark(rgb(88 156 102), rgb(118 176 130));
-}
-
 .gf-node-value {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------------------------------
+   The dashboard: a ring, three live numbers, and one bar for the whole run.
+
+   The ring is a circle with a dash pattern the length of its own circumference and an offset
+   that is the part not yet done -- which is the entire trick, and the reason there is no gauge
+   library here. Rotated a quarter turn so it starts at twelve o'clock rather than at three.
+   --------------------------------------------------------------------------------------------- */
+.gf-dash {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.gf-dash-metrics {
+  flex: 1 1 24rem;
+}
+
+.gf-ring-box {
+  position: relative;
+  flex: none;
+  width: 8.5rem;
+  height: 8.5rem;
+  display: grid;
+  place-items: center;
+}
+
+.gf-ring {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.gf-ring-track,
+.gf-ring-value {
+  fill: none;
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+
+.gf-ring-track {
+  stroke: color-mix(in srgb, var(--gf-green) 14%, var(--gf-surface-container));
+}
+
+.gf-ring-value {
+  stroke: var(--gf-green);
+  transition: stroke-dashoffset 0.5s ease;
+}
+
+.gf-ring-label {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.gf-ring-value-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: light-dark(color-mix(in srgb, var(--gf-green) 88%, #000), var(--gf-green));
+}
+
+/* One colour per outcome, used by both the bar and its legend so the two are read together.
+   Saved is the theme's green; the rest are fixed hues, because "filtered" and "invalid" are not
+   shades of the brand -- they mean different things and have to be told apart at 12px. */
+.gf-tone-saved {
+  background: var(--gf-green);
+}
+
+.gf-tone-duplicate {
+  background: light-dark(#8fbf9a, #5f8f6a);
+}
+
+.gf-tone-known {
+  background: light-dark(#9fb8d8, #5f7f9f);
+}
+
+.gf-tone-filtered {
+  background: light-dark(#d8c68f, #a8965f);
+}
+
+.gf-tone-invalid {
+  background: light-dark(#d89a9a, #a86a6a);
+}
+
+.gf-tone-dropped {
+  background: light-dark(#c4a3d8, #8f6aa8);
+}
+
+.gf-tone-queued {
+  background: light-dark(#c9cec9, #6a706a);
 }

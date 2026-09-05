@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -35,6 +36,7 @@ import java.util.ArrayList;
 import java.util.List;
 import com.github.greenfinger.core.engine.CrawlRegistry;
 import com.github.greenfinger.core.model.Catalog;
+import com.github.greenfinger.core.model.Category;
 import com.github.greenfinger.core.model.ContentMode;
 import com.github.greenfinger.core.model.OutputType;
 import com.github.greenfinger.output.OutputFactory;
@@ -120,7 +122,7 @@ class CatalogAdminServiceTest {
         assertThat(saved.getId()).isNotNull();
         assertThat(UUID.fromString(saved.getId()).version()).isEqualTo(7);
         assertThat(saved.getName()).isEqualTo("toscrape");
-        assertThat(saved.getCat()).isEqualTo("default");
+        assertThat(saved.getCat()).isEqualTo("other");
         assertThat(saved.getPathPattern()).isNotBlank();
         assertThat(saved.getRunningState()).isEqualTo("none");
         assertThat(saved.getMaxVersions()).isEqualTo(10);
@@ -187,11 +189,14 @@ class CatalogAdminServiceTest {
     void listsAndCategorises() {
         service.save(withUrl("https://a.com"));
         Catalog other = withUrl("https://b.com");
-        other.setCat("blogs");
+        other.setCat("tech");
         service.save(other);
 
         assertThat(service.findAll()).hasSize(2);
-        assertThat(service.findAllCategories()).containsExactly("blogs", "default");
+        // the fixed list rather than what happens to be in use: a picker offering only the
+        // values already in the table can never be used to choose a new one
+        assertThat(service.findAllCategories()).containsExactlyElementsOf(
+                Arrays.stream(Category.values()).map(Category::getRepr).toList());
     }
 
     @Test

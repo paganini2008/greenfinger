@@ -20,6 +20,7 @@ import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hc.client5.http.classic.HttpClient;
@@ -118,6 +119,14 @@ public class RestClientExtractor extends AbstractExtractor
         this.restClient = RestClient.builder().requestFactory(requestFactory).build();
     }
 
+    /**
+     * What counts as a page. XHTML and XML are here because a sitemap or an atom feed is markup
+     * worth reading; plain text because some sites serve html as text/plain and the parser copes.
+     */
+    private static final List<MediaType> MARKUP = List.of(MediaType.TEXT_HTML,
+            MediaType.APPLICATION_XHTML_XML, MediaType.APPLICATION_XML, MediaType.TEXT_XML,
+            MediaType.TEXT_PLAIN);
+
     @Override
     protected String requestUrl(CatalogDetails catalogDetails, String referUrl, String url,
             Charset pageEncoding, CrawlTask task) throws Exception {
@@ -163,10 +172,30 @@ public class RestClientExtractor extends AbstractExtractor
                 // the site kept its word; carry the same validators forward
                 return FetchedPage.notModified(conditions);
             }
+            // Success is the 2xx range, and anything outside it is an invalid url.
+            //
+            // The status is the one at the end of the chain, not the first on it. Redirects are
+            // followed by the http client (followRedirects, on by default), so a page behind a
+            // 301 or a 302 arrives here as the 200 it finally answered with and is kept. A 3xx
+            // only reaches this line when redirects are off or the chain ran out, and then it
+            // really is a url that served nothing.
+            //
+            // 304 is handled above and is not a failure: it is the site answering the
+            // conditional request an update sent, which means the page has not changed.
             if (!response.getStatusCode().is2xxSuccessful()) {
                 throw new ExtractorException(url, response.getStatusCode());
             }
             HttpHeaders responseHeaders = response.getHeaders();
+            // A 200 is not the same as a page. Sites link straight at their own pictures and
+            // their own pdfs -- apod.nasa.gov links every day's photograph that way -- and those
+            // links are in scope, pass every filter and answer 200. Decoded as text, a jpeg
+            // becomes a "page" with no title and half a megabyte of mojibake, which is then
+            // written to disk, counted against maxFetchSize and put into the search index.
+            //
+            // Images are fetched by the image pipeline, from the <img> tags that point at them,
+            // and this is not that. So anything that is not markup is refused here, and refused
+            // as an invalid url, because for a crawler of pages that is exactly what it is.
+            requireMarkup(url, responseHeaders.getContentType());
             Charset charset = charsetOf(responseHeaders, fallback);
             try (InputStream in = response.getBody()) {
                 return new FetchedPage(new String(in.readAllBytes(), charset), false,
@@ -179,6 +208,27 @@ public class RestClientExtractor extends AbstractExtractor
             ThreadUtils.sleep(config.getLoadingTimeout());
         }
         return fetched;
+    }
+
+    /**
+     * Refuses a body that is not markup.
+     *
+     * <p>
+     * A missing Content-Type is allowed through: it is rare, it is usually html, and refusing it
+     * would drop pages from servers that are merely old. Everything that does declare itself has
+     * to declare itself as html, xhtml, xml or plain text.
+     */
+    private void requireMarkup(String url, MediaType contentType) {
+        if (contentType == null) {
+            return;
+        }
+        for (MediaType allowed : MARKUP) {
+            if (allowed.includes(contentType)) {
+                return;
+            }
+        }
+        throw new ExtractorException(url,
+                "the server answered with " + contentType + ", which is not a page");
     }
 
     private Charset charsetOf(HttpHeaders headers, Charset fallback) {

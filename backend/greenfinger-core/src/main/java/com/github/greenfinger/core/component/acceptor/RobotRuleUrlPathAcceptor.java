@@ -63,8 +63,12 @@ public class RobotRuleUrlPathAcceptor implements UrlPathAcceptor, ManagedBeanLif
             rules = new SimpleRobotRulesParser().parseContent(robotsTxtUrl.toString(), content,
                     "text/plain", WebCrawlerConstants.USER_AGENTS);
         } catch (Exception e) {
+            // Named, because "not available" covers two very different things and the difference
+            // decides whether the crawl that follows is polite or merely unaware: a 404 is a site
+            // with no rules, and a 403 is a site with rules we failed to introduce ourselves to.
             if (log.isWarnEnabled()) {
-                log.warn("{} is not available, crawling without robot rules.", robotsTxtUrl);
+                log.warn("{} could not be read ({}), crawling without robot rules.", robotsTxtUrl,
+                        e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
             }
             rules = null;
         } finally {

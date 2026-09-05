@@ -36,8 +36,10 @@ public class ReadonlyDashboard implements Dashboard {
     private final long filteredUrlCount;
     private final long savedResourceCount;
     private final long indexedResourceCount;
+    private final long vectoredResourceCount;
     private final long savedImageCount;
     private final long duplicatedContentCount;
+    private final long abandonedUrlCount;
     private final long startTime;
     private final long endTime;
     private final long elapsedTime;
@@ -57,8 +59,10 @@ public class ReadonlyDashboard implements Dashboard {
         this.filteredUrlCount = dashboard.getFilteredUrlCount();
         this.savedResourceCount = dashboard.getSavedResourceCount();
         this.indexedResourceCount = dashboard.getIndexedResourceCount();
+        this.vectoredResourceCount = dashboard.getVectoredResourceCount();
         this.savedImageCount = dashboard.getSavedImageCount();
         this.duplicatedContentCount = dashboard.getDuplicatedContentCount();
+        this.abandonedUrlCount = dashboard.getAbandonedUrlCount();
         this.startTime = dashboard.getStartTime();
         this.endTime = dashboard.getEndTime();
         this.elapsedTime = dashboard.getElapsedTime();
@@ -124,6 +128,11 @@ public class ReadonlyDashboard implements Dashboard {
     }
 
     @Override
+    public long getVectoredResourceCount() {
+        return vectoredResourceCount;
+    }
+
+    @Override
     public long getIndexedResourceCount() {
         return indexedResourceCount;
     }
@@ -136,6 +145,11 @@ public class ReadonlyDashboard implements Dashboard {
     @Override
     public long getDuplicatedContentCount() {
         return duplicatedContentCount;
+    }
+
+    @Override
+    public long getAbandonedUrlCount() {
+        return abandonedUrlCount;
     }
 
     @Override

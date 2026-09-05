@@ -230,7 +230,7 @@ class SearchAndReplayCommandsTest {
         }
         try (ConsoleCapture console = new ConsoleCapture()) {
             crawlCommands.dispatch("cats", null, new CrawlOptions());
-            assertThat(console.output()).contains("default");
+            assertThat(console.output()).contains("other");
         }
         try (ConsoleCapture console = new ConsoleCapture()) {
             crawlCommands.dispatch("index-info", null, new CrawlOptions());

@@ -192,10 +192,23 @@ class JpaStoreTest {
         JpaCatalogStore store = catalogStore();
         store.save(catalog("eta"));
         Catalog other = catalog("theta");
-        other.setCat("blogs");
+        other.setCat("tech");
         store.save(other);
 
-        assertThat(store.findAllCategories()).containsExactly("blogs", "news");
+        // the store still answers "which are in use", which is not the same question as
+        // "which are allowed" -- that one is the enum, and CatalogAdminService answers it
+        assertThat(store.findAllCategories()).containsExactly("news", "tech");
+    }
+
+    @Test
+    @DisplayName("a category nothing recognises is stored as other rather than as itself")
+    void anUnknownCategoryBecomesOther() {
+        JpaCatalogStore store = catalogStore();
+        Catalog stray = catalog("kappa");
+        stray.setCat("whatever somebody typed");
+        Catalog saved = store.save(stray);
+
+        assertThat(saved.getCat()).isEqualTo("other");
     }
 
     @Test

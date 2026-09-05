@@ -8,9 +8,10 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { filter, map } from 'rxjs';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { filter, interval, map, startWith, switchMap } from 'rxjs';
 import { ApiService } from './core/api.service';
+import { CrawlStatus } from './core/api.models';
 import { AuthService } from './core/auth.service';
 import { ThemeService } from './core/theme.service';
 
@@ -47,6 +48,21 @@ export class App {
 
   protected readonly sidenavOpen = signal(true);
 
+  /**
+   * What is crawling, anywhere in the cluster.
+   *
+   * In the shell rather than on a page because it is true of the whole application, not of
+   * whatever is on screen: only one crawl runs at a time across every node, so a crawl started
+   * from the Catalogs page is the reason the Crawl button will not respond on any other page,
+   * and being told that once, at the top, beats discovering it one disabled button at a time.
+   *
+   * Polled slowly. It is a banner, not a progress bar; the Monitor page is where a number is
+   * watched closely and it does its own polling.
+   */
+  protected readonly running = signal<CrawlStatus[]>([]);
+
+  protected readonly runningName = computed(() => this.running()[0]?.name ?? '');
+
   /** Asked of the server rather than written here, so the badge cannot outlive the build it names. */
   protected readonly version = signal('');
 
@@ -66,6 +82,20 @@ export class App {
   protected readonly role = computed(() => (this.auth.isAdmin() ? 'Administrator' : 'Support'));
 
   constructor() {
+    // only while there is a shell to put it in: a signed-out visitor gets no requests at all
+    interval(5000)
+      .pipe(
+        startWith(0),
+        filter(() => this.auth.signedIn()),
+        switchMap(() => this.api.status()),
+        takeUntilDestroyed(),
+      )
+      .subscribe({
+        next: (statuses) => this.running.set(statuses.filter((status) => status.running)),
+        // a banner that cannot be drawn is not worth a message; the pages report what matters
+        error: () => this.running.set([]),
+      });
+
     this.api.version().subscribe({
       next: (server) => this.version.set(server.version),
       // a badge is not worth a message; the pages will report anything that actually matters

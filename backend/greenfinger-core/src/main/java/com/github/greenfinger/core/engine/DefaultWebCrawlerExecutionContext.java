@@ -164,18 +164,23 @@ public class DefaultWebCrawlerExecutionContext implements WebCrawlerExecutionCon
 
     @Override
     public boolean isUrlAcceptable(String referUrl, String url, CrawlTask task) {
+        return rejectedBy(referUrl, url, task) == null;
+    }
+
+    @Override
+    public String rejectedBy(String referUrl, String url, CrawlTask task) {
         if (urlPathAcceptors == null) {
-            return true;
+            return null;
         }
         for (UrlPathAcceptor urlPathAcceptor : urlPathAcceptors) {
             if (!urlPathAcceptor.accept(catalogDetails, referUrl, url, task)) {
                 if (log.isTraceEnabled()) {
                     log.trace("Rejected '{}' by {}", url, urlPathAcceptor.getName());
                 }
-                return false;
+                return urlPathAcceptor.getName();
             }
         }
-        return true;
+        return null;
     }
 
     @Override

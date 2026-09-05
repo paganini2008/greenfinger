@@ -25,6 +25,7 @@ import java.util.function.Function;
 import org.apache.commons.lang3.StringUtils;
 import com.github.greenfinger.shell.render.Ansi;
 import com.github.greenfinger.core.WebCrawlerConstants;
+import com.github.greenfinger.core.model.Category;
 import com.github.greenfinger.core.model.ContentMode;
 import com.github.greenfinger.core.model.ExtractorType;
 import com.github.greenfinger.core.model.OutputType;
@@ -147,6 +148,19 @@ public class Interview {
     public ExtractorType extractor(ExtractorType current) {
         return oneOf("extractor", ExtractorType.choices().replace(", ", " | "), current,
                 ExtractorType::of);
+    }
+
+    /**
+     * What the site is about.
+     *
+     * <p>
+     * {@code oneOf} rather than free text, because the category is a search facet and a facet
+     * works only when everyone spells it the same. Nothing is ever refused here: an answer that
+     * matches none of the nine becomes {@code other}, which is what {@link Category#of} does and
+     * is a better outcome than making somebody pick the nearest listed value instead.
+     */
+    public Category category(Category current) {
+        return oneOf("cat", Category.choices().replace(", ", " | "), current, Category::of);
     }
 
     public ContentMode content(ContentMode current) {

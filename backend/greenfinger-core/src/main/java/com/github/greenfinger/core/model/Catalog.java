@@ -86,9 +86,36 @@ public class Catalog implements Serializable {
     @Column(name = "sitemap_url", length = 1000)
     private String sitemapUrl;
 
-    /** A label the user groups catalogs by. Nothing in the system maintains or depends on it. */
+    /**
+     * What the site is about, as one of {@link Category}'s values.
+     *
+     * <p>
+     * Stored as the lower case name rather than as an enum-typed column, for the same reason
+     * {@link #extractorValue} is: Hibernate infers a check constraint for an enum-typed column and
+     * the one it generates rejects every value on H2. Normalised on the way in by
+     * {@link #setCat(String)}, so the column only ever holds one of the nine.
+     */
     @Column(name = "cat", nullable = false, length = 45)
     private String cat;
+
+    /**
+     * Anything unrecognised becomes {@code other} rather than being refused.
+     *
+     * <p>
+     * The category is a search facet, and a facet works only when everyone spells it the same --
+     * so it is narrowed here, once, at the only place a value enters. Refusing instead would mean
+     * a catalog carried over from 1.x could not be loaded at all, and would make whoever hit it
+     * pick the nearest listed value rather than the honest one.
+     */
+    public void setCat(String cat) {
+        this.cat = Category.of(cat).getRepr();
+    }
+
+    /** The same value as the enum, for code that wants to switch on it. */
+    @JsonIgnore
+    public Category getCategoryType() {
+        return Category.of(cat);
+    }
 
     @Column(name = "path_pattern", nullable = false, length = 2000)
     private String pathPattern;

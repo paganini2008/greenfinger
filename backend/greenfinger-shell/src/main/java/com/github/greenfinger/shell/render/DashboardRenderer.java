@@ -73,7 +73,7 @@ public class DashboardRenderer {
         new TreeMap<>(perNode).forEach((node, counters) -> table.row(Ansi.cyan(node),
                 counters.getOrDefault(CountingType.SAVED_RESOURCE_COUNT.getRepr(), 0L),
                 counters.getOrDefault(CountingType.HANDLED_URL_COUNT.getRepr(), 0L),
-                counters.getOrDefault(CountingType.URL_TOTAL_COUNT.getRepr(), 0L),
+                counters.getOrDefault(CountingType.TOTAL_URL_COUNT.getRepr(), 0L),
                 counters.getOrDefault(CountingType.INVALID_URL_COUNT.getRepr(), 0L)));
         return table;
     }
@@ -158,11 +158,20 @@ public class DashboardRenderer {
         TextTable table = TextTable.of("Metric", "Count").rightAlign(1);
         table.row("Pages saved", dashboard != null ? dashboard.getSavedResourceCount() : 0);
         table.row("Images saved", dashboard != null ? dashboard.getSavedImageCount() : 0);
+        // The two optional outputs, counted apart and always shown. Either can be off, behind or
+        // failing on its own, and one number for "written to the outputs" would report the healthy
+        // one. Zero here on a file-only crawl says what it means: nothing was asked of them. The
+        // rows are unconditional because lineCount() derives the redraw height from this table.
+        table.row("Pages indexed", dashboard != null ? dashboard.getIndexedResourceCount() : 0);
+        table.row("Pages vectorised",
+                dashboard != null ? dashboard.getVectoredResourceCount() : 0);
         table.row("Urls seen", dashboard != null ? dashboard.getTotalUrlCount() : 0);
         table.row("Already visited", dashboard != null ? dashboard.getExistingUrlCount() : 0);
         table.row("Filtered out", dashboard != null ? dashboard.getFilteredUrlCount() : 0);
         table.row("Duplicate content",
                 dashboard != null ? dashboard.getDuplicatedContentCount() : 0);
+        table.row("Dropped at the limit",
+                dashboard != null ? dashboard.getAbandonedUrlCount() : 0);
         table.row("Failed", dashboard != null ? dashboard.getInvalidUrlCount() : 0);
         table.row("Queued", remaining >= 0 ? remaining : "-");
         table.row("Elapsed", clock(dashboard != null ? dashboard.getElapsedTime() : 0L));
@@ -180,10 +189,13 @@ public class DashboardRenderer {
         table.row("Site", catalogDetails.getUrl());
         table.row("Pages saved", dashboard.getSavedResourceCount());
         table.row("Images saved", dashboard.getSavedImageCount());
+        table.row("Pages indexed", dashboard.getIndexedResourceCount());
+        table.row("Pages vectorised", dashboard.getVectoredResourceCount());
         table.row("Urls seen", dashboard.getTotalUrlCount());
         table.row("Already visited", dashboard.getExistingUrlCount());
         table.row("Filtered out", dashboard.getFilteredUrlCount());
         table.row("Duplicate content", dashboard.getDuplicatedContentCount());
+        table.row("Dropped at the limit", dashboard.getAbandonedUrlCount());
         table.row("Failed", dashboard.getInvalidUrlCount());
         table.row("Elapsed", clock(dashboard.getElapsedTime()));
         table.row("Stopped because", reason);
