@@ -1,0 +1,446 @@
+<div class="gf-page">
+  @let run = summary();
+
+  <header class="gf-hero" [class.gf-hero-live]="run?.live">
+    <div class="gf-hero-glow"></div>
+    <div class="gf-hero-inner">
+      <div>
+        <span class="gf-eyebrow">
+          @if (run?.live) {
+            <span class="gf-running-dot"></span> Running
+          } @else {
+            Last run
+          }
+        </span>
+        <h1>{{ ref() }}</h1>
+        <p>{{ details()?.url }}</p>
+      </div>
+
+      <div class="gf-hero-actions">
+        <a mat-stroked-button class="gf-ghost-button" routerLink="/catalogs">
+          <mat-icon>arrow_back</mat-icon>
+          Catalogs
+        </a>
+        @if (auth.isAdmin()) {
+          @if (run?.live) {
+            <button mat-flat-button class="gf-hero-cta" (click)="interrupt()" [disabled]="busy()">
+              <mat-icon>stop_circle</mat-icon>
+              Stop
+            </button>
+          } @else {
+            <button mat-flat-button class="gf-hero-cta" (click)="crawl()" [disabled]="busy()">
+              <mat-icon>travel_explore</mat-icon>
+              Crawl
+            </button>
+          }
+          <button mat-icon-button class="gf-ghost-icon" [matMenuTriggerFor]="menu" aria-label="More">
+            <mat-icon>more_vert</mat-icon>
+          </button>
+          <mat-menu #menu="matMenu">
+            <button mat-menu-item (click)="update()" [disabled]="run?.live">
+              <mat-icon>sync</mat-icon>
+              <span>Update &mdash; same version, carry on</span>
+            </button>
+            <button mat-menu-item (click)="rebuild()" [disabled]="run?.live">
+              <mat-icon>restart_alt</mat-icon>
+              <span>Rebuild &mdash; a new version</span>
+            </button>
+            <button mat-menu-item (click)="replay()" [disabled]="run?.live">
+              <mat-icon>replay</mat-icon>
+              <span>Replay index and vectors from disk</span>
+            </button>
+            <button mat-menu-item (click)="restoreFiles()" [disabled]="run?.live">
+              <mat-icon>cloud_download</mat-icon>
+              <span>Restore missing files from their urls</span>
+            </button>
+            <button mat-menu-item (click)="edit()">
+              <mat-icon>edit</mat-icon>
+              <span>Edit this catalog</span>
+            </button>
+          </mat-menu>
+        }
+      </div>
+    </div>
+
+    <div class="gf-stats">
+      <div class="gf-stat">
+        <span class="gf-stat-value">v{{ run?.version ?? 0 }}</span>
+        <span class="gf-stat-label">Writing</span>
+      </div>
+      <div class="gf-stat">
+        <span class="gf-stat-value">
+          {{ (run?.searchVersion ?? -1) >= 0 ? 'v' + run?.searchVersion : '--' }}
+        </span>
+        <span class="gf-stat-label">Searchable</span>
+      </div>
+      <div class="gf-stat">
+        <span class="gf-stat-value">{{ run?.elapsedTime ?? '--' }}</span>
+        <span class="gf-stat-label">Elapsed</span>
+      </div>
+      <div class="gf-stat">
+        <span class="gf-stat-value">{{ progressPercent() }}%</span>
+        <span class="gf-stat-label">Of the limit</span>
+      </div>
+    </div>
+
+    @if (run?.live) {
+      <div class="gf-hero-progress">
+        <div class="gf-hero-progress-row">
+          <span class="gf-hero-progress-label">pages</span>
+          <mat-progress-bar mode="determinate" [value]="sizePercent()" />
+          <span class="gf-hero-progress-value">{{ sizePercent() }}%</span>
+        </div>
+        <div class="gf-hero-progress-row">
+          <span class="gf-hero-progress-label">time</span>
+          <mat-progress-bar mode="determinate" [value]="timePercent()" />
+          <span class="gf-hero-progress-value">{{ timePercent() }}%</span>
+        </div>
+      </div>
+    }
+  </header>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" class="gf-top-bar" />
+  }
+
+  @if (run && !run.live && run.completionReason) {
+    <div class="gf-notice">
+      <mat-icon>{{ run.interrupted ? 'warning' : 'info' }}</mat-icon>
+      @if (run.interrupted) {
+        <span>
+          The last run was cut short: {{ run.completionReason }}. Nothing was published to search;
+          an <strong>update</strong> carries on from where it left off, in the same version.
+        </span>
+      } @else {
+        <span>
+          The last run finished: {{ run.completionReason }}.
+        </span>
+      }
+    </div>
+  }
+
+  <!-- The dashboard proper: what is happening now, and what became of everything so far. -->
+  <section class="gf-panel">
+    <h2 class="gf-panel-title">
+      <mat-icon>insights</mat-icon> Dashboard
+      @if (run?.live) {
+        <span class="gf-chip gf-chip-cat"><span class="gf-running-dot"></span> live</span>
+      }
+    </h2>
+    <div class="gf-dash">
+      <!-- One ring for the single number a run is judged by; the two bars in the hero are the
+           race between the two limits, and are read against each other rather than alone. -->
+      <div class="gf-ring-box">
+        <svg class="gf-ring" viewBox="0 0 60 60" aria-hidden="true">
+          <circle class="gf-ring-track" cx="30" cy="30" r="26" />
+          <circle
+            class="gf-ring-value"
+            cx="30"
+            cy="30"
+            r="26"
+            [attr.stroke-dasharray]="ringCircumference"
+            [attr.stroke-dashoffset]="ringOffset()"
+          />
+        </svg>
+        <div class="gf-ring-label">
+          <span class="gf-ring-value-text">{{ progressPercent() }}%</span>
+          <span class="gf-metric-label">of the limit</span>
+        </div>
+      </div>
+
+      <div class="gf-metric-row gf-dash-metrics">
+        <div class="gf-metric">
+          <span class="gf-metric-value">
+            {{ pageRate() | number: '1.0-1' }}
+            @if (pageRate() > 0) {
+              <span class="gf-running-dot"></span>
+            }
+          </span>
+          <span class="gf-metric-label">pages / s</span>
+          <div class="gf-metric-chart">
+            <gf-sparkline [values]="pageHistory()" />
+          </div>
+        </div>
+        <div class="gf-metric">
+          <span class="gf-metric-value">{{ run?.savedResourceCount ?? 0 | number }}</span>
+          <span class="gf-metric-label">pages saved</span>
+          <div class="gf-metric-chart">
+            <gf-sparkline [values]="imageHistory()" stroke="#7c3aed" />
+          </div>
+        </div>
+        <div class="gf-metric">
+          <span class="gf-metric-value">{{ run?.savedImageCount ?? 0 | number }}</span>
+          <span class="gf-metric-label">images saved</span>
+        </div>
+        <div class="gf-metric">
+          <span class="gf-metric-value">{{ run?.elapsedTime ?? '--' }}</span>
+          <span class="gf-metric-label">elapsed</span>
+        </div>
+      </div>
+    </div>
+
+    @if (outcomes().length) {
+      <p class="gf-seg-title">
+        What became of every url this run touched. The counters below say how many; only the bar
+        says out of what.
+      </p>
+      <div class="gf-segbar">
+        @for (part of outcomes(); track part.label) {
+          <span
+            class="gf-seg"
+            [class]="'gf-seg gf-tone-' + part.tone"
+            [style.width.%]="part.percent"
+            [matTooltip]="part.label + ': ' + part.value"
+          ></span>
+        }
+      </div>
+      <div class="gf-seg-legend">
+        @for (part of outcomes(); track part.label) {
+          <span class="gf-seg-key">
+            <span class="gf-seg-dot" [class]="'gf-seg-dot gf-tone-' + part.tone"></span>
+            {{ part.label }}
+            <strong>{{ part.value | number }}</strong>
+          </span>
+        }
+      </div>
+    }
+  </section>
+
+  <section class="gf-counters">
+    @for (counter of counters(); track counter.label) {
+      <div
+        class="gf-counter"
+        [class.gf-counter-accent]="counter.accent"
+        [matTooltip]="counter.hint ?? ''"
+      >
+        <mat-icon>{{ counter.icon }}</mat-icon>
+        <span class="gf-counter-value">{{ counter.value }}</span>
+        <span class="gf-counter-label">{{ counter.label }}</span>
+      </div>
+    }
+  </section>
+
+  @let config = details();
+  @if (config) {
+    <section class="gf-panel">
+      <h2 class="gf-panel-title"><mat-icon>tune</mat-icon> What this catalog runs with</h2>
+      <dl class="gf-defs">
+        <div><dt>Start url</dt><dd class="gf-truncate">{{ config.startUrl }}</dd></div>
+        <div><dt>Category</dt><dd>{{ config.category }}</dd></div>
+        <div><dt>Extractor</dt><dd>{{ config.extractor }}</dd></div>
+        <div><dt>Outputs</dt><dd>{{ config.outputTypes.join(', ') }}</dd></div>
+        <div><dt>Max fetch size</dt><dd>{{ config.maxFetchSize }}</dd></div>
+        <div><dt>Duration</dt><dd>{{ config.fetchDuration }} min</dd></div>
+        <div><dt>Interval</dt><dd>{{ config.fetchInterval }} ms</dd></div>
+        <div><dt>Depth</dt><dd>{{ config.maxFetchDepth }}</dd></div>
+        <div><dt>Versions kept</dt><dd>{{ config.maxVersions }}</dd></div>
+        <div><dt>Images</dt><dd>{{ config.imageEnabled ? config.contentMode : 'not fetched' }}</dd></div>
+        <div class="gf-defs-wide">
+          <dt>Included</dt>
+          <dd>{{ config.pathPatterns.join(', ') || '--' }}</dd>
+        </div>
+        <div class="gf-defs-wide">
+          <dt>Excluded</dt>
+          <dd>{{ config.excludedPathPatterns.join(', ') || '--' }}</dd>
+        </div>
+      </dl>
+    </section>
+  }
+
+
+  <!--
+    What happened, run by run. Not a repeat of the counters above: those are the run in flight,
+    these are the runs that finished, and the two questions people ask of them are different --
+    "is it working" against "why did last night's produce half of what Tuesday's did".
+  -->
+  @if (runs().length) {
+    <section class="gf-panel gf-runs">
+      <h2 class="gf-panel-title"><mat-icon>history</mat-icon> Runs</h2>
+
+      <!-- pages saved per run, oldest on the left. Hand drawn rather than a chart library: it is
+           one bar per run and a dependency would be larger than the whole page -->
+      <div class="gf-chart" role="img" aria-label="Pages saved per run">
+        @for (run of runs(); track run.startTime) {
+          <button
+            class="gf-bar"
+            [class.gf-bar-on]="(selectedReport()?.startTime ?? 0) === run.startTime"
+            (click)="selectReport(run)"
+            [matTooltip]="reportLabel(run) + ' — ' + run.produced.savedResourceCount + ' page(s)'"
+          >
+            <span
+              class="gf-bar-fill"
+              [style.height.%]="(run.produced.savedResourceCount / runsPeak()) * 100"
+            ></span>
+            <span class="gf-bar-label">{{ run.action }}</span>
+          </button>
+        }
+      </div>
+
+      @let picked = selectedReport() ?? runs()[runs().length - 1];
+      @if (picked) {
+        <div class="gf-run-detail">
+          <dl class="gf-defs">
+            <div><dt>Started</dt><dd>{{ reportLabel(picked) }}</dd></div>
+            <div><dt>Took</dt><dd>{{ (picked.elapsedMillis / 1000) | number: '1.0-0' }} s</dd></div>
+            <div><dt>Pages</dt><dd>{{ picked.produced.savedResourceCount | number }}</dd></div>
+            <div><dt>Images</dt><dd>{{ picked.produced.savedImageCount | number }}</dd></div>
+            <div class="gf-defs-wide"><dt>Ended because</dt><dd>{{ picked.ending.reason }}</dd></div>
+          </dl>
+
+          <!-- dispatched is the whole bar; what is missing from it is what nobody got to -->
+          <div class="gf-seg-title">
+            {{ picked.urls.dispatched | number }} url(s) dispatched
+          </div>
+          <div class="gf-segbar">
+            @for (segment of urlSegments(); track segment.label) {
+              <span
+                class="gf-seg {{ segment.className }}"
+                [style.width.%]="segment.percent"
+                [matTooltip]="segment.label + ': ' + segment.value"
+              ></span>
+            }
+          </div>
+          <div class="gf-seg-legend">
+            @for (segment of urlSegments(); track segment.label) {
+              <span class="gf-seg-key">
+                <i class="gf-seg-dot {{ segment.className }}"></i>
+                {{ segment.label }} {{ segment.value | number }}
+              </span>
+            }
+          </div>
+          @if (picked.ending.note) {
+            <p class="gf-panel-hint">{{ picked.ending.note }}</p>
+          }
+
+          <!-- who did what. On one node this is one row and says nothing; on four it is the only
+               place that shows one of them sat idle -->
+          @if (nodeShare().length > 1) {
+            <div class="gf-seg-title">Pages by node</div>
+            <div class="gf-nodes">
+              @for (share of nodeShare(); track share.node) {
+                <div class="gf-node-row">
+                  <span class="gf-node-name">{{ share.node }}</span>
+                  <span class="gf-node-bar"><i [style.width.%]="share.percent"></i></span>
+                  <span class="gf-node-value">{{ share.value | number }}</span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </section>
+  }
+
+  @if (auth.isAdmin()) {
+    <!--
+      The one irreversible operation, kept apart from the rest of the page and behind a dry run:
+      a report first, a confirmation second, and only then anything actually removed.
+    -->
+    <section class="gf-panel gf-danger-zone">
+      <h2 class="gf-panel-title">
+        <mat-icon class="gf-danger">delete_forever</mat-icon> Remove what was crawled
+      </h2>
+      <p class="gf-panel-hint">
+        Every layer keeps every version, so removing one version leaves the others alone. Nothing
+        here is undone by a rebuild, and a file that is gone cannot be replayed back into the index.
+      </p>
+
+      <!--
+        Two things, and they differ by one: whether the catalog itself survives. Both take every
+        version with them -- the rows, the files, the index and the vectors. Named rather than
+        expressed as a flag, because "empty this catalog" and "delete it entirely" is how somebody
+        thinks about it a moment before doing it.
+      -->
+      <div class="gf-delete-modes">
+        <button
+          type="button"
+          class="gf-mode"
+          [class.gf-mode-on]="deleteMode() === 'empty'"
+          (click)="setDeleteMode('empty')"
+        >
+          <span class="gf-mode-title">Empty this catalog</span>
+          <span class="gf-mode-hint">
+            Removes every version. The catalog stays, defined and back at v0.
+          </span>
+        </button>
+        <button
+          type="button"
+          class="gf-mode"
+          [class.gf-mode-on]="deleteMode() === 'entirely'"
+          [disabled]="!canDeleteEntirely()"
+          (click)="setDeleteMode('entirely')"
+        >
+          <span class="gf-mode-title">Delete it entirely</span>
+          <span class="gf-mode-hint">
+            @if (canDeleteEntirely()) {
+              The catalog goes too. Nothing is left to crawl, search or replay.
+            } @else {
+              Only when nothing is kept: set "keep the newest" to 0.
+            }
+          </span>
+        </button>
+      </div>
+
+      <div class="gf-delete-controls">
+        <mat-form-field appearance="outline" class="w-40">
+          <mat-label>Keep the newest</mat-label>
+          <input
+            matInput
+            type="number"
+            min="0"
+            [ngModel]="keepLatest()"
+            (ngModelChange)="keepLatest.set($event); deletePlan.set(null); canDeleteEntirely() || setDeleteMode('empty')"
+          />
+        </mat-form-field>
+
+        <div class="gf-chip-row">
+          @for (layer of ['all', 'db', 'file', 'index', 'vector']; track layer) {
+            <button
+              type="button"
+              class="gf-pill"
+              [class.gf-pill-on]="deleteLayers().includes($any(layer))"
+              (click)="toggleLayer($any(layer))"
+            >
+              {{ layer }}
+            </button>
+          }
+        </div>
+
+        <button mat-stroked-button (click)="planDelete()" [disabled]="busy()">
+          <mat-icon>preview</mat-icon>
+          Show me what would go
+        </button>
+      </div>
+
+      @let plan = deletePlan();
+      @if (plan && plan.length) {
+        <div class="gf-plan">
+          <table class="gf-plan-table">
+            <thead>
+              <tr>
+                <th>Version</th>
+                <th>Layer</th>
+                <th class="text-right">Items</th>
+                <th class="text-right">Bytes</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (line of plan; track line.version + line.layer) {
+                <tr [class.gf-plan-error]="line.error">
+                  <td>v{{ line.version }}</td>
+                  <td>{{ line.layer.toLowerCase() }}</td>
+                  <td class="text-right">{{ line.count }}</td>
+                  <td class="text-right">{{ line.bytes }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          <button mat-flat-button color="warn" (click)="applyDelete()" [disabled]="busy()">
+            <mat-icon>delete_forever</mat-icon>
+            {{ deleteMode() === 'entirely' && canDeleteEntirely() ? 'Delete entirely' : 'Empty it' }}
+          </button>
+        </div>
+      }
+    </section>
+  }
+</div>

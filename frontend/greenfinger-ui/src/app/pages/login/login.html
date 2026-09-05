@@ -1,0 +1,63 @@
+<div class="gf-login-page">
+  <div class="gf-login-brand">
+    <!-- The logo is the heading here, so the real one stays for anything that is not looking. -->
+    <img src="logo.png" alt="Greenfinger" class="gf-login-logo" />
+    <h1 class="sr-only">Greenfinger</h1>
+    <p>A full-web crawler. Crawl a site, keep every version, search what you kept.</p>
+  </div>
+
+  <mat-card class="gf-login-card" appearance="outlined">
+    @if (busy()) {
+      <mat-progress-bar mode="indeterminate" />
+    }
+    <mat-card-content>
+      <h2 class="gf-login-title">Sign in</h2>
+
+      <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-1">
+        <mat-form-field appearance="outline">
+          <mat-label>Username</mat-label>
+          <input matInput formControlName="username" autocomplete="username" autofocus />
+          <mat-icon matSuffix>person</mat-icon>
+          @if (form.controls.username.touched && form.controls.username.invalid) {
+            <mat-error>Username is required</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Password</mat-label>
+          <input
+            matInput
+            [type]="hidePassword() ? 'password' : 'text'"
+            formControlName="password"
+            autocomplete="current-password"
+          />
+          <button
+            mat-icon-button
+            matSuffix
+            type="button"
+            (click)="hidePassword.set(!hidePassword())"
+            [attr.aria-label]="hidePassword() ? 'Show password' : 'Hide password'"
+          >
+            <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+          @if (form.controls.password.touched && form.controls.password.invalid) {
+            <mat-error>Password is required</mat-error>
+          }
+        </mat-form-field>
+
+        @if (error()) {
+          <div class="gf-login-error">
+            <mat-icon class="text-base">error_outline</mat-icon>
+            <span>{{ error() }}</span>
+          </div>
+        }
+
+        <button mat-flat-button color="primary" type="submit" class="gf-login-submit" [disabled]="busy()">
+          {{ busy() ? 'Signing in...' : 'Sign in' }}
+        </button>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  <p class="gf-login-foot">Accounts are handed out up front, in the server's .env.</p>
+</div>

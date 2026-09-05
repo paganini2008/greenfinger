@@ -1,0 +1,35 @@
+# The front end, as its own container.
+#
+# One address in front of however many crawler nodes are running: it serves the Angular build and
+# forwards the api to the nodes, round robin, so a browser talks to one place and the request
+# lands on whichever node is free.
+#
+# The nodes serve these same files themselves -- the api jar has them on its classpath, which is
+# what makes a single process a complete installation. This container is not a second copy of that
+# so much as the thing that makes three nodes look like one site.
+#
+# Node rather than nginx: the api address is now a runtime setting (public/env.js) and the
+# forwarding is a hundred lines of Node's own http module, so there is nothing here that a config
+# file language was buying. No package.json either -- no dependencies means no install step, no
+# lockfile to keep current, and nothing to audit.
+#
+# Built by run-docker.sh from the deploy directory:
+#
+#     docker build -f Dockerfile.web -t greenfinger-web:local .
+FROM node:22-alpine
+
+WORKDIR /app
+
+# The Angular build. `npm run build:deploy` in frontend/ is what puts it here.
+COPY docker/static /app/static
+
+# The server: static files, the single page app fallback, and the api forwarded to GF_UPSTREAMS.
+COPY docker/server.js /app/server.js
+
+ENV GF_STATIC=/app/static
+ENV PORT=80
+EXPOSE 80
+
+# no root: nothing here needs it, and the node image already has a user for this
+USER node
+CMD ["node", "/app/server.js"]

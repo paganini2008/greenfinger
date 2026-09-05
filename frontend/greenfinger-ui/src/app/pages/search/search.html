@@ -1,0 +1,272 @@
+<div class="gf-page">
+  <header class="gf-hero gf-search-hero">
+    <div class="gf-hero-glow"></div>
+    <div class="gf-hero-inner gf-search-inner">
+      <div class="w-full">
+        <span class="gf-eyebrow">Search</span>
+        <h1>What did we crawl?</h1>
+
+        <div class="gf-searchbar">
+          <mat-icon>search</mat-icon>
+          <input
+            class="gf-searchbar-input"
+            [ngModel]="keyword()"
+            (ngModelChange)="keyword.set($event)"
+            (keyup.enter)="search()"
+            [placeholder]="
+              mode() === 'pictures' ? 'a red book cover on a wooden table' : 'anything you crawled'
+            "
+            autofocus
+          />
+          @if (keyword()) {
+            <button class="gf-searchbar-clear" (click)="keyword.set('')" aria-label="Clear">
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+          <button mat-flat-button class="gf-hero-cta" (click)="search()" [disabled]="searching()">
+            Search
+          </button>
+        </div>
+
+        <div class="gf-search-controls">
+          <div class="gf-modes">
+            @for (option of modes; track option.value) {
+              <button
+                class="gf-mode"
+                [class.gf-mode-on]="mode() === option.value"
+                (click)="setMode(option.value)"
+                [matTooltip]="option.hint"
+              >
+                <mat-icon>{{ option.icon }}</mat-icon>
+                {{ option.label }}
+              </button>
+            }
+          </div>
+
+          <select
+            class="gf-native-select"
+            [ngModel]="catalog()"
+            (ngModelChange)="catalog.set($event); search()"
+            aria-label="Catalog"
+          >
+            <option value="">Every catalog</option>
+            @for (one of catalogs(); track one.id) {
+              <option [value]="one.name">{{ one.name }}</option>
+            }
+          </select>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  @if (searching()) {
+    <mat-progress-bar mode="indeterminate" class="gf-top-bar" />
+  }
+
+  @if (error()) {
+    <div class="gf-notice gf-notice-warn">
+      <mat-icon>info</mat-icon>
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  <!-- Words: Elasticsearch, with highlights and cursor paging. -->
+  @if (mode() === 'words') {
+    @let result = response();
+    @if (result) {
+      <div class="gf-result-meta">
+        {{ result.total }} match(es) &middot; {{ result.elapsedMillis }} ms
+        @if (pageIndex() > 0) {
+          &middot; page {{ pageIndex() + 1 }}
+        }
+      </div>
+
+      <div class="gf-results">
+        @for (hit of result.results; track hit.id) {
+          <article class="gf-result">
+            <a [href]="hit.url" target="_blank" rel="noreferrer" class="gf-result-title">
+              {{ hit.title || '(no title)' }}
+            </a>
+            <div class="gf-result-url gf-truncate">{{ hit.url }}</div>
+            @for (highlight of hit.highlights; track $index) {
+              <p class="gf-result-snippet" [innerHTML]="highlight"></p>
+            }
+            <div class="gf-result-foot">
+              <span class="gf-chip gf-chip-cat">{{ hit.catalog }}</span>
+              <span class="gf-chip">v{{ hit.version }}</span>
+              <span class="gf-muted">score {{ hit.score | number: '1.2-2' }}</span>
+            </div>
+          </article>
+        }
+      </div>
+
+      @if (result.results.length === 0 && searched()) {
+        <div class="gf-empty">
+          <mat-icon>search_off</mat-icon>
+          @if (nothingIndexed()) {
+            <p>
+              Nothing is indexed yet, so there is nothing here to match &mdash; the query is not
+              the problem. Every catalog on this installation writes files and no index. Turn
+              <strong>Index</strong> on in a catalog's outputs, then
+              <strong>Replay index and vectors from disk</strong> on its Monitor page puts the
+              pages already crawled into it without fetching the site again.
+            </p>
+          } @else {
+            <p>Nothing matched. Try the Meaning mode &mdash; it finds pages that never say the words.</p>
+          }
+        </div>
+      }
+
+      @if (result.results.length > 0) {
+        <div class="gf-pager">
+          <button mat-stroked-button (click)="previousPage()" [disabled]="pageIndex() === 0 || searching()">
+            <mat-icon>chevron_left</mat-icon>
+            Previous
+          </button>
+          <button
+            mat-stroked-button
+            (click)="nextPage()"
+            [disabled]="!result.nextCursor || searching()"
+            matTooltip="Cursor paging: the ten-thousandth page costs the same as the first"
+          >
+            Next
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+        </div>
+      }
+    }
+  }
+
+  <!-- Meaning: the text vectors, one hit per page, already re-ranked toward detail pages. -->
+  @if (mode() === 'meaning') {
+    <div class="gf-results">
+      @for (hit of hits(); track hit.id) {
+        <article class="gf-result">
+          <a [href]="text(hit, 'url')" target="_blank" rel="noreferrer" class="gf-result-title">
+            {{ text(hit, 'title') || '(no title)' }}
+          </a>
+          <div class="gf-result-url gf-truncate">{{ text(hit, 'url') }}</div>
+          @if (text(hit, 'text')) {
+            <p class="gf-result-snippet">{{ text(hit, 'text') }}</p>
+          }
+          <div class="gf-result-foot">
+            <span class="gf-chip gf-chip-vector">similarity {{ hit.score | number: '1.3-3' }}</span>
+            @if (text(hit, 'catalog')) {
+              <span class="gf-chip gf-chip-cat">{{ text(hit, 'catalog') }}</span>
+            }
+          </div>
+        </article>
+      }
+    </div>
+    @if (searched() && hits().length === 0 && !error()) {
+      <div class="gf-empty">
+        <mat-icon>auto_awesome</mat-icon>
+        <p>No close enough match. The vector output has to be on for this to find anything.</p>
+      </div>
+    }
+
+    @if (hits().length > 0) {
+      <div class="gf-pager">
+        <button mat-stroked-button (click)="previousPage()" [disabled]="pageIndex() === 0 || searching()">
+          <mat-icon>chevron_left</mat-icon>
+          Previous
+        </button>
+        <span class="gf-muted">page {{ pageIndex() + 1 }}</span>
+        <button
+          mat-stroked-button
+          (click)="nextPage()"
+          [disabled]="!moreHits() || searching()"
+          matTooltip="Nearest neighbours are ranked for this query alone, so pages are an offset into that ranking"
+        >
+          Next
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+    }
+  }
+
+  <!-- Pictures: the image vectors, queried with a description rather than an image. -->
+  @if (mode() === 'pictures') {
+    <div class="gf-gallery">
+      @for (hit of hits(); track hit.id) {
+        <figure class="gf-shot">
+          <div class="gf-shot-frame">
+            @if (isMissing(hit)) {
+              <mat-icon matTooltip="The version this belonged to has been deleted">image_not_supported</mat-icon>
+            } @else if (imageUrl(hit)) {
+              <!-- the archived copy, not the site's own url: it is still here after the site moves
+                   on. Its bytes were fetched with the token and handed over as an object url, so
+                   there is nothing to draw until that arrives -- an empty src would fire (error)
+                   and mark a perfectly good picture as missing -->
+              <img
+                [src]="imageUrl(hit)"
+                [alt]="text(hit, 'alt') || text(hit, 'context') || 'crawled image'"
+                (error)="onImageFailed(hit)"
+              />
+            }
+            <span class="gf-shot-score">{{ hit.score | number: '1.3-3' }}</span>
+          </div>
+          <figcaption>
+            @if (text(hit, 'alt')) {
+              <div class="gf-shot-alt gf-truncate" [matTooltip]="text(hit, 'alt')">
+                {{ text(hit, 'alt') }}
+              </div>
+            }
+            <a
+              [href]="text(hit, 'url')"
+              target="_blank"
+              rel="noreferrer"
+              class="gf-link gf-truncate"
+              [matTooltip]="text(hit, 'url')"
+            >
+              {{ text(hit, 'url') }}
+            </a>
+            @if (text(hit, 'imageUrl')) {
+              <a
+                [href]="text(hit, 'imageUrl')"
+                target="_blank"
+                rel="noreferrer"
+                class="gf-shot-origin gf-truncate"
+                matTooltip="The picture where it still lives on the site"
+              >
+                see it in place
+              </a>
+            }
+          </figcaption>
+        </figure>
+      }
+    </div>
+    @if (searched() && hits().length === 0 && !error()) {
+      <div class="gf-empty">
+        <mat-icon>image_search</mat-icon>
+        <p>Nothing found. Pictures need the local embedding provider and the vector output.</p>
+      </div>
+    }
+
+    @if (hits().length > 0) {
+      <div class="gf-pager">
+        <button mat-stroked-button (click)="previousPage()" [disabled]="pageIndex() === 0 || searching()">
+          <mat-icon>chevron_left</mat-icon>
+          Previous
+        </button>
+        <span class="gf-muted">page {{ pageIndex() + 1 }}</span>
+        <button
+          mat-stroked-button
+          (click)="nextPage()"
+          [disabled]="!moreHits() || searching()"
+          matTooltip="Nearest neighbours are ranked for this query alone, so pages are an offset into that ranking"
+        >
+          Next
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+    }
+  }
+
+  @if (!searched() && !searching()) {
+    <div class="gf-empty">
+      <mat-icon>eco</mat-icon>
+      <p>Type something above. Words are exact, Meaning is not, Pictures wants what a picture looks like.</p>
+    </div>
+  }
+</div>

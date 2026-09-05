@@ -1,0 +1,4 @@
+/* a wide table on a narrow screen scrolls inside its own box rather than moving the page */
+.gf-table-scroll {
+  overflow-x: auto;
+}

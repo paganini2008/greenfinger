@@ -1,0 +1,253 @@
+<div class="gf-page">
+  <header class="gf-hero">
+    <div class="gf-hero-glow"></div>
+    <div class="gf-hero-inner">
+      <div>
+        <span class="gf-eyebrow">Resources</span>
+        <h1>What did we actually get?</h1>
+        <p>
+          Rows from the table, in crawl order, for any version -- including one that was never
+          published. Search ranks pages by what they are about; this shows what is there.
+        </p>
+      </div>
+    </div>
+  </header>
+
+  <section class="gf-filters">
+    <mat-form-field appearance="outline" class="gf-filter-catalog">
+      <mat-label>Catalog</mat-label>
+      <mat-select [value]="catalogId()" (valueChange)="onCatalog($event)">
+        @for (catalog of catalogs(); track catalog.id) {
+          <mat-option [value]="catalog.id">{{ catalog.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="gf-filter-version">
+      <mat-label>Version</mat-label>
+      <mat-select
+        [value]="version()"
+        (valueChange)="version.set($event); reload(true)"
+        [disabled]="!versions().length"
+      >
+        <mat-option [value]="null">All versions</mat-option>
+        @for (v of versions(); track v) {
+          <mat-option [value]="v">v{{ v }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="gf-filter-keyword">
+      <mat-label>Url or title contains</mat-label>
+      <input matInput [ngModel]="keyword()" (ngModelChange)="onKeyword($event)" />
+      @if (keyword()) {
+        <button matSuffix mat-icon-button (click)="onKeyword('')" aria-label="Clear">
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="gf-filter-date">
+      <mat-label>Crawled from</mat-label>
+      <input matInput [matDatepicker]="fromPicker" [ngModel]="from()" (ngModelChange)="from.set($event); reload(true)" />
+      <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
+      <mat-datepicker #fromPicker />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="gf-filter-date">
+      <mat-label>to</mat-label>
+      <input matInput [matDatepicker]="toPicker" [ngModel]="to()" (ngModelChange)="to.set($event); reload(true)" />
+      <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
+      <mat-datepicker #toPicker />
+    </mat-form-field>
+
+    @if (filtered()) {
+      <button mat-stroked-button (click)="clear()">
+        <mat-icon>filter_alt_off</mat-icon>
+        Clear
+      </button>
+    }
+  </section>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+
+  <div class="gf-result-line">
+    <span>
+      <strong>{{ total() | number }}</strong>
+      {{ total() === 1 ? 'resource' : 'resources' }}
+      @if (catalogName()) {
+        in <strong>{{ catalogName() }}</strong>
+      }
+    </span>
+    <button mat-button (click)="toggleSort()" [matTooltip]="'Crawled ' + (sort() === 'desc' ? 'newest' : 'oldest') + ' first'">
+      <mat-icon>{{ sort() === 'desc' ? 'arrow_downward' : 'arrow_upward' }}</mat-icon>
+      {{ sort() === 'desc' ? 'Newest' : 'Oldest' }}
+    </button>
+  </div>
+
+  @if (!rows().length && !loading()) {
+    <div class="gf-empty">
+      <mat-icon>inbox</mat-icon>
+      @if (filtered()) {
+        <p>Nothing matches those filters. The rows may be under a different version.</p>
+      } @else {
+        <p>This catalog has stored nothing yet. Run a crawl and it will appear here.</p>
+      }
+    </div>
+  }
+
+  <div class="gf-rows">
+    @for (row of rows(); track row.id) {
+      <article class="gf-row" [class.gf-row-open]="expanded() === row.id">
+        <button class="gf-row-head" (click)="toggle(row)">
+          <mat-icon class="gf-row-chevron">
+            {{ expanded() === row.id ? 'expand_more' : 'chevron_right' }}
+          </mat-icon>
+          <div class="gf-row-main">
+            <div class="gf-row-title">{{ row.title || '(no title)' }}</div>
+            <div class="gf-row-url">{{ row.url }}</div>
+          </div>
+          <div class="gf-row-meta">
+            @if (row.images.length) {
+              <span class="gf-chip gf-chip-image" [matTooltip]="row.images.length + ' image(s)'">
+                <mat-icon>image</mat-icon>
+                {{ row.images.length }}
+              </span>
+            }
+            <span class="gf-chip">v{{ row.version }}</span>
+            @if (row.depth !== null) {
+              <span class="gf-chip" matTooltip="Links from the seed">d{{ row.depth }}</span>
+            }
+            <span class="gf-row-date">{{ row.createdAt | date: 'yyyy-MM-dd HH:mm' }}</span>
+          </div>
+        </button>
+
+        @if (expanded() === row.id) {
+          <dl class="gf-row-detail">
+            <dt>Url</dt>
+            <dd>
+              <a [href]="row.url" target="_blank" rel="noopener noreferrer">
+                {{ row.url }}
+                <mat-icon class="gf-external">open_in_new</mat-icon>
+              </a>
+            </dd>
+            @if (row.referer) {
+              <dt>Found on</dt>
+              <dd>
+                <a [href]="row.referer" target="_blank" rel="noopener noreferrer">{{ row.referer }}</a>
+              </dd>
+            }
+            <dt>Category</dt>
+            <dd>{{ row.cat }}</dd>
+            <dt>Text length</dt>
+            <dd>{{ (row.textLength ?? 0) | number }} characters</dd>
+            <dt>Outgoing links</dt>
+            <dd>{{ (row.linkCount ?? 0) | number }}</dd>
+            <dt>Crawled</dt>
+            <dd>{{ row.createdAt | date: 'medium' }}</dd>
+            <dt>Stored at</dt>
+            <dd>
+              @if (row.htmlFilePath) {
+                <span class="gf-mono">{{ row.htmlFilePath }}</span>
+              } @else {
+                <span class="gf-muted">
+                  the file is gone; 'Restore missing files' on the Monitor page fetches it back
+                  from the url above
+                </span>
+              }
+            </dd>
+            @if (row.htmlContentFilePath) {
+              <dt>Text at</dt>
+              <dd class="gf-mono">{{ row.htmlContentFilePath }}</dd>
+            }
+            @if (row.etag || row.httpLastModified) {
+              <dt>Server said</dt>
+              <dd class="gf-mono">
+                {{ row.etag || '--' }}
+                @if (row.httpLastModified) {
+                  &nbsp;&middot;&nbsp;{{ row.httpLastModified }}
+                }
+              </dd>
+            }
+            @if (row.contentHash) {
+              <dt>Content hash</dt>
+              <dd class="gf-mono">{{ row.contentHash }}</dd>
+            }
+            <dt>Resource id</dt>
+            <dd class="gf-mono">{{ row.id }}</dd>
+          </dl>
+
+          @if (row.images.length) {
+            <section class="gf-images">
+              <h3 class="gf-images-title">
+                <mat-icon>image</mat-icon>
+                {{ row.images.length }} image{{ row.images.length === 1 ? '' : 's' }} on this page
+              </h3>
+              <div class="gf-image-grid">
+                @for (image of row.images; track image.imageId) {
+                  <figure class="gf-image">
+                    @if (thumbnail(image); as src) {
+                      <img [src]="src" [alt]="image.altText || ''" loading="lazy" />
+                    } @else if (isMissing(image)) {
+                      <div class="gf-image-gone" matTooltip="The stored file is gone. Its version was probably deleted.">
+                        <mat-icon>broken_image</mat-icon>
+                      </div>
+                    } @else {
+                      <div class="gf-image-gone"><mat-icon>hourglass_empty</mat-icon></div>
+                    }
+                    <figcaption>
+                      <div class="gf-image-facts">
+                        @if (image.width && image.height) {
+                          <span>{{ image.width }}&times;{{ image.height }}</span>
+                        }
+                        <span>{{ bytes(image.bytes) }}</span>
+                        @if (image.contentType) {
+                          <span>{{ image.contentType }}</span>
+                        }
+                      </div>
+                      @if (image.altText) {
+                        <div class="gf-image-alt">{{ image.altText }}</div>
+                      }
+                      <dl class="gf-image-urls">
+                        <dt>Source</dt>
+                        <dd>
+                          <a [href]="image.sourceUrl" target="_blank" rel="noopener noreferrer">
+                            {{ image.sourceUrl }}
+                          </a>
+                        </dd>
+                        @if (image.firstSourceUrl && image.firstSourceUrl !== image.sourceUrl) {
+                          <dt matTooltip="An image is stored once per version however many pages carry it, so the bytes may have arrived from another page's url first.">
+                            First seen at
+                          </dt>
+                          <dd>
+                            <a [href]="image.firstSourceUrl" target="_blank" rel="noopener noreferrer">
+                              {{ image.firstSourceUrl }}
+                            </a>
+                          </dd>
+                        }
+                        <dt>Stored at</dt>
+                        <dd class="gf-mono">{{ image.filePath }}</dd>
+                      </dl>
+                    </figcaption>
+                  </figure>
+                }
+              </div>
+            </section>
+          }
+        }
+      </article>
+    }
+  </div>
+
+  @if (total() > pageSize()) {
+    <mat-paginator
+      [length]="total()"
+      [pageSize]="pageSize()"
+      [pageIndex]="pageIndex()"
+      [pageSizeOptions]="[25, 50, 100]"
+      (page)="onPage($event)"
+    />
+  }
+</div>

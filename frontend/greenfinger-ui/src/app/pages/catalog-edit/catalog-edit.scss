@@ -1,0 +1,113 @@
+.gf-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.gf-form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0 1rem;
+}
+
+.gf-form-row-tight {
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+mat-form-field {
+  width: 100%;
+}
+
+// Outputs as three pressable cards rather than three checkboxes: they are a choice about where
+// data goes, and a checkbox makes that look like a preference.
+.gf-output-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.75rem;
+}
+
+.gf-output {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.875rem;
+  border: 1px solid var(--gf-outline);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    transform 0.15s ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--gf-green) 45%, var(--gf-outline));
+  }
+
+  mat-icon {
+    color: var(--gf-muted);
+  }
+}
+
+.gf-output-on {
+  border-color: var(--gf-green);
+  background: var(--gf-green-container);
+
+  mat-icon {
+    color: var(--gf-green);
+  }
+}
+
+.gf-output-locked {
+  cursor: default;
+  opacity: 0.9;
+}
+
+.gf-output-name {
+  font-weight: 650;
+  font-size: 0.875rem;
+}
+
+.gf-output-note {
+  font-size: 0.7rem;
+  color: var(--gf-muted);
+}
+
+.gf-accordion {
+  display: block;
+
+  mat-expansion-panel {
+    border-radius: 1rem !important;
+    border: 1px solid var(--gf-outline);
+    box-shadow: none !important;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+  }
+
+  mat-panel-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+
+    mat-icon {
+      color: var(--gf-green);
+    }
+  }
+}
+
+.gf-option-hint {
+  color: var(--gf-muted);
+  font-size: 0.75rem;
+}
+
+.gf-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-bottom: 1rem;
+}

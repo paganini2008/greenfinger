@@ -1,0 +1,8 @@
+/*
+ * Tailwind's entry point, kept in a plain .css file on purpose.
+ *
+ * Tailwind 4 is imported with @import, and Sass has deprecated @import -- so putting this line in
+ * styles.scss makes every build warn about a rule that is not ours to change. Listed before
+ * styles.scss in angular.json, so Material's theme still wins where the two overlap.
+ */
+@import 'tailwindcss';

@@ -1,0 +1,279 @@
+// The search bar is the page, so the hero gives it the room a search bar deserves.
+.gf-search-hero {
+  padding-bottom: 1.5rem;
+}
+
+.gf-search-inner h1 {
+  margin-bottom: 1rem;
+}
+
+.gf-searchbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.35rem 0.35rem 0.9rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 14%);
+  border: 1px solid rgb(255 255 255 / 22%);
+  backdrop-filter: blur(10px);
+  transition: background 0.2s ease;
+
+  &:focus-within {
+    background: rgb(255 255 255 / 20%);
+  }
+
+  > mat-icon {
+    color: var(--gf-on-green);
+    opacity: 0.8;
+  }
+}
+
+.gf-searchbar-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--gf-on-green);
+  font-size: 1rem;
+  padding: 0.5rem 0;
+
+  &::placeholder {
+    color: color-mix(in srgb, var(--gf-on-green) 60%, transparent);
+  }
+}
+
+.gf-searchbar-clear {
+  border: none;
+  background: transparent;
+  color: var(--gf-on-green);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  opacity: 0.7;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.gf-search-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 0.85rem;
+}
+
+// Three modes as a segmented control. They are one choice with three answers, and radio buttons
+// or a dropdown would both hide that the third one does something the other two cannot.
+.gf-modes {
+  display: inline-flex;
+  padding: 0.2rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 12%);
+  border: 1px solid rgb(255 255 255 / 18%);
+}
+
+.gf-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: none;
+  background: transparent;
+  color: color-mix(in srgb, var(--gf-on-green) 78%, transparent);
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
+
+  mat-icon {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+
+  &:hover {
+    color: var(--gf-on-green);
+  }
+}
+
+.gf-mode-on {
+  background: var(--gf-on-green);
+  color: var(--gf-green);
+}
+
+.gf-native-select {
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 22%);
+  background: rgb(255 255 255 / 12%);
+  color: var(--gf-on-green);
+  padding: 0.4rem 0.85rem;
+  font-size: 0.8125rem;
+  cursor: pointer;
+
+  option {
+    color: var(--mat-sys-on-surface);
+  }
+}
+
+.gf-result-meta {
+  font-size: 0.8125rem;
+  color: var(--gf-muted);
+}
+
+.gf-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.gf-result {
+  padding: 1rem 1.1rem;
+  border-radius: 1rem;
+  border: 1px solid var(--gf-outline);
+  background: var(--gf-surface);
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--gf-green) 35%, var(--gf-outline));
+  }
+}
+
+.gf-result-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gf-green);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.gf-result-url {
+  font-size: 0.75rem;
+  color: var(--gf-muted);
+  margin-top: 0.1rem;
+}
+
+.gf-result-snippet {
+  margin: 0.5rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.4rem;
+  color: var(--mat-sys-on-surface);
+
+  // Elasticsearch marks the matched terms; this is what makes a result list readable.
+  :is(em) {
+    font-style: normal;
+    font-weight: 650;
+    background: var(--gf-green-container);
+    border-radius: 0.2rem;
+    padding: 0 0.15rem;
+  }
+}
+
+.gf-result-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  font-size: 0.6875rem;
+}
+
+.gf-pager {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  padding: 0.5rem 0 1.5rem;
+}
+
+.gf-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.75rem;
+}
+
+.gf-shot {
+  margin: 0;
+  border-radius: 0.875rem;
+  overflow: hidden;
+  border: 1px solid var(--gf-outline);
+  background: var(--gf-surface);
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--gf-green) 40%, var(--gf-outline));
+  }
+
+  figcaption {
+    padding: 0.5rem 0.6rem;
+    font-size: 0.6875rem;
+    color: var(--gf-muted);
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+}
+
+// The archived bytes, served by the api. contain rather than cover: a crawled gallery is every
+// aspect ratio at once, and cropping them to a grid hides what the search actually matched.
+.gf-shot-frame {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--gf-green-container), var(--gf-surface-container));
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  mat-icon {
+    font-size: 2rem;
+    width: 2rem;
+    height: 2rem;
+    color: color-mix(in srgb, var(--gf-green) 55%, transparent);
+  }
+}
+
+.gf-shot-alt {
+  color: var(--mat-sys-on-surface);
+  font-weight: 500;
+}
+
+.gf-shot-origin {
+  font-size: 0.625rem;
+  opacity: 0.75;
+}
+
+.gf-shot-score {
+  position: absolute;
+  right: 0.4rem;
+  bottom: 0.4rem;
+  font-size: 0.65rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: var(--gf-green);
+  color: var(--gf-on-green);
+}
+
+.gf-notice-warn {
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+}

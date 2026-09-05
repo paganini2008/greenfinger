@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Greenfinger</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- The leafed G from the logo, cut out by tools/make-icons.mjs. -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
+    <meta name="theme-color" content="#2e7d32" />
+    <meta
+      name="description"
+      content="Greenfinger: a full-web crawler. Crawl a site, keep every version, search what you kept."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  </head>
+  <body>
+    <!-- Read before the bundle: it carries the api address for the front end container, which is
+         a different origin from the nodes. Same origin everywhere else, which is the default. -->
+    <script src="env.js"></script>
+    <app-root></app-root>
+    <script>
+      // Before Angular boots, so a viewer who chose dark never sees a white flash first. Kept to
+      // one attribute; ThemeService reads the same key and owns everything after this point.
+      try {
+        var saved = localStorage.getItem('gf-theme');
+        if (saved === 'light' || saved === 'dark') {
+          document.documentElement.dataset.theme = saved;
+        }
+      } catch (e) {
+        // storage blocked: the system setting decides, which is the default anyway
+      }
+    </script>
+  </body>
+</html>

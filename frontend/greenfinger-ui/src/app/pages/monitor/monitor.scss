@@ -1,0 +1,395 @@
+.gf-hero-live {
+  // A live run gets a slow sheen across the hero, so a page left open on a second monitor still
+  // says at a glance that something is happening.
+  background-image:
+    linear-gradient(115deg, transparent 35%, rgb(255 255 255 / 10%) 50%, transparent 65%),
+    radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--gf-green) 55%, #000 0%) 0%, transparent 60%),
+    linear-gradient(135deg, var(--gf-green) 0%, color-mix(in srgb, var(--gf-green) 70%, #063f22) 100%);
+  background-size:
+    300% 100%,
+    auto,
+    auto;
+  animation: gf-sheen 4.5s linear infinite;
+}
+
+@keyframes gf-sheen {
+  from {
+    background-position:
+      100% 0,
+      0 0,
+      0 0;
+  }
+  to {
+    background-position:
+      -100% 0,
+      0 0,
+      0 0;
+  }
+}
+
+.gf-hero-progress {
+  position: relative;
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.4rem;
+
+  mat-progress-bar {
+    --mdc-linear-progress-track-color: rgb(255 255 255 / 25%);
+    --mdc-linear-progress-active-indicator-color: #fff;
+    border-radius: 999px;
+  }
+}
+
+// label, bar, value: the two bars line up under each other so they can be compared at a glance
+.gf-hero-progress-row {
+  display: grid;
+  grid-template-columns: 3.2rem 1fr 3rem;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.gf-hero-progress-label,
+.gf-hero-progress-value {
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+.gf-hero-progress-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.gf-ghost-icon {
+  color: var(--gf-on-green);
+}
+
+.gf-counters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 0.75rem;
+}
+
+.gf-counter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 0.875rem;
+  border: 1px solid var(--gf-outline);
+  background: var(--gf-surface);
+
+  mat-icon {
+    font-size: 1.1rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    color: var(--gf-muted);
+  }
+}
+
+// The number the operator is actually watching gets the colour; the rest are context.
+.gf-counter-accent {
+  border-color: color-mix(in srgb, var(--gf-green) 40%, var(--gf-outline));
+  background: var(--gf-green-container);
+
+  mat-icon,
+  .gf-counter-value {
+    color: color-mix(in srgb, var(--gf-green) 85%, #000);
+  }
+}
+
+.gf-counter-value {
+  font-size: 1.5rem;
+  font-weight: 650;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+
+.gf-counter-label {
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gf-muted);
+}
+
+.gf-danger-zone {
+  border-color: color-mix(in srgb, var(--mat-sys-error) 30%, var(--gf-outline));
+}
+
+// The two irreversible things, side by side and named, so the difference is read rather than
+// inferred from a checkbox label.
+.gf-delete-modes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.gf-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.85rem 1rem;
+  text-align: left;
+  border-radius: 0.875rem;
+  border: 1px solid var(--gf-outline);
+  background: var(--gf-surface);
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
+
+.gf-mode-on {
+  border-color: var(--mat-sys-error);
+  background: color-mix(in srgb, var(--mat-sys-error) 8%, var(--gf-surface));
+}
+
+.gf-mode-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.gf-mode-hint {
+  font-size: 0.75rem;
+  color: var(--gf-muted);
+}
+
+.gf-delete-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.gf-plan {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+/* ---------------------------------------------------------------------------------------------
+   Runs: one bar per finished crawl, and the detail of whichever is selected.
+
+   Drawn by hand rather than with a charting library. There are at most a few dozen bars and two
+   stacked segments; every library that would draw them is larger than this whole page, and the
+   one thing they add -- axes, legends, animation -- is not what is being asked of this panel.
+   --------------------------------------------------------------------------------------------- */
+.gf-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.35rem;
+  height: 7rem;
+  padding: 0.5rem 0 0;
+  overflow-x: auto;
+}
+
+.gf-bar {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 2.25rem;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.gf-bar-fill {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 3px 3px 0 0;
+  background: light-dark(rgb(134 186 143), rgb(96 146 106));
+  transition: background 120ms ease;
+}
+
+.gf-bar:hover .gf-bar-fill {
+  background: light-dark(rgb(106 166 118), rgb(126 176 136));
+}
+
+.gf-bar-on .gf-bar-fill {
+  background: light-dark(rgb(58 122 74), rgb(150 200 160));
+}
+
+.gf-bar-label {
+  font-size: 0.65rem;
+  color: light-dark(rgb(110 120 112), rgb(150 160 152));
+}
+
+.gf-run-detail {
+  margin-top: 1rem;
+}
+
+.gf-seg-title {
+  margin: 1rem 0 0.35rem;
+  font-size: 0.8rem;
+  color: light-dark(rgb(90 100 92), rgb(160 170 162));
+}
+
+/* dispatched is the whole width; the segments are what became of those urls */
+.gf-segbar {
+  display: flex;
+  width: 100%;
+  height: 0.9rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: light-dark(rgb(232 236 232), rgb(48 54 49));
+}
+
+.gf-seg {
+  height: 100%;
+}
+
+.gf-seg-handled {
+  background: light-dark(rgb(88 156 102), rgb(118 176 130));
+}
+
+.gf-seg-outstanding {
+  background: light-dark(rgb(214 178 92), rgb(178 148 78));
+}
+
+.gf-seg-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+}
+
+.gf-seg-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.gf-seg-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 2px;
+}
+
+.gf-nodes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.gf-node-row {
+  display: grid;
+  grid-template-columns: 6rem 1fr 3rem;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.gf-node-name {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: light-dark(rgb(90 100 92), rgb(160 170 162));
+}
+
+.gf-node-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------------------------------
+   The dashboard: a ring, three live numbers, and one bar for the whole run.
+
+   The ring is a circle with a dash pattern the length of its own circumference and an offset
+   that is the part not yet done -- which is the entire trick, and the reason there is no gauge
+   library here. Rotated a quarter turn so it starts at twelve o'clock rather than at three.
+   --------------------------------------------------------------------------------------------- */
+.gf-dash {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.gf-dash-metrics {
+  flex: 1 1 24rem;
+}
+
+.gf-ring-box {
+  position: relative;
+  flex: none;
+  width: 8.5rem;
+  height: 8.5rem;
+  display: grid;
+  place-items: center;
+}
+
+.gf-ring {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.gf-ring-track,
+.gf-ring-value {
+  fill: none;
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+
+.gf-ring-track {
+  stroke: color-mix(in srgb, var(--gf-green) 14%, var(--gf-surface-container));
+}
+
+.gf-ring-value {
+  stroke: var(--gf-green);
+  transition: stroke-dashoffset 0.5s ease;
+}
+
+.gf-ring-label {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.gf-ring-value-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: light-dark(color-mix(in srgb, var(--gf-green) 88%, #000), var(--gf-green));
+}
+
+/* One colour per outcome, used by both the bar and its legend so the two are read together.
+   Saved is the theme's green; the rest are fixed hues, because "filtered" and "invalid" are not
+   shades of the brand -- they mean different things and have to be told apart at 12px. */
+.gf-tone-saved {
+  background: var(--gf-green);
+}
+
+.gf-tone-duplicate {
+  background: light-dark(#8fbf9a, #5f8f6a);
+}
+
+.gf-tone-known {
+  background: light-dark(#9fb8d8, #5f7f9f);
+}
+
+.gf-tone-filtered {
+  background: light-dark(#d8c68f, #a8965f);
+}
+
+.gf-tone-invalid {
+  background: light-dark(#d89a9a, #a86a6a);
+}
+
+.gf-tone-dropped {
+  background: light-dark(#c4a3d8, #8f6aa8);
+}
+
+.gf-tone-queued {
+  background: light-dark(#c9cec9, #6a706a);
+}

@@ -1,0 +1,31 @@
+# Zero configuration. The default profile, and the reason the quick start is a quick start.
+#
+# Nothing here needs installing: the metadata goes into an H2 file beside the launcher, the pages
+# onto local disk, and both kinds of search into Lucene indices beside them. No database server,
+# no Elasticsearch, no vector store, no account anywhere. Everything is still a variable, so a
+# single line in .env moves any one piece without leaving this profile.
+#
+# Adding search to a machine that is otherwise set up this way is one line, and still installs
+# nothing -- the index and the vectors are embedded:
+#
+#     GF_OUTPUT_TYPES=file,index,vector
+#
+# The one thing it does download is the embedding model, once, and only for the vector half.
+#
+# Switch to prod (GF_PROFILE=prod) when the database and the stores are somebody else's servers.
+
+spring:
+  datasource:
+    # H2 in file mode: a real database, in one file, with nothing to run.
+    # AUTO_SERVER lets a second process -- the server while the command line holds the file, or
+    # the other way round -- open the same database instead of failing on the lock.
+    url: ${GF_DB_URL:jdbc:h2:file:./data/system/greenfinger;AUTO_SERVER=TRUE}
+    username: ${GF_DB_USERNAME:sa}
+    password: ${GF_DB_PASSWORD:}
+    driver-class-name: ${GF_DB_DRIVER:org.h2.Driver}
+
+greenfinger:
+  output:
+    # file only. The database holds the metadata and the disk holds the pages; index and vector
+    # are added by naming them, and need nothing installed to receive them.
+    types: ${GF_OUTPUT_TYPES:file}

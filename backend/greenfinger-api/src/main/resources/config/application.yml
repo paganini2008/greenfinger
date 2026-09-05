@@ -1,0 +1,81 @@
+# The server: what only greenfinger-api has.
+#
+# Its own file in its own module, merged into deploy/config/api/ at packaging and loaded after
+# deploy/config/ -- so this adds to the crawler's configuration rather than repeating it. The
+# command line never reads it: it starts no servlet container and has no login, which is why
+# greenfinger-shell depends on greenfinger-core alone.
+
+server:
+  # 50080, not 8080: 8080 is the port everything else on a developer's machine takes first, and a
+  # node that cannot bind is a node that looks like it started and did not. run-local.sh numbers
+  # its nodes from here, so node 1 is 50080, node 2 is 50081.
+  port: ${GF_SERVER_PORT:50080}
+  servlet:
+    context-path: ${GF_CONTEXT_PATH:/}
+  compression:
+    enabled: true
+    mime-types: application/json,text/html,text/css,application/javascript
+  error:
+    include-message: always
+
+# A server logs. The shared file defaults every level to WARN, which is right for the two faces a
+# person is sitting in front of -- the prompt would scroll its own dashboard away -- and wrong for
+# a process nobody is watching: without this, a crawl that fetched nothing leaves no trace of why.
+logging:
+  level:
+    com.github.greenfinger: ${GF_LOG_LEVEL:INFO}
+    # Hibernate warns about every constraint a database refuses, including the two the crawler
+    # refuses on purpose: a url delivered twice, which the unique constraint is there to settle,
+    # and a busy SQLite, which is retried. Both leave two warnings and a stack trace that read
+    # like data loss and are the design working. What actually goes wrong is logged by the
+    # crawler itself, and this leaves ERROR alone.
+    org.hibernate.orm.jdbc.error: ${GF_LOG_LEVEL_HIBERNATE:ERROR}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # spreader and spreader-report are the cluster's own endpoints: buffer water levels,
+        # dropped message counts, split brain, whether this node can still see a leader. They are
+        # what the front end's cluster page reads, and none of them is guessable from the logs --
+        # a full inbound buffer discards silently, by design
+        include: ${GF_ACTUATOR_ENDPOINTS:health,info,metrics,spreader,spreader-report}
+  endpoint:
+    health:
+      show-details: never
+
+greenfinger:
+  # The REST api's path prefix. Versioned with the product, and configurable so an application
+  # embedding the starter can mount it wherever its own routing expects.
+  api:
+    prefix: ${GF_API_PREFIX:/v2}
+
+  security:
+    # Off only behind a private network: it opens every endpoint, delete included.
+    enabled: ${GF_SECURITY_ENABLED:true}
+    # The accounts, handed out up front: username:password:role, comma separated.
+    #   ADMIN    creates catalogs, and runs crawl / update / rebuild / delete
+    #   SUPPORT  reads everything and changes nothing
+    # Change these in .env, never here -- this file is in the repository and .env is not.
+    users: ${GF_USERS:admin:admin123:ADMIN,tester:tester123:SUPPORT}
+    # Idle timeout. Every request renews it, so a long crawl watched from the browser never
+    # signs the watcher out mid-run.
+    token-validity: ${GF_TOKEN_VALIDITY:8h}
+    # What sign-in tokens are signed with. Every node has to share it, or a browser sent to a
+    # second node is asked to sign in again. Blank generates one per process and logs a warning:
+    # fine for one node, wrong for a cluster. No default here on purpose -- a shipped default is
+    # a published key. Set GF_TOKEN_SECRET in .env
+    token-secret: ${GF_TOKEN_SECRET:}
+    # Where the front end is served from, as the browser sees it.
+    #
+    # A build served by this same jar needs no entry: the page and the api are then one origin and
+    # the browser sends no Origin header. Two cases do need one, and both are normal here:
+    #
+    #   http://localhost:4200   the Angular dev server during development
+    #   http://localhost:9700  the front end container run-docker.sh starts, which serves the app
+    #                           and proxies the api -- one origin to the browser, but the proxied
+    #                           request reaches the node carrying the browser's Origin, and a node
+    #                           that has not been told about it answers 403 Invalid CORS request
+    #
+    # Add your own with GF_CORS_ORIGINS; it is a comma separated list.
+    cors-origins: ${GF_CORS_ORIGINS:http://localhost:4200,http://localhost:9700,http://127.0.0.1:9700}

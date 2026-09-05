@@ -1,0 +1,42 @@
+# The server, reachable by somebody else.
+#
+# Turn it on with GF_PROFILE=prod. What changes here is what a stranger can see: no error messages
+# in responses, no health detail, and no cross origin request that was not named on purpose.
+#
+# Two things have no working default and are meant not to:
+#
+#   GF_TOKEN_SECRET   what sign-in tokens are signed with. Unset, each node makes up its own and
+#                     says so in the log -- which is one node working and a cluster asking the
+#                     browser to sign in again on every other request.
+#   GF_USERS          the accounts. The shipped admin/admin123 is a published password.
+#
+# and one that is empty on purpose:
+#
+#   GF_CORS_ORIGINS   the origins the front end is served from. Empty means none, which is right
+#                     when the same jar serves the page and the api -- the browser then sends no
+#                     Origin at all. Name them only when the page comes from somewhere else.
+
+server:
+  error:
+    # A stack trace's message names classes, paths and sometimes values. In development that is
+    # the fastest way to the bug; on a public port it is a description of the inside of the
+    # process, handed to whoever asked.
+    include-message: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # health for the load balancer, and the cluster's own two for the front end's cluster
+        # page. Not metrics: it is a list of every url pattern this node has served.
+        include: ${GF_ACTUATOR_ENDPOINTS:health,spreader,spreader-report}
+  endpoint:
+    health:
+      show-details: never
+
+greenfinger:
+  security:
+    enabled: ${GF_SECURITY_ENABLED:true}
+    users: ${GF_USERS:}
+    token-secret: ${GF_TOKEN_SECRET:}
+    cors-origins: ${GF_CORS_ORIGINS:}

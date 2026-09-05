@@ -1,0 +1,295 @@
+// The filter bar wraps rather than scrolls: five controls on one line is a desktop, and on a
+// laptop the date pair should drop below the keyword instead of pushing it off the edge.
+.gf-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.gf-filter-catalog {
+  min-width: 14rem;
+}
+
+.gf-filter-version {
+  min-width: 9rem;
+}
+
+.gf-filter-keyword {
+  flex: 1 1 18rem;
+}
+
+.gf-filter-date {
+  min-width: 11rem;
+}
+
+.gf-result-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.25rem;
+  color: var(--gf-muted);
+  font: var(--mat-sys-body-large);
+}
+
+.gf-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.gf-row {
+  border: 1px solid var(--gf-outline);
+  border-radius: 0.75rem;
+  background: var(--gf-surface-container);
+  overflow: hidden;
+
+  &.gf-row-open {
+    border-color: var(--gf-green);
+  }
+}
+
+// A button rather than a div: the whole strip toggles, so it has to be reachable by keyboard and
+// announce itself as something that does anything.
+.gf-row-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+
+  &:hover {
+    background: color-mix(in srgb, var(--gf-green) 6%, transparent);
+  }
+}
+
+.gf-row-chevron {
+  flex: 0 0 auto;
+  color: var(--gf-muted);
+}
+
+.gf-row-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.gf-row-title {
+  font: var(--mat-sys-title-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// The url is the identity of the row and a long one must not push the date off the line.
+.gf-row-url {
+  color: var(--gf-muted);
+  font: var(--mat-sys-body-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gf-row-meta {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--gf-muted);
+  font: var(--mat-sys-body-medium);
+}
+
+.gf-chip {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--gf-green-container);
+  color: var(--mat-sys-on-primary-container);
+  font: var(--mat-sys-label-large);
+}
+
+.gf-row-date {
+  white-space: nowrap;
+}
+
+.gf-row-detail {
+  display: grid;
+  grid-template-columns: minmax(7rem, max-content) 1fr;
+  gap: 0.4rem 1.25rem;
+  margin: 0;
+  padding: 0 1rem 1rem 3rem;
+
+  dt {
+    color: var(--gf-muted);
+    font: var(--mat-sys-label-large);
+  }
+
+  dd {
+    margin: 0;
+    font: var(--mat-sys-body-large);
+    overflow-wrap: anywhere;
+  }
+
+  a {
+    color: var(--gf-green);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.gf-external {
+  font-size: 1rem;
+  width: 1rem;
+  height: 1rem;
+  vertical-align: text-bottom;
+}
+
+.gf-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+}
+
+.gf-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 3rem 1rem;
+  color: var(--gf-muted);
+  text-align: center;
+
+  mat-icon {
+    width: 3rem;
+    height: 3rem;
+    font-size: 3rem;
+    opacity: 0.4;
+  }
+}
+
+@media (max-width: 48rem) {
+  .gf-row-head {
+    flex-wrap: wrap;
+  }
+
+  .gf-row-meta {
+    padding-left: 2.25rem;
+  }
+
+  .gf-row-detail {
+    grid-template-columns: 1fr;
+    padding-left: 1rem;
+  }
+}
+
+.gf-chip-image {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+
+  mat-icon {
+    width: 1rem;
+    height: 1rem;
+    font-size: 1rem;
+  }
+}
+
+.gf-images {
+  padding: 0 1rem 1rem 3rem;
+  border-top: 1px dashed var(--gf-outline);
+  margin-top: 0.25rem;
+  padding-top: 0.85rem;
+}
+
+.gf-images-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.75rem;
+  color: var(--gf-muted);
+  font: var(--mat-sys-title-small);
+}
+
+// Wide cards rather than a tight thumbnail grid: the two urls are the point of this panel and
+// they need room to be read, not a tooltip that has to be hunted for.
+.gf-image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+  gap: 0.85rem;
+}
+
+.gf-image {
+  display: flex;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.6rem;
+  border: 1px solid var(--gf-outline);
+  border-radius: 0.6rem;
+  background: var(--gf-surface);
+
+  img {
+    flex: 0 0 auto;
+    width: 5.5rem;
+    height: 5.5rem;
+    border-radius: 0.4rem;
+    object-fit: cover;
+    background: var(--gf-surface-container);
+  }
+
+  figcaption {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
+
+.gf-image-gone {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 5.5rem;
+  height: 5.5rem;
+  border-radius: 0.4rem;
+  background: var(--gf-surface-container);
+  color: var(--gf-muted);
+}
+
+.gf-image-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  color: var(--gf-muted);
+  font: var(--mat-sys-label-large);
+}
+
+.gf-image-alt {
+  margin-top: 0.15rem;
+  font: var(--mat-sys-body-medium);
+}
+
+// The urls are long and must wrap rather than widen the card past its column.
+.gf-image-urls {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.15rem 0.6rem;
+  margin: 0.4rem 0 0;
+
+  dt {
+    color: var(--gf-muted);
+    font: var(--mat-sys-label-medium);
+  }
+
+  dd {
+    margin: 0;
+    font: var(--mat-sys-body-medium);
+    overflow-wrap: anywhere;
+  }
+}
