@@ -29,6 +29,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 import com.github.greenfinger.core.WebCrawlerException;
@@ -40,6 +41,11 @@ import com.github.greenfinger.core.model.OutputType;
 import com.github.greenfinger.core.output.IndexAdmin;
 import com.github.greenfinger.core.record.ResourceRecordStore;
 import com.github.greenfinger.output.OutputProperties;
+import com.github.greenfinger.core.WebCrawlerProperties;
+import com.github.greenfinger.core.WebCrawlerSemaphore;
+import com.github.greenfinger.core.catalog.CatalogStore;
+import com.github.greenfinger.core.report.CrawlReportStore;
+import com.github.greenfinger.output.OutputFactory;
 
 /**
  * Removing versions across the four stores, in the one order that is allowed.
@@ -63,7 +69,7 @@ import com.github.greenfinger.output.OutputProperties;
 class DeletionServiceIntegrationTest {
 
     @Autowired
-    private com.github.greenfinger.core.WebCrawlerProperties webCrawlerProperties;
+    private WebCrawlerProperties webCrawlerProperties;
 
     @Autowired
     private CrawlerLauncher crawlerLauncher;
@@ -87,12 +93,43 @@ class DeletionServiceIntegrationTest {
     private OutputProperties outputProperties;
 
     @Autowired
-    private com.github.greenfinger.output.OutputFactory outputFactory;
+    private OutputFactory outputFactory;
 
     private LocalSite site;
 
+    @Autowired
+    private WebCrawlerSemaphore semaphore;
+
+    @Autowired
+    private CatalogStore catalogStore;
+
+    @Autowired
+    private CrawlReportStore reportStore;
+
+    /** What a delete asked the rest of the cluster to do. */
+    private final List<String> announced = new CopyOnWriteArrayList<>();
+
+    /**
+     * The same service the context holds, with the broadcast replaced by one that records.
+     *
+     * <p>
+     * Built by hand rather than by swapping the bean: two layers of a delete cannot replicate
+     * themselves -- the embedded index is handed out undecorated, and the RocksDB directories are
+     * plain files -- and what is asserted here is the instruction that covers them. Carrying it
+     * out on the other side is the cluster module's own test.
+     */
+    private DeletionService deletionServiceThatRecords() {
+        return new DeletionService(outputFactory, outputProperties, webCrawlerProperties,
+                recordStore, semaphore, catalogStore, reportStore,
+                (catalogId, version, layers, dropIndex) -> announced
+                        .add((version != null ? "v" + version : "all") + " "
+                                + layers.stream().map(DeleteLayer::getRepr).sorted().toList()
+                                + (dropIndex ? " drop" : "")));
+    }
+
     @BeforeEach
     void setUp() throws Exception {
+        announced.clear();
         wipe(Path.of(System.getProperty("java.io.tmpdir"), "gf-del"));
         catalogAdminService.findAll().forEach(c -> catalogAdminService.delete(c.getId()));
         site = new LocalSite();
@@ -207,6 +244,21 @@ class DeletionServiceIntegrationTest {
         assertThat(report.hasFailures()).isFalse();
         assertThat(recordStore.countByCatalog(catalog.getId(), 0)).isEqualTo(2);
         assertThat(root().resolve(catalog.getId() + "/v0")).exists();
+    }
+
+    @Test
+    @DisplayName("what the preview promises is what the delete reports")
+    void theDryRunPredictsTheRealThing() throws Exception {
+        Catalog catalog = crawled("del-agree", 2);
+        CatalogDetails details = detailsOf(catalog);
+        EnumSet<DeleteLayer> layers = EnumSet.of(DeleteLayer.DB, DeleteLayer.FILE);
+
+        long promised = deletionService.delete(details, List.of(0), layers, true, false).total();
+        long removed = deletionService.delete(details, List.of(0), layers, false, false).total();
+
+        // it used to promise the pages and pictures and then report every row underneath them,
+        // references and run report included, which read as a delete that had exceeded its brief
+        assertThat(removed).isEqualTo(promised);
     }
 
     @Test
@@ -336,6 +388,141 @@ class DeletionServiceIntegrationTest {
         assertThat(report.total()).isPositive();
     }
 
+
+    // ---- the half of a delete that only ever removes this node's own copy -------------------
+
+    @Test
+    @DisplayName("a purge takes this node's index documents for the version named")
+    void purgeEmptiesOneVersionOfTheIndex() throws Exception {
+        Catalog catalog = indexed("purge-one");
+
+        deletionService.purgeNodeLocal(catalog.getId(), 0, EnumSet.of(DeleteLayer.INDEX), false);
+
+        try (IndexAdmin admin = outputFactory.getIndexAdmin()) {
+            assertThat(admin.countByCatalogVersion(catalog.getId() + ":0")).isZero();
+            // the version nobody mentioned is still there
+            assertThat(admin.countByCatalogVersion(catalog.getId() + ":1")).isPositive();
+            assertThat(admin.indexExists(catalog.getId())).isTrue();
+        }
+    }
+
+    @Test
+    @DisplayName("a purge of the whole catalog drops this node's index when asked to")
+    void purgeDropsTheIndex() throws Exception {
+        Catalog catalog = indexed("purge-drop");
+
+        deletionService.purgeNodeLocal(catalog.getId(), null, EnumSet.of(DeleteLayer.INDEX), true);
+
+        try (IndexAdmin admin = outputFactory.getIndexAdmin()) {
+            assertThat(admin.indexExists(catalog.getId())).isFalse();
+        }
+    }
+
+    @Test
+    @DisplayName("a purge of the whole catalog empties the index when it is not being dropped")
+    void purgeEmptiesTheIndex() throws Exception {
+        Catalog catalog = indexed("purge-empty");
+
+        deletionService.purgeNodeLocal(catalog.getId(), null, EnumSet.of(DeleteLayer.INDEX),
+                false);
+
+        try (IndexAdmin admin = outputFactory.getIndexAdmin()) {
+            assertThat(admin.indexExists(catalog.getId())).isTrue();
+            assertThat(admin.countByCatalog(catalog.getId())).isZero();
+        }
+    }
+
+    @Test
+    @DisplayName("a purge takes this node's frontier and dedup directories")
+    void purgeRemovesTheCrawlState() throws Exception {
+        Catalog catalog = crawled("purge-state", 2);
+        assertThat(stateOf(catalog, 0)).allSatisfy(path -> assertThat(path).isDirectory());
+
+        deletionService.purgeNodeLocal(catalog.getId(), 0, EnumSet.of(DeleteLayer.DB), false);
+
+        assertThat(stateOf(catalog, 0)).allSatisfy(path -> assertThat(path).doesNotExist());
+        assertThat(stateOf(catalog, 1)).allSatisfy(path -> assertThat(path).isDirectory());
+    }
+
+    @Test
+    @DisplayName("a purge of every version takes the whole tree")
+    void purgeRemovesEveryVersionOfTheState() throws Exception {
+        Catalog catalog = crawled("purge-state-all", 2);
+
+        deletionService.purgeNodeLocal(catalog.getId(), null, EnumSet.of(DeleteLayer.DB), false);
+
+        assertThat(stateOf(catalog, 0)).allSatisfy(path -> assertThat(path).doesNotExist());
+        assertThat(stateOf(catalog, 1)).allSatisfy(path -> assertThat(path).doesNotExist());
+    }
+
+    @Test
+    @DisplayName("a purge of layers that replicate themselves does nothing")
+    void purgeIgnoresTheReplicatedLayers() throws Exception {
+        Catalog catalog = indexed("purge-none");
+
+        deletionService.purgeNodeLocal(catalog.getId(), 0,
+                EnumSet.of(DeleteLayer.FILE, DeleteLayer.VECTOR), false);
+
+        try (IndexAdmin admin = outputFactory.getIndexAdmin()) {
+            assertThat(admin.countByCatalogVersion(catalog.getId() + ":0")).isPositive();
+        }
+        assertThat(stateOf(catalog, 0)).allSatisfy(path -> assertThat(path).isDirectory());
+    }
+
+    @Test
+    @DisplayName("removing a version asks the other nodes to remove their own copy of it")
+    void deletingAVersionIsAnnounced() throws Exception {
+        Catalog catalog = crawled("purge-say-version", 2);
+
+        deletionServiceThatRecords().delete(detailsOf(catalog), List.of(0),
+                EnumSet.allOf(DeleteLayer.class), false, true);
+
+        assertThat(announced).containsExactly("v0 [db, file, index, vector]");
+    }
+
+    @Test
+    @DisplayName("emptying a catalog says so once, for every version, without dropping the index")
+    void cleaningIsAnnouncedOnce() throws Exception {
+        Catalog catalog = crawled("purge-say-clean", 2);
+
+        deletionServiceThatRecords().cleanCatalog(detailsOf(catalog),
+                EnumSet.allOf(DeleteLayer.class), false, true);
+
+        assertThat(announced).containsExactly("all [db, file, index, vector]");
+    }
+
+    @Test
+    @DisplayName("deleting a catalog says the index is dropped rather than emptied")
+    void deletingTheCatalogIsAnnouncedAsADrop() throws Exception {
+        Catalog catalog = crawled("purge-say-drop", 1);
+
+        deletionServiceThatRecords().deleteCatalog(detailsOf(catalog),
+                EnumSet.allOf(DeleteLayer.class), false, true);
+
+        assertThat(announced).containsExactly("all [db, file, index, vector] drop");
+    }
+
+    @Test
+    @DisplayName("a dry run asks nobody to remove anything")
+    void aDryRunSaysNothing() throws Exception {
+        Catalog catalog = crawled("purge-say-dry", 1);
+
+        deletionServiceThatRecords().delete(detailsOf(catalog), List.of(0),
+                EnumSet.allOf(DeleteLayer.class), true, true);
+
+        assertThat(announced).isEmpty();
+    }
+
+    @Test
+    @DisplayName("a delete of only the layers that replicate themselves says nothing")
+    void replicatedLayersAreNotAnnounced() throws Exception {
+        Catalog catalog = crawled("purge-say-file", 1);
+
+        deletionServiceThatRecords().delete(detailsOf(catalog), List.of(0),
+                EnumSet.of(DeleteLayer.FILE, DeleteLayer.VECTOR), false, true);
+
+        assertThat(announced).isEmpty();
+    }
 
     /**
      * The same catalog, crawled into the index as well, so the index layer has something to be

@@ -16,11 +16,15 @@
 
 package com.github.greenfinger.cluster.replication;
 
+import java.util.ArrayList;
+import java.util.List;
 import com.chaconneai.spreader.GossipCluster;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.greenfinger.cluster.Channels;
 import com.github.greenfinger.cluster.ClusterProperties;
 import com.github.greenfinger.cluster.StoreType;
 import com.github.greenfinger.core.ManagedBeanLifeCycle;
+import com.github.greenfinger.core.catalog.CatalogStore;
 import com.github.greenfinger.core.component.dedup.ContentDedupFilter;
 import com.github.greenfinger.core.component.dedup.ExistingUrlPathFilter;
 import com.github.greenfinger.core.engine.CrawlRegistry;
@@ -65,8 +69,7 @@ public class ClusterReplication implements ManagedBeanLifeCycle {
      */
     private final ReplicationChannel search;
 
-    private static final com.fasterxml.jackson.databind.ObjectMapper SEARCH_JSON =
-            new com.fasterxml.jackson.databind.ObjectMapper();
+    private static final ObjectMapper SEARCH_JSON = new ObjectMapper();
 
     /** Null unless the index is the embedded one. */
     private final LuceneIndexes luceneIndexes;
@@ -88,7 +91,7 @@ public class ClusterReplication implements ManagedBeanLifeCycle {
     public ClusterReplication(GossipCluster cluster, ClusterProperties properties,
             CrawlRegistry crawlRegistry, StoreType databaseType, StoreType blobStoreType,
             ReplicatedRecordStore.RowWriter rows,
-            com.github.greenfinger.core.catalog.CatalogStore plainCatalogStore,
+            CatalogStore plainCatalogStore,
             BlobStore plainBlobStore, LuceneIndexes luceneIndexes, VectorStore plainVectorStore) {
         ClusterProperties.Replication config = properties.getReplication();
         this.databaseType = databaseType;
@@ -139,7 +142,7 @@ public class ClusterReplication implements ManagedBeanLifeCycle {
      */
     private static void applyRecord(ReplicationBatch.Entry entry,
             ReplicatedRecordStore.RowWriter rows,
-            com.github.greenfinger.core.catalog.CatalogStore catalogs) {
+            CatalogStore catalogs) {
         if (entry.op() == ReplicatedCatalogStore.OP_CATALOG
                 || entry.op() == ReplicatedCatalogStore.OP_CATALOG_DELETE) {
             ReplicatedCatalogStore.apply(entry, catalogs);
@@ -227,6 +230,51 @@ public class ClusterReplication implements ManagedBeanLifeCycle {
         return search != null && channel instanceof LuceneOutputChannel
                 ? new ReplicatedIndexChannel(channel, search)
                 : channel;
+    }
+
+    /**
+     * What every open channel has done, and whether any of it was lost.
+     *
+     * <p>
+     * The one number worth acting on is {@code lost}: under-delivery is a frame that fell short
+     * and is being offered again, but a loss is a copy somewhere that is permanently behind, and
+     * the only way back for that node is a replay. Reported rather than merely logged because
+     * "this node's answers are wrong" is not something to find out by reading a log file.
+     */
+    public List<ChannelStatus> status() {
+        List<ChannelStatus> all = new ArrayList<>(4);
+        addStatus(all, "dedup", dedup);
+        addStatus(all, "records", records);
+        addStatus(all, "blobs", blobs);
+        addStatus(all, "search", search);
+        return all;
+    }
+
+    private static void addStatus(List<ChannelStatus> all, String name,
+            ReplicationChannel channel) {
+        if (channel != null) {
+            all.add(new ChannelStatus(name, channel.sentCount(), channel.appliedCount(),
+                    channel.failedCount(), channel.underDeliveredCount(), channel.lostCount(),
+                    channel.pendingCount()));
+        }
+    }
+
+    /**
+     * @param sent           writes this node has told the others about
+     * @param applied        writes from other nodes written here
+     * @param failed         writes from other nodes this one could not write -- divergence, until
+     *                       something goes back for them
+     * @param underDelivered writes that did not reach every node on the first offer
+     * @param lost           writes given up on after every retry. Somebody's copy is behind
+     * @param pending        frames waiting to be offered again
+     */
+    public record ChannelStatus(String name, long sent, long applied, long failed,
+            long underDelivered, long lost, int pending) {
+
+        /** True when a copy somewhere is behind and will not catch up on its own. */
+        public boolean diverged() {
+            return lost > 0 || failed > 0;
+        }
     }
 
     /** And for the vector store. */

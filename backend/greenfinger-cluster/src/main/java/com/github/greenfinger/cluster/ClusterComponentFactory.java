@@ -27,6 +27,7 @@ import com.github.greenfinger.core.component.dedup.ContentDedupFilter;
 import com.github.greenfinger.core.component.dedup.ExistingUrlPathFilter;
 import com.github.greenfinger.core.component.state.GlobalStateManager;
 import com.github.greenfinger.cluster.replication.ClusterReplication;
+import java.util.function.Supplier;
 
 /**
  * The standard components, with one substitution: the counters.
@@ -58,12 +59,12 @@ public class ClusterComponentFactory extends DefaultWebCrawlerComponentFactory {
 
     private final ProcessingCache cache;
     private final ClusterReplication replication;
-    private final java.util.function.Supplier<String> nodeId;
+    private final Supplier<String> nodeId;
     private final long counterFlushIntervalMs;
 
     public ClusterComponentFactory(WebCrawlerProperties webCrawlerProperties,
             WebCrawlerExtractorProperties extractorProperties, ProcessingCache cache,
-            ClusterReplication replication, java.util.function.Supplier<String> nodeId,
+            ClusterReplication replication, Supplier<String> nodeId,
             long counterFlushIntervalMs) {
         super(webCrawlerProperties, extractorProperties);
         this.cache = cache;

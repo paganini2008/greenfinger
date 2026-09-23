@@ -43,6 +43,9 @@ public class DefaultDashboard implements Dashboard, ManagedBeanLifeCycle {
     final AtomicLong totalUrlCount = new AtomicLong(0);
     final AtomicLong handledUrlCount = new AtomicLong(0);
     final AtomicLong invalidUrlCount = new AtomicLong(0);
+    final java.util.concurrent.atomic.AtomicInteger consecutiveFailures =
+            new java.util.concurrent.atomic.AtomicInteger(0);
+    volatile String lastFailure = "";
     final AtomicLong existingUrlCount = new AtomicLong(0);
     final AtomicLong filteredUrlCount = new AtomicLong(0);
     final AtomicLong savedResourceCount = new AtomicLong(0);
@@ -76,6 +79,8 @@ public class DefaultDashboard implements Dashboard, ManagedBeanLifeCycle {
         totalUrlCount.set(0);
         handledUrlCount.set(0);
         invalidUrlCount.set(0);
+        consecutiveFailures.set(0);
+        lastFailure = "";
         existingUrlCount.set(0);
         filteredUrlCount.set(0);
         savedResourceCount.set(0);
@@ -125,6 +130,16 @@ public class DefaultDashboard implements Dashboard, ManagedBeanLifeCycle {
     @Override
     public long getHandledUrlCount() {
         return handledUrlCount.get();
+    }
+
+    @Override
+    public int getConsecutiveFailures() {
+        return consecutiveFailures.get();
+    }
+
+    @Override
+    public String getLastFailure() {
+        return lastFailure;
     }
 
     @Override

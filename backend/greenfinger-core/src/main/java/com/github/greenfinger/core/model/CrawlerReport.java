@@ -22,7 +22,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
@@ -82,9 +81,28 @@ public class CrawlerReport implements Serializable {
     @Column(name = "version", nullable = false)
     private Integer version;
 
-    /** The whole report, as json. */
-    @Lob
-    @Column(name = "content", nullable = false)
+    /**
+     * The whole report, as json.
+     *
+     * <h2>A length rather than {@code @Lob}</h2>
+     * {@code @Lob} on a String means "a character large object", and every dialect has its own
+     * idea of what that is. Two of them are wrong for a json document:
+     *
+     * <ul>
+     * <li><b>MySQL</b> chose {@code tinytext} -- 255 bytes. Every crawl on MySQL failed to record
+     * its report with "Data too long for column 'content'", and the crawl itself went on
+     * perfectly, so the only sign was a warning in a log.</li>
+     * <li><b>PostgreSQL</b> chose {@code oid}, which is a reference to a large object rather than
+     * text: it is written through the large-object api inside a transaction, not with
+     * {@code setString}, and what ends up in the column is a number.</li>
+     * </ul>
+     *
+     * A declared length picks the right type on every one of them instead: {@code longtext} on
+     * MySQL, {@code text} on PostgreSQL, {@code clob} on Oracle, {@code varchar(max)} on SQL
+     * Server, and a large {@code varchar} on H2 and SQLite. A million characters is far more than
+     * a report and costs nothing on any of them -- none of these types reserves the space.
+     */
+    @Column(name = "content", nullable = false, length = 1_000_000)
     private String content;
 
     /** When this version was first built. */

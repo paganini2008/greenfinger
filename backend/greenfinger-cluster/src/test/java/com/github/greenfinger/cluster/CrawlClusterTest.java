@@ -38,7 +38,9 @@ import com.github.greenfinger.core.engine.CrawlRun;
 import com.github.greenfinger.core.engine.CrawlerEngine;
 import java.util.Set;
 import com.github.greenfinger.core.model.OutputType;
+import com.github.greenfinger.core.model.DeleteLayer;
 import com.github.greenfinger.service.CrawlerLauncher;
+import com.github.greenfinger.service.DeletionService;
 import com.github.greenfinger.service.ReplayService;
 
 /**
@@ -223,6 +225,45 @@ class CrawlClusterTest {
         }
     }
 
+    @Test
+    @DisplayName("a purge goes to every node but the one that ran the delete")
+    void purgeReachesTheOtherNodes() throws Exception {
+        List<String> purgedHere = new CopyOnWriteArrayList<>();
+        Node a = nodeAt(0, new CopyOnWriteArrayList<>(), purgedHere);
+        Node b = nodeAt(1, new CopyOnWriteArrayList<>(), purgedHere);
+        try {
+            a.crawlCluster.announcePurge("cat-7", 3, "db,index", false);
+
+            // b removes its own index documents and RocksDB directories; a did its own as part of
+            // the delete that prompted this, so it steps over the echo
+            TestCluster.await(() -> purgedHere.size() == 1, 10_000L,
+                    "the other node was never asked to remove its own copy");
+            assertThat(purgedHere).containsExactly("cat-7@v3 [db, index]");
+        } finally {
+            a.close();
+            b.close();
+        }
+    }
+
+    @Test
+    @DisplayName("a purge of the whole catalog says so, and says whether the index is dropped")
+    void purgeOfAWholeCatalog() throws Exception {
+        List<String> purgedHere = new CopyOnWriteArrayList<>();
+        Node a = nodeAt(0, new CopyOnWriteArrayList<>(), purgedHere);
+        Node b = nodeAt(1, new CopyOnWriteArrayList<>(), purgedHere);
+        try {
+            a.crawlCluster.announcePurge("cat-8", null, "db,file,index,vector", true);
+
+            TestCluster.await(() -> purgedHere.size() == 1, 10_000L,
+                    "the other node was never asked to remove the whole catalog");
+            assertThat(purgedHere)
+                    .containsExactly("cat-8@all [db, file, index, vector] drop");
+        } finally {
+            a.close();
+            b.close();
+        }
+    }
+
     // ---- fixtures -----------------------------------------------------------------------------
 
     private Node node(int index) throws Exception {
@@ -234,6 +275,11 @@ class CrawlClusterTest {
     }
 
     private Node nodeAt(int index, List<String> restoredOn) throws Exception {
+        return nodeAt(index, restoredOn, new CopyOnWriteArrayList<>());
+    }
+
+    private Node nodeAt(int index, List<String> restoredOn, List<String> purgedHere)
+            throws Exception {
         ClusterProperties properties = new ClusterProperties();
         properties.getCounters().setFlushIntervalMs(50L);
 
@@ -242,6 +288,7 @@ class CrawlClusterTest {
                 properties.getDispatch());
         CrawlCluster crawlCluster = new CrawlCluster(cluster.node(index).cluster(), channel,
                 registry, launcherThatRecords(), replayThatRecords(restoredOn),
+                deletionThatRecords(purgedHere),
                 event -> {
                     if (listenersThrow) {
                         throw new IllegalStateException("a listener of somebody else's");
@@ -324,6 +371,52 @@ class CrawlClusterTest {
             @Override
             public ReplayService getIfUnique() {
                 return replayService;
+            }
+        };
+    }
+
+    /**
+     * A deletion service that only records what it was asked to remove from this node.
+     *
+     * <p>
+     * What is under test is the instruction: that it reaches every node but the one that sent it,
+     * and that the catalog, the version and the layers survive the trip. Actually emptying a
+     * Lucene index and three RocksDB directories is {@code DeletionService}'s own test.
+     */
+    private ObjectProvider<DeletionService> deletionThatRecords(List<String> purgedHere) {
+        DeletionService deletionService =
+                new DeletionService(null, null, null, null, null, null, null, null) {
+
+                    @Override
+                    public long purgeNodeLocal(String catalogId, Integer version,
+                            Set<DeleteLayer> layers, boolean dropIndex) {
+                        purgedHere.add(catalogId + "@"
+                                + (version != null ? "v" + version : "all") + " "
+                                + layers.stream().map(DeleteLayer::getRepr).sorted().toList()
+                                + (dropIndex ? " drop" : ""));
+                        return 0L;
+                    }
+                };
+        return new ObjectProvider<>() {
+
+            @Override
+            public DeletionService getObject() {
+                return deletionService;
+            }
+
+            @Override
+            public DeletionService getObject(Object... args) {
+                return deletionService;
+            }
+
+            @Override
+            public DeletionService getIfAvailable() {
+                return deletionService;
+            }
+
+            @Override
+            public DeletionService getIfUnique() {
+                return deletionService;
             }
         };
     }

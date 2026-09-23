@@ -59,6 +59,9 @@ public class CatalogSummary {
     private final long existingUrlCount;
     private final long filteredUrlCount;
     private final long invalidUrlCount;
+    /** The run of failed fetches happening now, and what the last one answered. */
+    private final int consecutiveFailures;
+    private final String lastFailure;
     private final long savedResourceCount;
     private final long indexedResourceCount;
     private final long vectoredResourceCount;
@@ -111,6 +114,8 @@ public class CatalogSummary {
         this.existingUrlCount = dashboard.getExistingUrlCount();
         this.filteredUrlCount = dashboard.getFilteredUrlCount();
         this.invalidUrlCount = dashboard.getInvalidUrlCount();
+        this.consecutiveFailures = dashboard.getConsecutiveFailures();
+        this.lastFailure = dashboard.getLastFailure();
         this.savedResourceCount = dashboard.getSavedResourceCount();
         this.indexedResourceCount = dashboard.getIndexedResourceCount();
         this.vectoredResourceCount = dashboard.getVectoredResourceCount();
@@ -181,6 +186,9 @@ public class CatalogSummary {
         this.existingUrlCount = number(lastRun, "existingUrlCount");
         this.filteredUrlCount = number(lastRun, "filteredUrlCount");
         this.invalidUrlCount = number(lastRun, "invalidUrlCount");
+        // a finished run has no run of failures in progress; the ending reason says what happened
+        this.consecutiveFailures = 0;
+        this.lastFailure = "";
         this.savedResourceCount = number(lastRun, "savedResourceCount");
         this.indexedResourceCount = number(lastRun, "indexedResourceCount");
         this.vectoredResourceCount = number(lastRun, "vectoredResourceCount");

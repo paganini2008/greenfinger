@@ -87,6 +87,27 @@ class LuceneVectorStoreTest {
     }
 
     @Test
+    @DisplayName("a vector wider than Lucene's own limit is held and found")
+    void holdsWideVectors() throws Exception {
+        // qwen3-embedding produces 2560; Lucene's stock ceiling is 1024, and with it every write
+        // of a real embedding failed while the crawl reported itself finished
+        int dimensions = 2560;
+        String wide = "greenfinger_text_" + dimensions;
+        float[] one = new float[dimensions];
+        float[] other = new float[dimensions];
+        one[0] = 1f;
+        other[dimensions - 1] = 1f;
+
+        store.ensureCollection(wide, dimensions);
+        store.upsert(wide, List.of(point("a", one, VERSION), point("b", other, VERSION)));
+
+        List<VectorHit> hits = store.search(wide, one, 2, List.of(VERSION));
+
+        assertThat(hits).hasSize(2);
+        assertThat(hits.get(0).id()).isEqualTo("a");
+    }
+
+    @Test
     @DisplayName("writing the same chunk twice is one point, which is what makes a replay safe")
     void upsertReplaces() throws Exception {
         store.ensureCollection(COLLECTION, 4);

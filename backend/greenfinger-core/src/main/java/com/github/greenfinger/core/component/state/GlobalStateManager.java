@@ -84,6 +84,18 @@ public interface GlobalStateManager extends WebCrawlerComponent, ManagedBeanLife
      *
      * @param reason replaces whatever is recorded, and the crawl becomes an intervention.
      */
+    /**
+     * Record a fetch that came back with nothing, and what it answered.
+     *
+     * Shared rather than per node, because a site refusing this crawler refuses all of it: a run
+     * counted separately on each node would need every node to reach the limit before anything
+     * said so, and would show a page nothing that is happening on the other two.
+     */
+    void noteFetchFailure(String reason);
+
+    /** A page arrived, so whatever run of failures was building is over. */
+    void noteFetchSuccess();
+
     void overrideAsUnproductive(String reason);
 
     default long incrementCount(long startTime, CountingType countingType) {

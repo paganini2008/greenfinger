@@ -58,6 +58,15 @@ public abstract class OutputFixtures {
     }
 
     public static CatalogDetails catalogDetails(Set<OutputType> outputTypes, ContentMode mode) {
+        return catalogDetails(outputTypes, mode, true);
+    }
+
+    /**
+     * @param imageEnabled whether the crawl fetches images at all, which is a separate question
+     *        from whether the index and the vector store would take them
+     */
+    public static CatalogDetails catalogDetails(Set<OutputType> outputTypes, ContentMode mode,
+            boolean imageEnabled) {
         Catalog catalog = new Catalog();
         catalog.setId(CATALOG_ID);
         catalog.setName("example");
@@ -67,7 +76,7 @@ public abstract class OutputFixtures {
         catalog.setPathPattern("**.example.com");
         catalog.setOutputTypes(outputTypes);
         catalog.setContentMode(mode);
-        catalog.setImageEnabled(true);
+        catalog.setImageEnabled(imageEnabled);
         catalog.setIndexVersion(0);
         catalog.setSearchVersion(-1);
         catalog.setMaxVersions(10);

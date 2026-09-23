@@ -62,7 +62,7 @@ create table crawler_catalog (
     create table crawler_report (
         id varchar(36) not null,
         catalog_id varchar(36) not null,
-        content tinytext not null,
+        content mediumtext not null,
         created_at datetime(6) not null,
         updated_at datetime(6) not null,
         version integer not null,

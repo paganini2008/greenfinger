@@ -119,6 +119,40 @@ const MAX_REPLAYABLE_BODY = 1024 * 1024;
  * than that is piped straight through and not retried, because holding an arbitrary upload in
  * memory to make a retry possible is the worse trade.
  */
+/**
+ * The headers a node is given, which are the browser's with the two that name this server changed.
+ *
+ * `host` becomes the node's, so links and redirects it builds point at something that exists.
+ * `origin` is dropped when it names this server, and that one is not cosmetic: Chrome puts an
+ * Origin header on every same-origin POST, so forwarding it untouched told the node that a page
+ * on :9700 was calling an api on :50080 -- a cross-origin request from an address it has no
+ * reason to allow. The node answered `403 Invalid CORS request`, and every button in the front
+ * end that writes anything stopped working while every page that only reads carried on, because
+ * a GET carries no Origin at all.
+ *
+ * The browser is not wrong and neither is the node. A reverse proxy is the origin here, so an
+ * Origin naming it is the same-origin case and is removed rather than passed on. An Origin naming
+ * somewhere else is a genuine cross-origin call and is forwarded exactly as it arrived, for the
+ * node to allow or refuse on its own terms.
+ */
+function upstreamHeaders(request, upstream) {
+  const headers = { ...request.headers, host: `${upstream.host}:${upstream.port}` };
+  const origin = headers.origin || headers.Origin;
+  if (origin && request.headers.host) {
+    let host;
+    try {
+      host = new URL(origin).host;
+    } catch {
+      host = null;
+    }
+    if (host && host === request.headers.host) {
+      delete headers.origin;
+      delete headers.Origin;
+    }
+  }
+  return headers;
+}
+
 function proxy(request, response) {
   if (UPSTREAMS.length === 0) {
     response.writeHead(502, { 'content-type': 'text/plain; charset=utf-8' });
@@ -152,7 +186,7 @@ function proxy(request, response) {
         port: upstream.port,
         method: request.method,
         path,
-        headers: { ...request.headers, host: `${upstream.host}:${upstream.port}` },
+        headers: upstreamHeaders(request, upstream),
       },
       (answer) => {
         response.writeHead(answer.statusCode || 502, answer.headers);

@@ -108,116 +108,102 @@
       <mat-icon>{{ run.interrupted ? 'warning' : 'info' }}</mat-icon>
       @if (run.interrupted) {
         <span>
-          The last run was cut short: {{ run.completionReason }}. Nothing was published to search;
-          an <strong>update</strong> carries on from where it left off, in the same version.
+          The last run was cut short &mdash; {{ stoppedBecause() }}. Nothing was published to
+          search; <strong>Update</strong> carries on from where it left off, in the same version.
         </span>
       } @else {
-        <span>
-          The last run finished: {{ run.completionReason }}.
-        </span>
+        <span>The last run finished &mdash; {{ stoppedBecause() }}.</span>
       }
     </div>
   }
 
-  <!-- The dashboard proper: what is happening now, and what became of everything so far. -->
-  <section class="gf-panel">
-    <h2 class="gf-panel-title">
-      <mat-icon>insights</mat-icon> Dashboard
-      @if (run?.live) {
-        <span class="gf-chip gf-chip-cat"><span class="gf-running-dot"></span> live</span>
-      }
-    </h2>
-    <div class="gf-dash">
-      <!-- One ring for the single number a run is judged by; the two bars in the hero are the
-           race between the two limits, and are read against each other rather than alone. -->
-      <div class="gf-ring-box">
-        <svg class="gf-ring" viewBox="0 0 60 60" aria-hidden="true">
-          <circle class="gf-ring-track" cx="30" cy="30" r="26" />
-          <circle
-            class="gf-ring-value"
-            cx="30"
-            cy="30"
-            r="26"
-            [attr.stroke-dasharray]="ringCircumference"
-            [attr.stroke-dashoffset]="ringOffset()"
-          />
-        </svg>
-        <div class="gf-ring-label">
-          <span class="gf-ring-value-text">{{ progressPercent() }}%</span>
-          <span class="gf-metric-label">of the limit</span>
-        </div>
-      </div>
+  @if (refusing(); as refusal) {
+    <div class="gf-notice gf-notice-warn">
+      <mat-icon>block</mat-icon>
+      <span>
+        The site has refused the last <strong>{{ refusal.inARow }}</strong> fetches in a row
+        @if (refusal.last) {
+          &mdash; the most recent answered <strong>{{ refusal.last }}</strong>
+        }
+        . {{ refusalAdvice() }}
+      </span>
+    </div>
+  }
 
-      <div class="gf-metric-row gf-dash-metrics">
-        <div class="gf-metric">
-          <span class="gf-metric-value">
-            {{ pageRate() | number: '1.0-1' }}
-            @if (pageRate() > 0) {
-              <span class="gf-running-dot"></span>
-            }
-          </span>
-          <span class="gf-metric-label">pages / s</span>
-          <div class="gf-metric-chart">
-            <gf-sparkline [values]="pageHistory()" />
-          </div>
-        </div>
-        <div class="gf-metric">
-          <span class="gf-metric-value">{{ run?.savedResourceCount ?? 0 | number }}</span>
-          <span class="gf-metric-label">pages saved</span>
-          <div class="gf-metric-chart">
-            <gf-sparkline [values]="imageHistory()" stroke="#7c3aed" />
-          </div>
-        </div>
-        <div class="gf-metric">
-          <span class="gf-metric-value">{{ run?.savedImageCount ?? 0 | number }}</span>
-          <span class="gf-metric-label">images saved</span>
-        </div>
-        <div class="gf-metric">
-          <span class="gf-metric-value">{{ run?.elapsedTime ?? '--' }}</span>
-          <span class="gf-metric-label">elapsed</span>
-        </div>
+  <!-- ==============================================================================================
+       What this run kept, and what it went through to keep it.
+
+       This was a ring, four tiles, a bar, and then twelve more tiles -- with elapsed and "of the
+       limit" appearing twice on one screen in two different card styles. Twelve numbers at the
+       same size is twelve numbers with no hierarchy: the count of vectors nobody asked for read
+       as loudly as the count of pages kept. One headline, one picture, one ledger.
+       =========================================================================================== -->
+  <section class="gf-sieve-block">
+    <div class="gf-sieve-head">
+      <div>
+        <span class="gf-sieve-kept">{{ run?.savedResourceCount ?? 0 | number }}</span>
+        <span class="gf-sieve-kept-unit">pages kept</span>
       </div>
+      <p class="gf-sieve-say">
+        out of <strong>{{ urlsSeen() | number }}</strong> urls
+        {{ run?.live ? 'seen so far' : 'seen' }}
+        @if (keepRate()) {
+          &mdash; one page in every {{ keepRate() | number }}.
+        }
+        @if (run?.live) {
+          <span class="gf-sieve-live">
+            <span class="gf-running-dot"></span>
+            {{ pageRate() | number: '1.0-1' }} a second
+          </span>
+        }
+      </p>
+      @if (run?.live) {
+        <div class="gf-sieve-spark">
+          <gf-sparkline [values]="pageHistory()" />
+        </div>
+      }
     </div>
 
     @if (outcomes().length) {
-      <p class="gf-seg-title">
-        What became of every url this run touched. The counters below say how many; only the bar
-        says out of what.
-      </p>
-      <div class="gf-segbar">
+      <div class="gf-sieve" role="img"
+           [attr.aria-label]="(run?.savedResourceCount ?? 0) + ' pages kept of ' + urlsSeen() + ' urls'">
         @for (part of outcomes(); track part.label) {
           <span
-            class="gf-seg"
-            [class]="'gf-seg gf-tone-' + part.tone"
-            [style.width.%]="part.percent"
+            class="gf-sieve-band"
+            [class]="'gf-sieve-band gf-band-' + part.tone"
+            [style.flex-basis.%]="part.percent"
             [matTooltip]="part.label + ': ' + part.value"
           ></span>
         }
       </div>
-      <div class="gf-seg-legend">
+      <dl class="gf-sieve-legend">
         @for (part of outcomes(); track part.label) {
-          <span class="gf-seg-key">
-            <span class="gf-seg-dot" [class]="'gf-seg-dot gf-tone-' + part.tone"></span>
-            {{ part.label }}
-            <strong>{{ part.value | number }}</strong>
-          </span>
+          <div>
+            <dt>
+              <span class="gf-sieve-key" [class]="'gf-sieve-key gf-band-' + part.tone"></span>
+              {{ part.label }}
+            </dt>
+            <dd>{{ part.value | number }}</dd>
+          </div>
         }
-      </div>
+      </dl>
     }
   </section>
 
-  <section class="gf-counters">
-    @for (counter of counters(); track counter.label) {
-      <div
-        class="gf-counter"
-        [class.gf-counter-accent]="counter.accent"
-        [matTooltip]="counter.hint ?? ''"
-      >
-        <mat-icon>{{ counter.icon }}</mat-icon>
-        <span class="gf-counter-value">{{ counter.value }}</span>
-        <span class="gf-counter-label">{{ counter.label }}</span>
-      </div>
-    }
+  <!-- The rest of the counters, as a ledger. Pages saved is the headline above and is not
+       repeated here; everything else is context and is typeset like context. -->
+  <section class="gf-panel">
+    <h2 class="gf-panel-title"><mat-icon>calculate</mat-icon> This run in full</h2>
+    <div class="gf-ledger-cols">
+      @for (counter of counters(); track counter.label) {
+        @if (!counter.accent) {
+          <div class="gf-ledger-row" [matTooltip]="counter.hint ?? ''">
+            <span class="gf-ledger-name gf-ledger-name-plain">{{ counter.label }}</span>
+            <span class="gf-ledger-value">{{ counter.value | number }}</span>
+          </div>
+        }
+      }
+    </div>
   </section>
 
   @let config = details();

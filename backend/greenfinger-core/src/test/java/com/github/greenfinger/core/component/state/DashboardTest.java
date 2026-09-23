@@ -162,6 +162,30 @@ class DashboardTest {
     }
 
     @Test
+    @DisplayName("a run that recorded no reason still says something")
+    void neverEndsWithoutSayingWhy() {
+        stateManager.setCompleted(true, null, true);
+
+        Dashboard snapshot = new ReadonlyDashboard(stateManager.getDashboard());
+
+        // "interrupted" on its own told somebody that something went wrong and refused to say
+        // what, which is the one thing a status line must not do
+        assertThat(snapshot.isInterrupted()).isTrue();
+        assertThat(snapshot.getCompletionReason()).isEqualTo("the run ended without recording why");
+    }
+
+    @Test
+    @DisplayName("and one that ended on its own terms is not called interrupted")
+    void aBlankReasonOnACleanEndingIsNotAnInterruption() {
+        stateManager.setCompleted(true, "   ", false);
+
+        Dashboard snapshot = new ReadonlyDashboard(stateManager.getDashboard());
+
+        assertThat(snapshot.isInterrupted()).isFalse();
+        assertThat(snapshot.getCompletionReason()).isEqualTo("finished");
+    }
+
+    @Test
     void dashboardRendersAsText() {
         assertThat(stateManager.getDashboard().toString()).contains("StartTime", "SavedRes");
         assertThat(stateManager.getName()).isEqualTo("default");

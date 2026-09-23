@@ -103,17 +103,27 @@ public class VectorOutputChannel implements OutputChannel {
         this.textCollection = config.getTextCollection() + "_" + textDimensions;
         vectorStore.ensureCollection(textCollection, textDimensions);
 
-        // an embedding client that only does text is a perfectly ordinary thing; the images are
-        // still crawled, stored and indexed, they simply get no vectors
-        this.imagesSupported = embeddingClient.supportsImages()
-                && catalogDetails.getContentMode().includesImages();
+        // Three things have to be true before an image model is worth loading, and the first of
+        // them used to be missing: the crawl has to be fetching images at all. A catalog with
+        // images switched off and the default content mode -- which is text and images -- asked
+        // for a model that then had nothing to embed. That is not merely waste: the local image
+        // model is around 360 MB of onnx, and loading it is what takes a node past the 1g a
+        // container is given by default, where the kernel kills it and leaves exit code 137 and
+        // no explanation.
+        boolean imagesWanted =
+                catalogDetails.isImageEnabled() && catalogDetails.getContentMode().includesImages();
+        this.imagesSupported = imagesWanted && embeddingClient.supportsImages();
         if (imagesSupported) {
             int imageDimensions = embeddingClient.imageDimensions();
             this.imageCollection = config.getImageCollection() + "_" + imageDimensions;
             vectorStore.ensureCollection(imageCollection, imageDimensions);
-        } else if (catalogDetails.getContentMode().includesImages()) {
+        } else if (imagesWanted) {
+            // an embedding client that only does text is a perfectly ordinary thing; the images
+            // are still crawled, stored and indexed, they simply get no vectors
             log.info("'{}' does not embed images; image vectors are skipped",
                     embeddingClient.getName());
+        } else if (catalogDetails.getContentMode().includesImages()) {
+            log.info("Images are not being fetched, so no image model is loaded");
         }
         log.info("Embedding into {} via {}", vectorStore.getName(), embeddingClient.getName());
     }

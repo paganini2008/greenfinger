@@ -61,16 +61,24 @@ public interface ResourceRepository extends JpaRepository<Resource, String> {
      * filter that finds nothing on PostgreSQL and everything on MySQL is worse than no filter.
      *
      * <p>
+     * The casts are what make "optional" work on PostgreSQL. {@code ? is null} gives the server a
+     * parameter it has no way to type -- nothing in the expression says what it should be -- and
+     * it refuses the whole statement with "could not determine data type of parameter $7". H2 and
+     * MySQL guess and carry on, so this page worked everywhere until it met PostgreSQL, where it
+     * answered nothing but a 500. Naming the type in the query settles it before the parameter is
+     * ever sent, and every database reads the cast the same way.
+     *
+     * <p>
      * Not the search index. That answers "which page is about this", ranked, from the version
      * being served; this answers "what is in the table", by crawl order, for any version -- and
      * it is the only one of the two that can show a version that was never published.
      */
     @Query("select r from Resource r where r.catalogId = :catalogId"
-            + " and (:version is null or r.version = :version)"
-            + " and (:keyword is null or lower(r.url) like :keyword"
+            + " and (cast(:version as Integer) is null or r.version = :version)"
+            + " and (cast(:keyword as String) is null or lower(r.url) like :keyword"
             + "      or lower(r.title) like :keyword)"
-            + " and (:from is null or r.createdAt >= :from)"
-            + " and (:to is null or r.createdAt <= :to)")
+            + " and (cast(:from as Timestamp) is null or r.createdAt >= :from)"
+            + " and (cast(:to as Timestamp) is null or r.createdAt <= :to)")
     Page<Resource> browse(@Param("catalogId") String catalogId, @Param("version") Integer version,
             @Param("keyword") String keyword, @Param("from") Date from, @Param("to") Date to,
             Pageable pageable);

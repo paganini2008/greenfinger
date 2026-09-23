@@ -32,6 +32,8 @@ public class ReadonlyDashboard implements Dashboard {
     private final long totalUrlCount;
     private final long handledUrlCount;
     private final long invalidUrlCount;
+    private final int consecutiveFailures;
+    private final String lastFailure;
     private final long existingUrlCount;
     private final long filteredUrlCount;
     private final long savedResourceCount;
@@ -55,6 +57,8 @@ public class ReadonlyDashboard implements Dashboard {
         this.totalUrlCount = dashboard.getTotalUrlCount();
         this.handledUrlCount = dashboard.getHandledUrlCount();
         this.invalidUrlCount = dashboard.getInvalidUrlCount();
+        this.consecutiveFailures = dashboard.getConsecutiveFailures();
+        this.lastFailure = dashboard.getLastFailure();
         this.existingUrlCount = dashboard.getExistingUrlCount();
         this.filteredUrlCount = dashboard.getFilteredUrlCount();
         this.savedResourceCount = dashboard.getSavedResourceCount();
@@ -105,6 +109,16 @@ public class ReadonlyDashboard implements Dashboard {
     @Override
     public long getHandledUrlCount() {
         return handledUrlCount;
+    }
+
+    @Override
+    public int getConsecutiveFailures() {
+        return consecutiveFailures;
+    }
+
+    @Override
+    public String getLastFailure() {
+        return lastFailure;
     }
 
     @Override

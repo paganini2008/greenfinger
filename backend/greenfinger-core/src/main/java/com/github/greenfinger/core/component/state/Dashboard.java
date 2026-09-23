@@ -39,6 +39,19 @@ public interface Dashboard {
 
     long getInvalidUrlCount();
 
+    /**
+     * Fetches that came back with nothing, one after another, with no page in between.
+     *
+     * Reset by the first page that arrives, so this is the length of the run happening *now*
+     * rather than a total. It exists because the total says nothing about whether a site is
+     * refusing this crawler at this moment: a hundred failures spread over a long crawl of a big
+     * site is ordinary, and twenty in a row is a door that has been closed.
+     */
+    int getConsecutiveFailures();
+
+    /** What the most recent failed fetch answered -- an http status, or why it never got one. */
+    String getLastFailure();
+
     long getExistingUrlCount();
 
     long getFilteredUrlCount();

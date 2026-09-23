@@ -44,6 +44,7 @@ public class ClusterProperties {
     private Dispatch dispatch = new Dispatch();
     private Replication replication = new Replication();
     private Counters counters = new Counters();
+    private Leader leader = new Leader();
 
     /**
      * 
@@ -96,8 +97,84 @@ public class ClusterProperties {
 
         /** Longest a partly filled batch waits before it is sent anyway. */
         private long flushIntervalMs = 200L;
+
+        /**
+         * How often frames that did not reach every node are offered again.
+         *
+         * <p>
+         * Further apart than the flush on purpose. A member that did not take a frame is
+         * restarting, busy or briefly unreachable, and asking it again a fifth of a second later
+         * asks the same question before anything can have changed.
+         */
+        private long retryIntervalMs = 2000L;
+
+        /**
+         * How many times a frame is offered again before it is given up on and counted as lost.
+         *
+         * <p>
+         * This sits on top of the transport's own acknowledgement and retry -- spreader has
+         * already tried {@code payloadRetries} times by the moment a short delivery is reported
+         * here. Three passes at two seconds is therefore about six seconds of a node being
+         * unreachable, which covers a restart but does not hold a frame for a node that has gone.
+         */
+        private int maxRetries = 3;
+
+        /**
+         * The most frames held for retry at once. Reached only when a node is unreachable for
+         * long enough that the writes pile up, and the point of the cap is that replication must
+         * not be the thing that fills this node's heap.
+         */
+        private int maxPendingFrames = 1024;
     }
 
+
+    /**
+     * Where the administrative writes go, and what to do when the answer does not come back.
+     * 
+     * @Description: Leader
+     * @Author: Fred Feng
+     * @Date: 22/09/2026
+     * @Version 2.0.0
+     */
+    @Getter
+    @Setter
+    @ToString
+    public static class Leader {
+
+        /**
+         * How long to wait for the leader to perform one operation and answer.
+         *
+         * <p>
+         * Generous, because what is behind it is a database write and, for a delete, a walk over
+         * an index and three directory trees. Short enough that a node which has stopped
+         * answering does not hold the caller for ever: after this the leader is read again and
+         * the operation is offered to whoever holds the port now.
+         */
+        private long timeoutMs = 30_000L;
+
+        /**
+         * How many times an operation is offered again when the leader could not be reached, did
+         * not answer, or replied that it is no longer the leader.
+         *
+         * <p>
+         * Not for an operation the leader refused on its own terms -- a name already taken, a
+         * version being crawled. Asking the same question again would get the same answer, and
+         * the caller wants the answer rather than the delay.
+         */
+        private int maxAttempts = 3;
+
+        /**
+         * How often a node checks its catalog table against the leader's, on top of doing it
+         * whenever the membership or the leadership changes.
+         *
+         * <p>
+         * A backstop rather than the mechanism: a write reaches the other nodes as it happens, and
+         * this is for the one whose broadcast was lost. A minute is soon enough for a stale row to
+         * be a curiosity rather than an incident, and one small request per node per minute is
+         * nothing.
+         */
+        private long catchUpIntervalMs = 60_000L;
+    }
 
     /**
      * 

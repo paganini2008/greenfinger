@@ -27,6 +27,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * @param version    the version being written, so a late node does not write into the wrong one
  * @param refresh    whether this run revisits pages it already has
  * @param reason     why it stopped, for the log and for the run summary
+ * @param layers     which stores a purge covers, in the {@code DeleteLayer} command line form
+ * @param dropIndex  whether a purge drops the index or merely empties it
  * 
  * @Description: ControlMessage
  * @Author: Fred Feng
@@ -35,7 +37,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record ControlMessage(Type type, String catalogId, String action, int version,
-        boolean refresh, String reason, boolean interrupted) {
+        boolean refresh, String reason, boolean interrupted, String layers, boolean dropIndex) {
 
     /**
      * 
@@ -79,19 +81,53 @@ public record ControlMessage(Type type, String catalogId, String action, int ver
          * with nothing missing sends no requests at all, which is what makes asking all of them
          * cheap.
          */
-        RESTORE_FILES
+        RESTORE_FILES,
+
+        /**
+         * Remove your own copy of the layers a delete cannot replicate.
+         *
+         * <p>
+         * Rows, blobs and vectors go through stores that copy their own writes, so a delete of
+         * those removes them everywhere it is run. The embedded index and the three RocksDB
+         * directories do not: the index is handed out undecorated, and the directories are plain
+         * files under this node's data directory. A delete used to take them here and nowhere
+         * else, which left two nodes out of three holding a Lucene directory and a frontier for a
+         * version whose rows had gone -- invisible until the next crawl of the same catalog found
+         * a frontier it did not write.
+         *
+         * <p>
+         * The instruction travels rather than the removal, because "the frontier of v3" is a
+         * different set of paths on every node. Everyone hears it, the sender included, and the
+         * sender has already done its own and says so.
+         */
+        PURGE_LOCAL
     }
 
     public static ControlMessage started(String catalogId, String action, int version,
             boolean refresh) {
-        return new ControlMessage(Type.STARTED, catalogId, action, version, refresh, null, false);
+        return new ControlMessage(Type.STARTED, catalogId, action, version, refresh, null, false,
+                null, false);
     }
 
     public static ControlMessage completed(String catalogId, int version, String reason,
             boolean interrupted) {
         return new ControlMessage(Type.COMPLETED, catalogId, null, version, false, reason,
-                interrupted);
+                interrupted, null, false);
     }
+
+    /**
+     * @param version null for every version of the catalog
+     * @param origin  the node that has already done this locally
+     */
+    public static ControlMessage purgeLocal(String catalogId, Integer version, String layers,
+            boolean dropIndex, String origin) {
+        return new ControlMessage(Type.PURGE_LOCAL, catalogId, null,
+                version != null ? version : EVERY_VERSION, false, origin, false, layers,
+                dropIndex);
+    }
+
+    /** What {@link #version()} reads as when a purge covers the whole catalog. */
+    public static final int EVERY_VERSION = -1;
 
     /**
      * @param origin the node that has already done this locally, so it does not do it twice on
@@ -99,7 +135,7 @@ public record ControlMessage(Type type, String catalogId, String action, int ver
      */
     public static ControlMessage restoreFiles(String catalogId, int version, String origin) {
         return new ControlMessage(Type.RESTORE_FILES, catalogId, null, version, false, origin,
-                false);
+                false, null, false);
     }
 
 }

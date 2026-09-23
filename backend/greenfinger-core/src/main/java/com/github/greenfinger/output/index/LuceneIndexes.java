@@ -27,7 +27,16 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.FilterCodec;
+import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.store.Directory;
@@ -244,6 +253,83 @@ public class LuceneIndexes implements AutoCloseable {
     }
 
     /**
+     * The default codec, with room for the vectors people actually have.
+     *
+     * <p>
+     * A {@link FilterCodec} rather than a format of our own: everything about how a vector is
+     * stored and searched stays Lucene's, and the one number that is a policy rather than a
+     * format -- how wide a vector may be -- is answered differently. An index written this way is
+     * read back by the same codec, which is why it is named and looked up rather than anonymous.
+     */
+    private static final String DEFAULT_CODEC = "Lucene912";
+    private static final String HNSW_FORMAT = "Lucene99HnswVectorsFormat";
+    private static final KnnVectorsFormat WIDE_HNSW = new WideHnswFormat();
+    private static final Codec WIDE_VECTORS = new WideVectorCodec();
+
+    /** How many floats a vector may have here. Four embeddings in, nothing needs more. */
+    static final int MAX_VECTOR_DIMENSIONS = 4096;
+
+    /**
+     *
+     * @Description: WideVectorCodec
+     * @Author: Fred Feng
+     * @Date: 23/09/2026
+     * @Version 2.0.0
+     */
+    private static final class WideVectorCodec extends FilterCodec {
+
+        private final KnnVectorsFormat vectors = new PerFieldKnnVectorsFormat() {
+
+            @Override
+            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                return WIDE_HNSW;
+            }
+        };
+
+        private WideVectorCodec() {
+            super(DEFAULT_CODEC, Codec.forName(DEFAULT_CODEC));
+        }
+
+        @Override
+        public KnnVectorsFormat knnVectorsFormat() {
+            return vectors;
+        }
+    }
+
+    /**
+     * Lucene's own hnsw format, answering one question differently.
+     *
+     * <p>
+     * It delegates rather than extends because the format is final, and it keeps the format's own
+     * name: the name is what an index records and what a reader looks up, so writing under it
+     * means anything that can read a Lucene index can read this one. Only the ceiling changes,
+     * and only while writing -- reading never asks.
+     */
+    private static final class WideHnswFormat extends KnnVectorsFormat {
+
+        private final KnnVectorsFormat delegate = new Lucene99HnswVectorsFormat();
+
+        private WideHnswFormat() {
+            super(HNSW_FORMAT);
+        }
+
+        @Override
+        public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+            return delegate.fieldsWriter(state);
+        }
+
+        @Override
+        public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
+            return delegate.fieldsReader(state);
+        }
+
+        @Override
+        public int getMaxDimensions(String fieldName) {
+            return MAX_VECTOR_DIMENSIONS;
+        }
+    }
+
+    /**
      * One directory: its writer, and the searchers reading what that writer has committed.
      */
     private static final class Open {
@@ -256,6 +342,14 @@ public class LuceneIndexes implements AutoCloseable {
             this.directory = directory;
             IndexWriterConfig config = new IndexWriterConfig(analyzer);
             config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
+            // Lucene's own limit is 1024 floats a vector, which is a sensible default and not a
+            // law: the format lets an index raise it, and every embedding model worth pointing at
+            // this has outgrown it. qwen3-embedding produces 2560, so with the stock limit every
+            // flush failed with "dimensions must be <= [1024]" and the crawl went on to report
+            // itself finished with an empty vector store behind it. Raised here rather than
+            // guarded against, because refusing the model is not the answer when holding it costs
+            // nothing but the disk it is written to.
+            config.setCodec(WIDE_VECTORS);
             // a crawl writes the same page again on an update, and by url-derived id: replacing
             // rather than appending is what keeps a re-crawl from doubling the index
             config.setCommitOnClose(true);

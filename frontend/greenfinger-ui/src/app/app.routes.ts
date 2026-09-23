@@ -9,7 +9,13 @@ import { adminGuard, authGuard } from './core/auth.guard';
  * be allowed to open.
  */
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'catalogs' },
+  { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+  {
+    path: 'dashboard',
+    title: 'Dashboard - Greenfinger',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/dashboard/dashboard').then((m) => m.DashboardPage),
+  },
   {
     path: 'login',
     title: 'Sign in - Greenfinger',
@@ -53,7 +59,7 @@ export const routes: Routes = [
   },
   {
     path: 'cluster',
-    title: 'System health - Greenfinger',
+    title: 'System - Greenfinger',
     canActivate: [authGuard],
     loadComponent: () => import('./pages/cluster/cluster').then((m) => m.ClusterPage),
   },

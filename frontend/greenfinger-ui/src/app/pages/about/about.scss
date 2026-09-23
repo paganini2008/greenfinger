@@ -36,11 +36,11 @@
 
   &:hover {
     transform: translateY(-2px);
-    border-color: color-mix(in srgb, var(--gf-green) 35%, var(--gf-outline));
+    border-color: var(--gf-green);
   }
 
   mat-icon {
-    color: var(--gf-green);
+    color: var(--mat-sys-on-surface);
   }
 
   h2 {

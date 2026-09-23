@@ -356,10 +356,14 @@ public class CrawlerEngine {
     private void noteFailedFetch(CrawlTask task, Exception e) {
         int limit = webCrawlerProperties.getMaxConsecutiveFailures();
         int inARow = consecutiveFailures.incrementAndGet();
+        GlobalStateManager stateManager = context.getGlobalStateManager();
+        // Published on every failure, not only at the limit. A page watching a crawl should be
+        // able to say "the site has refused the last twelve" while there is still time to lower
+        // the rate, rather than finding out from the reason the run was abandoned.
+        stateManager.noteFetchFailure(describe(e));
         if (limit <= 0 || inARow < limit) {
             return;
         }
-        GlobalStateManager stateManager = context.getGlobalStateManager();
         if (stateManager.isCompleted()) {
             return;
         }
@@ -427,6 +431,7 @@ public class CrawlerEngine {
                     task.getUrl(), charset, task, conditionsOf(lastCrawl));
             fetchesSucceeded.incrementAndGet();
             consecutiveFailures.set(0);
+            context.getGlobalStateManager().noteFetchSuccess();
         } catch (Exception e) {
             stateManager.incrementCount(task.getTimestamp(), CountingType.INVALID_URL_COUNT);
             noteFailedFetch(task, e);

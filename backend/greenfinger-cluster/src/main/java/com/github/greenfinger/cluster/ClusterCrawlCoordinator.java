@@ -24,6 +24,8 @@ import com.github.greenfinger.core.engine.CrawlCoordinator;
 import com.github.greenfinger.core.engine.CrawlFrontier;
 import com.github.greenfinger.core.engine.CrawlTask;
 import lombok.extern.slf4j.Slf4j;
+import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 
 /**
  * The recursive call, made across the cluster.
@@ -57,8 +59,8 @@ public class ClusterCrawlCoordinator implements CrawlCoordinator {
     private final CrawlFrontier frontier;
     private final GlobalStateManager stateManager;
     private final String catalogId;
-    private final java.util.function.BooleanSupplier leadership;
-    private final java.util.function.Supplier<String> nodeId;
+    private final BooleanSupplier leadership;
+    private final Supplier<String> nodeId;
     private final Runnable onClose;
 
     /** How this coordinator tells the cluster the run is over. See {@link CompletionAnnouncer}. */
@@ -69,8 +71,8 @@ public class ClusterCrawlCoordinator implements CrawlCoordinator {
 
     public ClusterCrawlCoordinator(CrawlTaskChannel channel, CrawlFrontier frontier,
             GlobalStateManager stateManager, String catalogId,
-            java.util.function.BooleanSupplier leadership,
-            java.util.function.Supplier<String> nodeId, Runnable onClose,
+            BooleanSupplier leadership,
+            Supplier<String> nodeId, Runnable onClose,
             CompletionAnnouncer completionAnnouncer) {
         this.channel = channel;
         this.frontier = frontier;

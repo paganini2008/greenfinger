@@ -1,11 +1,11 @@
 @if (showShell()) {
-  <div class="flex h-full flex-col">
+  <div class="flex min-h-screen flex-col">
     <mat-toolbar class="gf-toolbar shrink-0">
       <button mat-icon-button (click)="toggleSidenav()" aria-label="Toggle navigation">
         <mat-icon>menu</mat-icon>
       </button>
 
-      <a routerLink="/catalogs" class="ml-1 flex items-center gap-2 no-underline text-inherit">
+      <a routerLink="/dashboard" class="ml-1 flex items-center gap-2 no-underline text-inherit">
         <img src="logo.png" alt="Greenfinger" class="gf-logo" />
         @if (version()) {
           <span class="gf-version">{{ version() }}</span>
@@ -14,14 +14,6 @@
 
       <span class="flex-1"></span>
 
-      <button
-        mat-icon-button
-        (click)="theme.next()"
-        [attr.aria-label]="themeLabel()"
-        [matTooltip]="themeLabel()"
-      >
-        <mat-icon>{{ themeIcon() }}</mat-icon>
-      </button>
 
       <button mat-icon-button [matMenuTriggerFor]="accountMenu" aria-label="Account">
         <div class="gf-avatar">{{ initial() }}</div>
@@ -55,32 +47,34 @@
       </div>
     }
 
-    <mat-sidenav-container class="min-h-0 flex-1">
-      <mat-sidenav mode="side" [opened]="sidenavOpen()" class="gf-sidenav">
+    <mat-sidenav-container class="gf-shell flex-1">
+      <mat-sidenav [mode]="sidenavMode()" [opened]="sidenavOpened()" class="gf-sidenav">
+        <!-- Places, not verbs. 'New catalog' was in here between Search and Resources, which made
+             the list a mix of where-you-can-go and what-you-can-do: everything else in it is a
+             thing that exists whether or not you act on it, and creating a catalog is something
+             you do to the catalogs. It lives on the Catalogs page now, where the catalogs are. -->
         <mat-nav-list>
-          <a mat-list-item routerLink="/catalogs" routerLinkActive="gf-active">
+          <a mat-list-item routerLink="/dashboard" routerLinkActive="gf-active" (click)="navigated()">
+            <mat-icon matListItemIcon>speed</mat-icon>
+            <span matListItemTitle>Dashboard</span>
+          </a>
+          <a mat-list-item routerLink="/catalogs" routerLinkActive="gf-active" (click)="navigated()">
             <mat-icon matListItemIcon>list_alt</mat-icon>
             <span matListItemTitle>Catalogs</span>
           </a>
-          <a mat-list-item routerLink="/search" routerLinkActive="gf-active">
-            <mat-icon matListItemIcon>search</mat-icon>
-            <span matListItemTitle>Search</span>
-          </a>
-          @if (auth.isAdmin()) {
-            <a mat-list-item routerLink="/catalogs/new" routerLinkActive="gf-active">
-              <mat-icon matListItemIcon>add_circle</mat-icon>
-              <span matListItemTitle>New catalog</span>
-            </a>
-          }
-          <a mat-list-item routerLink="/resources" routerLinkActive="gf-active">
+          <a mat-list-item routerLink="/resources" routerLinkActive="gf-active" (click)="navigated()">
             <mat-icon matListItemIcon>inventory_2</mat-icon>
             <span matListItemTitle>Resources</span>
           </a>
-          <a mat-list-item routerLink="/cluster" routerLinkActive="gf-active">
-            <mat-icon matListItemIcon>monitor_heart</mat-icon>
-            <span matListItemTitle>System health</span>
+          <a mat-list-item routerLink="/search" routerLinkActive="gf-active" (click)="navigated()">
+            <mat-icon matListItemIcon>search</mat-icon>
+            <span matListItemTitle>Search</span>
           </a>
-          <a mat-list-item routerLink="/about" routerLinkActive="gf-active">
+          <a mat-list-item routerLink="/cluster" routerLinkActive="gf-active" (click)="navigated()">
+            <mat-icon matListItemIcon>monitor_heart</mat-icon>
+            <span matListItemTitle>System</span>
+          </a>
+          <a mat-list-item routerLink="/about" routerLinkActive="gf-active" (click)="navigated()">
             <mat-icon matListItemIcon>info</mat-icon>
             <span matListItemTitle>About</span>
           </a>
@@ -96,6 +90,27 @@
 
       <mat-sidenav-content class="gf-content">
         <router-outlet />
+
+        <!-- What a footer is for on an operator's tool: which build you are looking at, and where
+             to go when it does something you did not expect. Not a sitemap of a six-page app. -->
+        <footer class="gf-footer">
+          <span>
+            Greenfinger
+            @if (version()) {
+              <span class="gf-mono">{{ version() }}</span>
+            }
+          </span>
+          <span class="gf-footer-sep" aria-hidden="true"></span>
+          <a href="https://github.com/paganini2008/greenfinger" target="_blank" rel="noopener">
+            Source
+          </a>
+          <a href="https://github.com/paganini2008/greenfinger/issues" target="_blank" rel="noopener">
+            Report a problem
+          </a>
+          <a routerLink="/about">About</a>
+          <span class="flex-1"></span>
+          <span class="gf-muted">Apache&nbsp;2.0</span>
+        </footer>
       </mat-sidenav-content>
     </mat-sidenav-container>
   </div>

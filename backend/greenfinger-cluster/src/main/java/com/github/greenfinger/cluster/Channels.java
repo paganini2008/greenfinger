@@ -59,6 +59,28 @@ public final class Channels {
     /** Start, stop, finished. Small, rare, and acted on before anything else. */
     public static final String CONTROL = "greenfinger.control";
 
+    /**
+     * One administrative write, sent to whoever holds the cluster port, and the answer back.
+     *
+     * <p>
+     * Its own channel because it is the only traffic here with two directions and a caller
+     * waiting on it. Behind the control channel's buffer a reply would queue behind whatever
+     * else was being announced, and the caller's timeout would be measuring the queue rather
+     * than the work.
+     */
+    public static final String LEADER = "greenfinger.leader";
+
+    /**
+     * What each node has in its catalog table, said on a timer so the tables can be put back into
+     * agreement without anybody having to notice they had drifted.
+     *
+     * <p>
+     * Its own channel rather than the control one: a control message is a handful of bytes acted
+     * on immediately, and a digest is a map that arrives every interval whether or not anything
+     * is wrong. Behind the same buffer, the routine traffic would be in front of the stop signal.
+     */
+    public static final String RECONCILE = "greenfinger.reconcile";
+
     private Channels() {}
 
 }

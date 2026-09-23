@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
@@ -13,7 +13,25 @@ import { filter, interval, map, startWith, switchMap } from 'rxjs';
 import { ApiService } from './core/api.service';
 import { CrawlStatus } from './core/api.models';
 import { AuthService } from './core/auth.service';
-import { ThemeService } from './core/theme.service';
+
+/** Below this the rail is an overlay. It is Material's own handset breakpoint. */
+const NARROW = '(max-width: 599px)';
+
+/**
+ * The query, or nothing where there is no browser to ask.
+ *
+ * Guarded because {@code matchMedia} is not everywhere: the test environment has a window without
+ * it, and a shell that cannot be rendered under test is a shell nobody can cover.
+ */
+function narrowQuery(): MediaQueryList | null {
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    ? window.matchMedia(NARROW)
+    : null;
+}
+
+function matchesNarrow(): boolean {
+  return narrowQuery()?.matches ?? false;
+}
 
 /**
  * The frame every page sits in: a green bar, a nav rail, and who is signed in.
@@ -42,11 +60,28 @@ import { ThemeService } from './core/theme.service';
 })
 export class App {
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly api = inject(ApiService);
   protected readonly auth = inject(AuthService);
-  protected readonly theme = inject(ThemeService);
 
-  protected readonly sidenavOpen = signal(true);
+  /**
+   * A phone is not a small desktop.
+   *
+   * The rail was {@code mode="side"} and open at every width, so at 430px it took a third of the
+   * screen and pushed the form off the right edge -- a page that could only be read by scrolling
+   * sideways. Narrow, it becomes an overlay that starts closed and is opened by the button that
+   * was already in the bar; wide, nothing changes.
+   */
+  private readonly narrow = signal(matchesNarrow());
+
+  protected readonly sidenavMode = computed<'over' | 'side'>(() =>
+    this.narrow() ? 'over' : 'side',
+  );
+
+  private readonly sidenavOpen = signal(!matchesNarrow());
+
+  /** Open, except that a fresh overlay starts closed rather than covering the page. */
+  protected readonly sidenavOpened = computed(() => this.sidenavOpen());
 
   /**
    * What is crawling, anywhere in the cluster.
@@ -96,6 +131,19 @@ export class App {
         error: () => this.running.set([]),
       });
 
+    // The width can change without a reload -- a rotated phone, a dragged window -- and the rail
+    // has to follow it. Opening or closing on a change rather than only at startup is what keeps
+    // a window dragged narrow from keeping a rail that no longer fits.
+    const query = narrowQuery();
+    if (query) {
+      const onChange = (event: MediaQueryListEvent) => {
+        this.narrow.set(event.matches);
+        this.sidenavOpen.set(!event.matches);
+      };
+      query.addEventListener('change', onChange);
+      this.destroyRef.onDestroy(() => query.removeEventListener('change', onChange));
+    }
+
     this.api.version().subscribe({
       next: (server) => this.version.set(server.version),
       // a badge is not worth a message; the pages will report anything that actually matters
@@ -104,30 +152,19 @@ export class App {
   }
 
   /** The icon names what you would get by pressing it, which is how a three-way toggle reads. */
-  protected readonly themeIcon = computed(() => {
-    switch (this.theme.choice()) {
-      case 'system':
-        return 'light_mode';
-      case 'light':
-        return 'dark_mode';
-      default:
-        return 'brightness_auto';
-    }
-  });
-
-  protected readonly themeLabel = computed(() => {
-    switch (this.theme.choice()) {
-      case 'system':
-        return 'Following the system; switch to light';
-      case 'light':
-        return 'Light; switch to dark';
-      default:
-        return 'Dark; follow the system';
-    }
-  });
 
   protected toggleSidenav(): void {
     this.sidenavOpen.update((open) => !open);
+  }
+
+  /**
+   * Following a link closes the overlay, because it is covering what was just asked for. On a
+   * wide screen the rail is beside the page rather than over it, so it stays as it was.
+   */
+  protected navigated(): void {
+    if (this.narrow()) {
+      this.sidenavOpen.set(false);
+    }
   }
 
   protected signOut(): void {

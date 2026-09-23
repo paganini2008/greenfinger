@@ -1,30 +1,36 @@
-// The search bar is the page, so the hero gives it the room a search bar deserves.
+// The search bar is the page, so the header gives it the room a search bar deserves.
+//
+// All of this was glass on a green field. The field is paper now, and glass on paper is invisible
+// -- the box, its border and its text were all white on white, which is why the page looked like
+// a bare Search button floating under a heading.
 .gf-search-hero {
-  padding-bottom: 1.5rem;
+  padding-bottom: 1.35rem;
 }
 
 .gf-search-inner h1 {
-  margin-bottom: 1rem;
+  margin-bottom: 0.9rem;
 }
 
 .gf-searchbar {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  margin-left: 1rem;
   padding: 0.35rem 0.35rem 0.35rem 0.9rem;
-  border-radius: 999px;
-  background: rgb(255 255 255 / 14%);
-  border: 1px solid rgb(255 255 255 / 22%);
-  backdrop-filter: blur(10px);
-  transition: background 0.2s ease;
+  border-radius: var(--gf-r-md);
+  background: var(--gf-surface);
+  border: 1px solid var(--gf-outline);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
 
   &:focus-within {
-    background: rgb(255 255 255 / 20%);
+    border-color: var(--mat-sys-on-surface);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--gf-green) 12%, transparent);
   }
 
   > mat-icon {
-    color: var(--gf-on-green);
-    opacity: 0.8;
+    color: var(--gf-muted);
   }
 }
 
@@ -34,26 +40,26 @@
   border: none;
   outline: none;
   background: transparent;
-  color: var(--gf-on-green);
-  font-size: 1rem;
+  color: var(--mat-sys-on-surface);
+  font: inherit;
+  font-size: 1.05rem;
   padding: 0.5rem 0;
 
   &::placeholder {
-    color: color-mix(in srgb, var(--gf-on-green) 60%, transparent);
+    color: var(--gf-muted);
   }
 }
 
 .gf-searchbar-clear {
   border: none;
   background: transparent;
-  color: var(--gf-on-green);
+  color: var(--gf-muted);
   cursor: pointer;
   display: grid;
   place-items: center;
-  opacity: 0.7;
 
   &:hover {
-    opacity: 1;
+    color: var(--mat-sys-on-surface);
   }
 }
 
@@ -62,7 +68,7 @@
   flex-wrap: wrap;
   gap: 0.75rem;
   align-items: center;
-  margin-top: 0.85rem;
+  margin: 0.75rem 0 0 1rem;
 }
 
 // Three modes as a segmented control. They are one choice with three answers, and radio buttons
@@ -70,9 +76,9 @@
 .gf-modes {
   display: inline-flex;
   padding: 0.2rem;
-  border-radius: 999px;
-  background: rgb(255 255 255 / 12%);
-  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: var(--gf-r-md);
+  background: var(--gf-surface-container);
+  border: 1px solid var(--gf-outline);
 }
 
 .gf-mode {
@@ -81,11 +87,12 @@
   gap: 0.35rem;
   border: none;
   background: transparent;
-  color: color-mix(in srgb, var(--gf-on-green) 78%, transparent);
-  border-radius: 999px;
+  color: var(--gf-muted);
+  border-radius: calc(var(--gf-r-md) - 2px);
   padding: 0.35rem 0.85rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 500;
   cursor: pointer;
   transition:
     background 0.18s ease,
@@ -98,27 +105,30 @@
   }
 
   &:hover {
-    color: var(--gf-on-green);
+    color: var(--mat-sys-on-surface);
   }
 }
 
 .gf-mode-on {
-  background: var(--gf-on-green);
-  color: var(--gf-green);
+  background: var(--gf-surface);
+  color: var(--mat-sys-on-surface);
+  font-weight: 600;
+  box-shadow: 0 0 0 1px var(--gf-outline);
+
+  mat-icon {
+    color: var(--mat-sys-on-surface);
+  }
 }
 
 .gf-native-select {
-  border-radius: 999px;
-  border: 1px solid rgb(255 255 255 / 22%);
-  background: rgb(255 255 255 / 12%);
-  color: var(--gf-on-green);
-  padding: 0.4rem 0.85rem;
-  font-size: 0.8125rem;
+  border-radius: var(--gf-r-md);
+  border: 1px solid var(--gf-outline);
+  background: var(--gf-surface);
+  color: var(--mat-sys-on-surface);
+  padding: 0.45rem 0.85rem;
+  font: inherit;
+  font-size: 0.86rem;
   cursor: pointer;
-
-  option {
-    color: var(--mat-sys-on-surface);
-  }
 }
 
 .gf-result-meta {
@@ -143,14 +153,14 @@
 
   &:hover {
     transform: translateY(-1px);
-    border-color: color-mix(in srgb, var(--gf-green) 35%, var(--gf-outline));
+    border-color: var(--gf-green);
   }
 }
 
 .gf-result-title {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--gf-green);
+  color: var(--mat-sys-on-surface);
   text-decoration: none;
 
   &:hover {
@@ -174,7 +184,8 @@
   :is(em) {
     font-style: normal;
     font-weight: 650;
-    background: var(--gf-green-container);
+    background: var(--gf-green);
+  color: var(--gf-on-chrome);
     border-radius: 0.2rem;
     padding: 0 0.15rem;
   }
@@ -213,7 +224,7 @@
 
   &:hover {
     transform: translateY(-2px);
-    border-color: color-mix(in srgb, var(--gf-green) 40%, var(--gf-outline));
+    border-color: var(--gf-green);
   }
 
   figcaption {

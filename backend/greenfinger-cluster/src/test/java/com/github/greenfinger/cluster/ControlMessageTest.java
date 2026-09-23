@@ -54,6 +54,41 @@ class ControlMessageTest {
     }
 
     @Test
+    @DisplayName("purgeLocal names the version, the layers and the node that already did its own")
+    void purgeCarriesTheInstruction() {
+        ControlMessage message =
+                ControlMessage.purgeLocal("cat-1", 3, "db,index", false, "node-a");
+
+        assertThat(message.type()).isEqualTo(ControlMessage.Type.PURGE_LOCAL);
+        assertThat(message.catalogId()).isEqualTo("cat-1");
+        assertThat(message.version()).isEqualTo(3);
+        assertThat(message.layers()).isEqualTo("db,index");
+        assertThat(message.dropIndex()).isFalse();
+        assertThat(message.reason()).isEqualTo("node-a");
+    }
+
+    @Test
+    @DisplayName("a purge of every version says so with a version that is not one")
+    void purgeOfEveryVersion() {
+        ControlMessage message = ControlMessage.purgeLocal("cat-1", null, "db", true, "node-a");
+
+        assertThat(message.version()).isEqualTo(ControlMessage.EVERY_VERSION);
+        assertThat(message.dropIndex()).isTrue();
+    }
+
+    @Test
+    @DisplayName("a purge round trips as json, layers and all")
+    void purgeRoundTrips() throws Exception {
+        ControlMessage message =
+                ControlMessage.purgeLocal("cat-1", null, "db,file,index,vector", true, "node-a");
+
+        ControlMessage back = objectMapper.readValue(objectMapper.writeValueAsString(message),
+                ControlMessage.class);
+
+        assertThat(back).isEqualTo(message);
+    }
+
+    @Test
     @DisplayName("round trips as json, because that is what goes on the wire")
     void roundTrips() throws Exception {
         ControlMessage message = ControlMessage.started("cat-1", "crawl", 0, false);

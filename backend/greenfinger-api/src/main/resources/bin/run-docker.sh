@@ -114,6 +114,21 @@ NETWORK="${GF_NETWORK:-greenfinger}"
 # take the whole machine, and three of them on a laptop is how the middle one gets killed.
 MEMORY="${GF_MEMORY:-1g}"
 
+# How much of the container the heap may take.
+#
+# The image says 70%, which is right when everything a node allocates is on the heap. The local
+# embedding models are not: onnxruntime and its tensors are native memory outside it, and the text
+# and image models together are well over a gigabyte. A heap of 70% leaves less than 30% for that,
+# and the kernel kills the container -- exit 137, with nothing in the log, because the jvm never
+# gets to say anything.
+#
+# Measured rather than guessed: a node with the vector output on was killed at 1g and again at 3g.
+# Nodes without it keep 70%, because for them the heap is the whole story.
+HEAP_PERCENT=70
+case ",${GF_OUTPUT_TYPES:-file}," in
+  *,vector,*) HEAP_PERCENT=45 ;;
+esac
+
 # The node image this builds and runs. Named here rather than only where it is used, because
 # every use of it is under `set -u` and an unset name is not a default -- it is the script
 # stopping on its first line of real work.
@@ -230,6 +245,7 @@ PASS_THROUGH=(
   GF_VECTOR_STORE GF_VECTOR_ES_URIS GF_VECTOR_ES_USERNAME GF_VECTOR_ES_PASSWORD
   GF_QDRANT_URL GF_QDRANT_API_KEY GF_WEAVIATE_URL
   GF_EMBEDDING_PROVIDER GF_EMBEDDING_PRELOAD GF_EMBEDDING_OFFLINE GF_MODEL_DIR
+  GF_OLLAMA_URL GF_OLLAMA_MODEL GF_OPENAI_BASE_URL GF_OPENAI_API_KEY GF_OPENAI_MODEL
   GF_WORK_THREADS GF_MAX_FETCH_SIZE GF_LOG_LEVEL
   GF_COMPLETION_CHECK_INTERVAL GF_IDLE_TIMEOUT GF_MAX_CONSECUTIVE_FAILURES GF_API_BASE_URL
   GF_CORS_ORIGINS GF_USERS GF_TOKEN_SECRET GF_TOKEN_VALIDITY
@@ -276,6 +292,7 @@ for ((i = 1; i <= NODES; i++)); do
     --network "${NETWORK}" \
     --ip "$(node_ip "${i}")" \
     --memory "${MEMORY}" \
+    -e JAVA_OPTS="-XX:MaxRAMPercentage=${HEAP_PERCENT} -Dfile.encoding=UTF-8" \
     -p "${port}:50080" \
     -v "${mount}" \
     -v "${SCRIPT_DIR}/config:/app/config:ro" \

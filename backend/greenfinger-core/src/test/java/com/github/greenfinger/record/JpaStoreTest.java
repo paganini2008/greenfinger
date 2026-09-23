@@ -28,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.transaction.PlatformTransactionManager;
 import com.github.greenfinger.core.WebCrawlerProperties;
 import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.core.catalog.CatalogDetailsImpl;
@@ -65,7 +66,7 @@ class JpaStoreTest {
     private ResourceImageRepository resourceImageRepository;
 
     @Autowired
-    private org.springframework.transaction.PlatformTransactionManager transactionManager;
+    private PlatformTransactionManager transactionManager;
 
     private JpaCatalogStore catalogStore() {
         return new JpaCatalogStore(catalogRepository);
@@ -142,6 +143,36 @@ class JpaStoreTest {
         assertThat(saved.getIndexVersion()).isZero();
         // -1, not 0: nothing has finished, so there is no version for search to serve
         assertThat(saved.getSearchVersion()).isEqualTo(-1);
+    }
+
+    @Test
+    @DisplayName("two catalogs cannot share a name, whatever the database would allow")
+    void oneCatalogPerName() {
+        JpaCatalogStore store = catalogStore();
+        store.save(catalog("Rust Blog"));
+
+        Catalog second = catalog("rust blog");
+
+        // H2 has uk_catalog_name and would refuse this on its own. SQLite has no unique
+        // constraint at all -- Hibernate's community dialect emits neither the constraint nor a
+        // unique index for it -- so the store is what makes the two behave the same. A name the
+        // cluster disagrees about is divergence by construction: one node refuses the row,
+        // another takes it, and the replication then has two tables that cannot both be right
+        assertThatThrownBy(() -> store.save(second)).hasMessageContaining("uk_catalog_name");
+        assertThat(store.findAll()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("a catalog can be saved again under its own name")
+    void savingTheSameCatalogAgainIsFine() {
+        JpaCatalogStore store = catalogStore();
+        Catalog saved = store.save(catalog("Rust Blog"));
+
+        saved.setUrl("https://blog.rust-lang.org/");
+        Catalog again = store.save(saved);
+
+        assertThat(again.getUrl()).isEqualTo("https://blog.rust-lang.org/");
+        assertThat(store.findAll()).hasSize(1);
     }
 
     @Test

@@ -129,6 +129,56 @@ class CatalogAdminServiceTest {
     }
 
     @Test
+    @DisplayName("an edit keeps the version state it was not told about")
+    void anEditDoesNotUnpublish() {
+        Catalog saved = service.save(withUrl("https://books.toscrape.com"));
+        catalogStore.incrementIndexVersion(saved.getId());
+        catalogStore.publishSearchVersion(saved.getId(), 1);
+
+        // what a form sends: the fields somebody filled in, and nothing about versions
+        Catalog edit = new Catalog();
+        edit.setId(saved.getId());
+        edit.setUrl(saved.getUrl());
+        edit.setName(saved.getName());
+        edit.setCat("tech");
+
+        Catalog after = service.save(edit);
+
+        assertThat(after.getCat()).isEqualTo("tech");
+        // the catalog is still searchable, and the next crawl still writes the next version
+        assertThat(after.getSearchVersion()).isEqualTo(1);
+        assertThat(after.getIndexVersion()).isEqualTo(1);
+        assertThat(after.getCreatedAt()).isEqualTo(saved.getCreatedAt());
+    }
+
+    @Test
+    @DisplayName("an edit that does name a version is taken at its word")
+    void anEditCanSetTheVersions() {
+        Catalog saved = service.save(withUrl("https://books.toscrape.com"));
+        catalogStore.publishSearchVersion(saved.getId(), 2);
+
+        Catalog edit = new Catalog();
+        edit.setId(saved.getId());
+        edit.setUrl(saved.getUrl());
+        edit.setSearchVersion(0);
+
+        assertThat(service.save(edit).getSearchVersion()).isZero();
+    }
+
+    @Test
+    @DisplayName("a catalog that is not there yet keeps the defaults of a new one")
+    void anUnknownIdIsStillANewCatalog() {
+        Catalog made = new Catalog();
+        made.setId("01a0c952-0000-7000-0000-000000000001");
+        made.setUrl("https://books.toscrape.com");
+
+        Catalog saved = service.save(made);
+
+        assertThat(saved.getSearchVersion()).isEqualTo(-1);
+        assertThat(saved.getIndexVersion()).isZero();
+    }
+
+    @Test
     @DisplayName("start url is a prefix as well as a seed, so it defaults to the whole site")
     void startUrlDefaultsToTheSite() {
         Catalog saved = service.save(withUrl("https://books.toscrape.com"));

@@ -62,6 +62,28 @@ class ClusterDashboardTest {
     }
 
     @Test
+    @DisplayName("a run of failures is shared, so one node's twelve are the cluster's twelve")
+    void aRunOfFailuresIsSharedAcrossTheCluster() {
+        counters.noteFetchFailure("429 TOO_MANY_REQUESTS");
+        counters.noteFetchFailure("429 TOO_MANY_REQUESTS");
+        counters.noteFetchFailure("503 SERVICE_UNAVAILABLE");
+
+        assertThat(counters.getDashboard().getConsecutiveFailures()).isEqualTo(3);
+        assertThat(counters.getDashboard().getLastFailure()).isEqualTo("503 SERVICE_UNAVAILABLE");
+
+        // one page getting through ends the run: the question is whether it is still happening
+        counters.noteFetchSuccess();
+        assertThat(counters.getDashboard().getConsecutiveFailures()).isZero();
+    }
+
+    @Test
+    @DisplayName("nothing has failed yet reads as zero rather than as an error")
+    void noFailuresYet() {
+        assertThat(counters.getDashboard().getConsecutiveFailures()).isZero();
+        assertThat(counters.getDashboard().getLastFailure()).isEmpty();
+    }
+
+    @Test
     @DisplayName("every counter is readable, and reads what was written")
     void everyCounterRoundTrips() {
         for (CountingType countingType : CountingType.values()) {
@@ -160,6 +182,18 @@ class ClusterDashboardTest {
         assertThat(counters.getDashboard().isInterrupted()).isTrue();
         assertThat(counters.getDashboard().getCompletionReason())
                 .isEqualTo("interrupted by request");
+    }
+
+    @Test
+    @DisplayName("a reason nobody wrote is not stored as an empty one")
+    void neverSharesABlankReason() {
+        counters.setCompleted(true, null, true);
+
+        // the shared state keeps strings, so "" and "this is the reason" are indistinguishable
+        // once written: a node reading this one has to be given something it can show
+        assertThat(counters.getDashboard().isInterrupted()).isTrue();
+        assertThat(counters.getDashboard().getCompletionReason())
+                .isEqualTo("the run ended without recording why");
     }
 
     @Test

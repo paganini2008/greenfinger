@@ -33,7 +33,7 @@ export interface ConfirmData {
       <button mat-button (click)="dialogRef.close(false)">Cancel</button>
       <button
         mat-flat-button
-        [color]="data.destructive ? 'warn' : 'primary'"
+        [class.gf-destructive]="data.destructive"
         (click)="dialogRef.close(true)"
       >
         {{ data.confirmLabel ?? 'Confirm' }}
@@ -43,6 +43,32 @@ export interface ConfirmData {
   styles: `
     .gf-warn-icon {
       color: var(--mat-sys-error);
+    }
+
+    /*
+     * The one place red is allowed.
+     *
+     * The palette is green and white, and it stayed that way here for a while: the button that
+     * empties a catalog looked exactly like the button that saves one, because Material M3
+     * ignores color="warn" on mat-flat-button and the destructive flag only ever reached the
+     * icon. Colour is the last thing between somebody and an irreversible act, and a rule about
+     * the palette is not worth that.
+     *
+     * Outlined rather than filled, though. A red slab is the loudest thing this application can
+     * draw and it would be drawn at the moment somebody is already being careful; the border and
+     * the word are enough to say "this one is different", and the dialog has already said what
+     * it will do.
+     */
+    .gf-destructive {
+      --mdc-filled-button-container-color: transparent;
+      --mdc-filled-button-label-text-color: var(--mat-sys-error);
+      background: transparent;
+      color: var(--mat-sys-error);
+      box-shadow: inset 0 0 0 1px var(--mat-sys-error);
+    }
+
+    .gf-destructive:hover {
+      background: color-mix(in srgb, var(--mat-sys-error) 8%, transparent);
     }
   `,
 })

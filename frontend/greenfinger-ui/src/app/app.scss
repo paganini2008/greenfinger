@@ -5,11 +5,23 @@
 
 // The one solid green surface in the product. Everything below it is white, which is what keeps
 // the green meaning "Greenfinger" rather than merely "coloured".
+// The masthead. Green in light, and deliberately not green in dark.
+//
+// --gf-green is Material's primary, and in a dark scheme that token flips to a *light* green so it
+// can be read as text on a dark ground. Used as a background it made the bar acid green across the
+// top of a near-black page -- the brightest possible surface, carrying a logo and two icons. In
+// dark the bar is a raised surface and the green goes back to being the mark on it.
+// Pinned, now that the page itself scrolls: the masthead carries the account menu and the theme
+// switch, and they should not need scrolling back up to reach.
 .gf-toolbar {
-  background: var(--gf-green);
-  color: var(--gf-on-green);
-  position: relative;
-  z-index: 2;
+  background: var(--gf-chrome);
+  // tracks --gf-chrome-height, which is what the fixed rail measures itself against
+  height: var(--gf-chrome-height);
+  color: var(--gf-on-chrome);
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  border-bottom: 1px solid transparent;
   box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
 }
 
@@ -17,8 +29,9 @@
 // out to solid white keeps the shape -- the leafed G is the recognisable part -- and reads as a
 // deliberate reversed lockup rather than a logo that half vanished.
 .gf-logo {
-  height: 1.5rem;
+  height: 2.15rem;
   width: auto;
+  // knocked out on the green bar; on the dark bar the wordmark's own colours read fine
   filter: brightness(0) invert(1);
 }
 
@@ -32,6 +45,9 @@
   line-height: 1.25rem;
 }
 
+// On the chrome, not on the green: in a dark scheme the bar is near-black and --gf-on-green is
+// the dark colour meant to sit on a light green, so the initial and its disc were both dark on a
+// dark bar -- an avatar nobody could see.
 .gf-avatar {
   width: 2rem;
   height: 2rem;
@@ -39,31 +55,110 @@
   display: grid;
   place-items: center;
   font-weight: 600;
-  background: color-mix(in srgb, var(--gf-on-green) 22%, transparent);
-  color: var(--gf-on-green);
+  background: color-mix(in srgb, var(--gf-on-chrome) 22%, transparent);
+  color: var(--gf-on-chrome);
 }
 
+// The rail stays put while the page moves under it, which is what it did before by virtue of
+// living outside the scrolling pane. Sticky rather than fixed so it still participates in the
+// layout and the content keeps its column.
 .gf-sidenav {
-  width: 15rem;
-  border-right: 1px solid var(--gf-outline);
-  background: var(--gf-surface);
+  // Six words wide, not fifteen rem. The list is six short nouns and the widest of them is
+  // "Resources"; the rest of the column was empty green, which read as a margin the page had
+  // been pushed away from rather than as a rail.
+  width: 12.25rem;
+  border-right: 0;
+  background: var(--gf-chrome);
+  color: var(--gf-on-chrome);
   display: flex;
   flex-direction: column;
+  // Fixed rather than sticky. Material positions the drawer `absolute` inside its container and
+  // gives the content pane a matching margin-left; making it sticky put it back into normal flow,
+  // where it took vertical space and pushed the whole page down below itself. Fixed keeps it out
+  // of flow -- so the margin-left still lines the content up beside it -- and pinned, so the rail
+  // stays while the page scrolls under it.
+  position: fixed;
+  top: var(--gf-chrome-height);
+  bottom: 0;
+  left: 0;
+  // Material M3 rounds the drawer's outer edge (0 16px 16px 0). The masthead, the rail and the
+  // footer are one piece of chrome around the page, and a piece of chrome with one rounded corner
+  // reads as a card that has drifted into the corner of the window.
+  border-radius: 0;
 }
 
 // The active item is marked with a green bar rather than a filled row: a rail of solid green
 // blocks would compete with the toolbar for the eye.
+//
+// It said that and then did both, and the filled row was the brightest thing on the screen --
+// louder than the page's own headline, for the sake of telling you which link you had already
+// clicked. The bar and the colour of the word are enough.
+// On a green rail a green tint says nothing, so the active row is the solid colour and the rest
+// of the rail is the tint.
+// Square, and touching both edges of the rail: a pill floating inside a green column is a second
+// shape where the rail is already the shape.
 .gf-active {
-  color: var(--gf-green);
-  background: var(--gf-green-container);
-  border-left: 3px solid var(--gf-green);
+  color: var(--gf-on-chrome);
+  background: var(--gf-active);
+  border-radius: 0;
+  font-weight: 600;
+
+  // the same override as the rest of the rail: the label is in Material's own element
+  --mat-list-list-item-label-text-color: var(--gf-on-chrome);
+
+  .mdc-list-item__primary-text,
+  .mat-mdc-list-item-title,
+  .mat-mdc-list-item-unscoped-content {
+    color: var(--gf-on-chrome);
+  }
 
   mat-icon {
-    color: var(--gf-green);
+    color: var(--gf-on-chrome);
+  }
+}
+
+// Every nav row, reversed out of the green rail. White, not a percentage of it: six items is a
+// short enough list that dimming five of them to promote one buys nothing, and a 86% white on
+// green is the sort of "nearly legible" that only looks deliberate on a designer's screen.
+.gf-sidenav .mat-mdc-list-item {
+  color: var(--gf-on-chrome);
+
+  // Material puts the label in an element of its own and colours it from --mat-sys-on-surface,
+  // which is the page's near-black. That selector is more specific than a colour on the list
+  // item, so setting the item alone left white icons beside black words on a dark green rail --
+  // and at this size, on this green, in a screenshot, that reads as a slightly dull white. It
+  // was measured rather than looked at in the end: rgb(27, 29, 27).
+  //
+  // Both the token and the element, because the token is the supported way and the element is
+  // what actually carries the colour if a future Material stops reading the token.
+  --mat-list-list-item-label-text-color: var(--gf-on-chrome);
+  --mat-list-list-item-supporting-text-color: var(--gf-on-chrome);
+  --mat-list-list-item-leading-icon-color: var(--gf-on-chrome);
+  --mat-list-list-item-hover-label-text-color: var(--gf-on-chrome);
+  --mat-list-list-item-focus-label-text-color: var(--gf-on-chrome);
+
+  .mdc-list-item__primary-text,
+  .mat-mdc-list-item-title,
+  .mat-mdc-list-item-unscoped-content {
+    color: var(--gf-on-chrome);
+  }
+
+  mat-icon {
+    color: var(--gf-on-chrome);
+  }
+
+  // Padding trimmed with the width: Material's own is built for a 256px drawer.
+  padding-left: 0.85rem !important;
+  padding-right: 0.85rem !important;
+
+  &:hover:not(.gf-active) {
+    background: color-mix(in srgb, #000000 10%, transparent);
   }
 }
 
 .gf-role-note {
+  color: var(--gf-on-chrome);
+  border-top-color: color-mix(in srgb, #ffffff 25%, transparent);
   margin-top: auto;
   display: flex;
   gap: 0.5rem;
@@ -71,12 +166,23 @@
   padding: 0.75rem 1rem;
   font-size: 0.75rem;
   line-height: 1.1rem;
-  color: var(--gf-muted);
-  border-top: 1px solid var(--gf-outline);
+  border-top: 1px solid;
 }
 
+// Material gives the content pane its own scrollbar; with the document scrolling there must not
+// be a second one, or the page scrolls and the pane inside it scrolls separately.
 .gf-content {
   background: var(--mat-sys-surface-container-lowest, #fff);
+  overflow: visible !important;
+  // Search with nothing typed is half a screen tall, and the footer sat where the content ended
+  // with the page showing underneath it. The pane is a column at least as tall as the window and
+  // the routed page takes the slack, so the green band is the bottom of the window or lower.
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - var(--gf-chrome-height));
+  // The rule that makes the routed page take the slack lives in styles.scss -- a routed component
+  // is created by the outlet, so it never carries this stylesheet's scoping attribute and a rule
+  // written here would silently miss it.
 }
 
 // A crawl is a fact about the whole application, so it is announced above the nav and the page

@@ -4,17 +4,15 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Subscription, interval, startWith, switchMap } from 'rxjs';
+import { Subscription, catchError, forkJoin, interval, map, of, startWith, switchMap } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import {
   ClusterBuffer,
   ClusterChannel,
   ClusterStatus,
-  CrawlStatus,
   ProxyNode,
   HealthComponent,
   HealthReport,
-  StorageUsage,
 } from '../../core/api.models';
 import { Sparkline } from '../../shared/sparkline';
 
@@ -37,11 +35,73 @@ function flatten(values: Record<string, unknown>, prefix = ''): { key: string; v
   });
 }
 
+/** One member of the cluster, as that member describes itself. */
+interface ClusterMember {
+  index: number;
+  address: string;
+  reachable: boolean;
+  leader: boolean;
+  nodeId: string;
+  onBreak: boolean;
+  memberCount: number;
+  uptime: string;
+  tps: number;
+  failures: number;
+  health: string;
+  /** Heap, because "is it about to fall over" is the second question after "is it up". */
+  heapUsed: number;
+  heapMax: number;
+  cpu: number;
+}
+
+/**
+ * One health-check value, as a phrase rather than as json.
+ *
+ * The spreader check reports its whole membership under `otherMembers`, and printing that with
+ * JSON.stringify put two hundred characters of braces and quotes in the middle of a list somebody
+ * reads to find out whether anything is wrong. It is also the same membership the table at the top
+ * of this page already lays out properly, so the check only needs to say how many.
+ */
+function describeValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `${value.length}`;
+  }
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>);
+    // small flat objects are worth spelling out; anything bigger is a count
+    return entries.length <= 3 && entries.every(([, one]) => typeof one !== 'object')
+      ? entries.map(([key, one]) => `${key} ${one}`).join(', ')
+      : `${entries.length} entries`;
+  }
+  return String(value);
+}
+
+/** Milliseconds of uptime as a person would say them. Used per member and for the asked node. */
+function uptimeOf(millis: number): string {
+  const seconds = Math.floor((millis ?? 0) / 1000);
+  if (seconds < 60) {
+    return `${seconds}s`;
+  }
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) {
+    return `${minutes}m`;
+  }
+  const hours = Math.floor(minutes / 60);
+  return hours < 24 ? `${hours}h ${minutes % 60}m` : `${Math.floor(hours / 24)}d ${hours % 24}h`;
+}
+
 /** How many samples the throughput charts keep. At one every three seconds, five minutes of it. */
 const HISTORY = 100;
 
-/** How often the catalogs' counters are read. Faster than the cluster poll; see the charts. */
-const CRAWL_POLL_MILLIS = 2000;
+/**
+ * How often every member is asked for itself.
+ *
+ * Slower than this node's own poll on purpose: each refresh is five requests per member -- status,
+ * health, and three metrics -- and a three node cluster polled every three seconds would be
+ * forty-five requests a minute from a page somebody left open, to answer a question whose answer
+ * changes slowly.
+ */
+const MEMBERS_POLL_MILLIS = 10000;
 
 /**
  * How this node and its stores are doing: the cluster it is in, every message it has carried, the
@@ -80,23 +140,13 @@ export class ClusterPage {
   protected readonly error = signal<string | null>(null);
 
   /**
-   * Measured on demand, never on the poll.
-   *
-   * The blob store walk is a directory tree on local disk and a paged list on MinIO, and paying
-   * for that every three seconds because a page is open is how a monitoring page becomes the
-   * load it was opened to diagnose.
-   */
-  protected readonly storage = signal<StorageUsage | null>(null);
-  protected readonly measuring = signal(false);
-
-  /**
    * Which half of the page is showing.
    *
-   * Two halves rather than one long page, because they answer different questions and are read at
-   * different moments: `cluster` is "is the machinery working", `crawler` is "is the work getting
-   * done". Both poll while they are open and neither polls while it is not.
+   * Two halves, because they answer different questions: `health` is "is anything wrong", which is
+   * why somebody opens this page in a hurry, and `cluster` is "what is the machinery doing", which
+   * is what they read once they know nothing is on fire.
    */
-  protected readonly view = signal<'cluster' | 'crawler'>('cluster');
+  protected readonly view = signal<'health' | 'cluster'>('health');
 
   /**
    * Which node is being asked, and the ones there are to ask.
@@ -114,9 +164,6 @@ export class ClusterPage {
   protected readonly nodes = signal<ProxyNode[]>([]);
   protected readonly node = signal<number | null>(null);
 
-  /** Every catalog and what it has produced, refreshed on the crawl poll. */
-  protected readonly crawls = signal<CrawlStatus[]>([]);
-
   protected readonly healthStatus = computed(() => this.health()?.status ?? '');
 
   /**
@@ -131,7 +178,28 @@ export class ClusterPage {
   private readonly channelHistory = signal<Record<string, number[]>>({});
 
   private poll?: Subscription;
-  private crawlPoll?: Subscription;
+  private membersPoll?: Subscription;
+
+  /**
+   * Every member of the cluster, each one asked for its own account of itself.
+   *
+   * The page could have taken the membership list out of any single node's answer -- a node knows
+   * who its peers are -- but that is one node's opinion of two machines it has not heard from
+   * recently. Asking each in turn is the only way to say "alive" and mean it, and it is the
+   * difference between a table of members and a table of members that is worth looking at: the
+   * uptime, the throughput and the failures in each row are that node's own numbers.
+   *
+   * Only possible because the front end's proxy can be asked for a specific node. Without it
+   * (a dev server, the api on its own domain) the list is empty and the page falls back to
+   * whichever node answers, which is what it did before.
+   */
+  protected readonly members = signal<ClusterMember[]>([]);
+  protected readonly membersLoading = signal(false);
+
+  /** A member that is not answering, or is answering badly, is the reason to be on this page. */
+  protected readonly unhealthy = computed(() =>
+    this.members().filter((one) => one.health !== 'UP' || !one.reachable),
+  );
 
   /** Channels, the application's own first: they are the ones somebody came here about. */
   protected readonly channels = computed<ClusterChannel[]>(() => {
@@ -164,6 +232,46 @@ export class ClusterPage {
       entries: flatten(values ?? {}),
     })),
   );
+
+  /** The node the detail panels are showing, by the address a person would recognise. */
+  protected readonly askedAddress = computed(() => {
+    const index = this.node();
+    const named = this.members().find((one) => one.index === index);
+    return named?.address ?? this.status()?.node.address ?? '';
+  });
+
+  /** The only buffers worth a row: an empty queue is never why anybody opened this page. */
+  protected readonly droppingBuffers = computed(() =>
+    this.buffers().filter((one) => one.dropped > 0),
+  );
+
+  /**
+   * What this node's traffic is made of, by channel, as shares of one bar.
+   *
+   * The table underneath says how much each channel carried; only the bar says what the node is
+   * mostly *doing* -- whether this is a machine in the middle of a crawl, or one spending its
+   * afternoon replicating what another machine crawled. Six numbers in a column never answer that,
+   * because the answer is a ratio and columns are read one cell at a time.
+   */
+  protected readonly trafficMix = computed(() => {
+    const carried = this.channels()
+      .map((channel) => ({
+        name: channel.channel,
+        short: channel.channel.replace(/^greenfinger\.|^spreader\./, ''),
+        value: channel.counters.sent + channel.counters.received,
+        system: channel.systemChannel,
+      }))
+      .filter((one) => one.value > 0)
+      .sort((a, b) => b.value - a.value);
+    const total = carried.reduce((sum, one) => sum + one.value, 0) || 1;
+    return carried.map((one, rank) => ({
+      ...one,
+      share: (one.value / total) * 100,
+      // a fixed ramp rather than a colour per channel name: the channels are not categories with
+      // meanings, they are a ranking, and the ramp says "this one carries more than that one"
+      rank: Math.min(rank, 5),
+    }));
+  });
 
   /** Anything here is work that was lost, or a node that cannot do any. */
   protected readonly warnings = computed<string[]>(() => {
@@ -203,18 +311,7 @@ export class ClusterPage {
     return warnings;
   });
 
-  protected readonly uptime = computed(() => {
-    const millis = this.status()?.node.uptimeMillis ?? 0;
-    const seconds = Math.floor(millis / 1000);
-    if (seconds < 60) {
-      return `${seconds}s`;
-    }
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) {
-      return `${minutes}m ${seconds % 60}s`;
-    }
-    return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
-  });
+  protected readonly uptime = computed(() => uptimeOf(this.status()?.node.uptimeMillis ?? 0));
 
   /** Totals across every channel, because "how much has this node carried" has no other answer. */
   protected readonly totals = computed(() => {
@@ -237,58 +334,9 @@ export class ClusterPage {
     Math.max(1, ...this.channels().map((channel) => channel.throughput.peakTps ?? 0)),
   );
 
-  // ---- the crawler half -----------------------------------------------------------------
-
-  /** Pages and images across every catalog, sampled on each poll, for the two charts. */
-  protected readonly pageHistory = signal<number[]>([]);
-  protected readonly imageHistory = signal<number[]>([]);
-
-  /** Whatever is running now. Empty is the ordinary state, not an error. */
-  protected readonly running = computed(() => this.crawls().filter((crawl) => crawl.running));
-
-  protected readonly crawlTotals = computed(() => {
-    const start = { pages: 0, images: 0, urls: 0, handled: 0 };
-    return this.crawls().reduce(
-      (sum, crawl) => ({
-        pages: sum.pages + (crawl.savedResourceCount ?? 0),
-        images: sum.images + (crawl.savedImageCount ?? 0),
-        urls: sum.urls + (crawl.totalUrlCount ?? 0),
-        handled: sum.handled + (crawl.handledUrlCount ?? 0),
-      }),
-      start,
-    );
-  });
-
-  /**
-   * Pages a second, from the last two samples.
-   *
-   * The api reports a running total, not a rate, so the rate is the difference over the poll
-   * interval. Negative differences are possible and meaningless -- a new run restarts the count
-   * at zero -- so they are floored rather than shown as a crawl running backwards.
-   */
-  protected readonly pageRate = computed(() => this.rateOf(this.pageHistory()));
-  protected readonly imageRate = computed(() => this.rateOf(this.imageHistory()));
-
-  private rateOf(series: number[]): number {
-    if (series.length < 2) {
-      return 0;
-    }
-    const delta = series[series.length - 1] - series[series.length - 2];
-    return Math.max(0, delta / (CRAWL_POLL_MILLIS / 1000));
-  }
-
-  /** Per catalog, largest first, with a width for the bar beside it. */
-  protected readonly storageBars = computed(() => {
-    const rows = this.storage()?.catalogs ?? [];
-    const peak = Math.max(1, ...rows.map((row) => row.bytes));
-    return [...rows]
-      .sort((a, b) => b.bytes - a.bytes)
-      .map((row) => ({ ...row, percent: Math.round((row.bytes / peak) * 100) }));
-  });
-
   constructor() {
     inject(DestroyRef).onDestroy(() => this.poll?.unsubscribe());
-    inject(DestroyRef).onDestroy(() => this.crawlPoll?.unsubscribe());
+    inject(DestroyRef).onDestroy(() => this.membersPoll?.unsubscribe());
     // the picker's contents, and the first node to ask. A 404 means this app is not behind its
     // own proxy, so there is nobody to name and nothing to pin.
     this.api.proxyNodes().subscribe({
@@ -301,6 +349,81 @@ export class ClusterPage {
       error: () => this.nodes.set([]),
     });
     queueMicrotask(() => this.start());
+  }
+
+  /**
+   * Ask every node for itself, in parallel.
+   *
+   * Errors are values here rather than failures: a node that does not answer is exactly what this
+   * table exists to show, so it becomes a row saying so instead of emptying the whole list.
+   */
+  private readMembers(): void {
+    const nodes = this.nodes();
+    if (!nodes.length) {
+      this.members.set([]);
+      return;
+    }
+    this.membersLoading.set(true);
+    forkJoin(
+      nodes.map((one) =>
+        forkJoin({
+          status: this.api.clusterStatus(one.index).pipe(catchError(() => of(null))),
+          health: this.api.health(one.index).pipe(catchError(() => of(null))),
+          heapUsed: this.api
+            .metric('jvm.memory.used', one.index, 'area:heap')
+            .pipe(catchError(() => of(0))),
+          heapMax: this.api
+            .metric('jvm.memory.max', one.index, 'area:heap')
+            .pipe(catchError(() => of(0))),
+          cpu: this.api.metric('process.cpu.usage', one.index).pipe(catchError(() => of(0))),
+        }).pipe(map((answers) => this.toMember(one, answers))),
+      ),
+    ).subscribe({
+      next: (members) => {
+        this.members.set(members);
+        this.membersLoading.set(false);
+      },
+      error: () => this.membersLoading.set(false),
+    });
+  }
+
+  private toMember(
+    node: ProxyNode,
+    answers: {
+      status: ClusterStatus | null;
+      health: HealthReport | null;
+      heapUsed: number;
+      heapMax: number;
+      cpu: number;
+    },
+  ): ClusterMember {
+    const { status, health } = answers;
+    const failures = Object.values(status?.channels ?? {}).reduce(
+      (sum, channel) =>
+        sum + channel.counters.sendFailures + channel.counters.receiveFailures,
+      0,
+    );
+    return {
+      index: node.index,
+      address: node.address,
+      reachable: status !== null,
+      leader: status?.node.leader ?? false,
+      nodeId: status?.node.nodeId ?? '',
+      onBreak: status?.node.onBreak ?? false,
+      memberCount: status?.node.memberCount ?? 0,
+      uptime: status ? uptimeOf(status.node.uptimeMillis) : '--',
+      tps: status?.summary.totalTps ?? 0,
+      failures,
+      health: health?.status ?? (status ? 'UNKNOWN' : 'DOWN'),
+      heapUsed: answers.heapUsed,
+      heapMax: answers.heapMax,
+      cpu: answers.cpu,
+    };
+  }
+
+  /** Heap in use as a percentage of the heap it was given. */
+  protected heapPercent(member: ClusterMember): number {
+    return member.heapMax > 0 ? Math.round((member.heapUsed / member.heapMax) * 100) : 0;
   }
 
   /** Ask a different node: everything on the page is that node's, so all of it is dropped. */
@@ -323,34 +446,15 @@ export class ClusterPage {
     // two readings -- which is what the pages-per-second tile is -- came out as zero while the
     // chart beside it climbed.
     this.poll?.unsubscribe();
-    this.crawlPoll?.unsubscribe();
+    this.membersPoll?.unsubscribe();
     this.api.health(this.node()).subscribe({
       next: (health) => this.health.set(health),
       error: () => this.health.set({ status: 'DOWN', components: [] }),
     });
-    this.measure();
-    // The catalogs' own counters, on a faster tick than the cluster's: a crawl saving a page a
-    // second is the thing the charts are for, and three seconds would draw it as a staircase.
-    this.crawlPoll = interval(CRAWL_POLL_MILLIS)
-      .pipe(
-        startWith(0),
-        switchMap(() => this.api.status()),
-      )
-      .subscribe({
-        next: (crawls) => {
-          this.crawls.set(crawls);
-          const totals = crawls.reduce(
-            (sum, crawl) => ({
-              pages: sum.pages + (crawl.savedResourceCount ?? 0),
-              images: sum.images + (crawl.savedImageCount ?? 0),
-            }),
-            { pages: 0, images: 0 },
-          );
-          this.pageHistory.update((series) => [...series, totals.pages].slice(-HISTORY));
-          this.imageHistory.update((series) => [...series, totals.images].slice(-HISTORY));
-        },
-        error: () => undefined,
-      });
+    // Every member, on its own slower tick. See MEMBERS_POLL_MILLIS.
+    this.membersPoll = interval(MEMBERS_POLL_MILLIS)
+      .pipe(startWith(0))
+      .subscribe(() => this.readMembers());
     // three seconds: throughput is a rate and a rate needs a window, but nobody watches this
     // page for long enough to want it faster
     this.poll = interval(3000)
@@ -392,18 +496,6 @@ export class ClusterPage {
     return this.channelHistory()[channel.channel] ?? [];
   }
 
-  /** Pressed, or once when the page opens. Never on a timer: see {@link storage}. */
-  protected measure(): void {
-    this.measuring.set(true);
-    this.api.storageUsage().subscribe({
-      next: (usage) => {
-        this.storage.set(usage);
-        this.measuring.set(false);
-      },
-      error: () => this.measuring.set(false),
-    });
-  }
-
   /**
    * A health component's details as one line.
    *
@@ -417,7 +509,7 @@ export class ClusterPage {
       return '';
     }
     return entries
-      .map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`)
+      .map(([key, value]) => `${key}: ${describeValue(value)}`)
       .join('  ·  ');
   }
 

@@ -17,6 +17,7 @@
 package com.github.greenfinger.cluster;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -34,8 +35,10 @@ import com.github.greenfinger.core.engine.CrawlRegistry;
 import com.github.greenfinger.core.engine.WebCrawlerCompletionEvent;
 import com.github.greenfinger.core.engine.CrawlRun;
 import com.github.greenfinger.core.engine.WebCrawlerExecutionContext;
+import com.github.greenfinger.core.model.DeleteLayer;
 import com.github.greenfinger.core.model.OutputType;
 import com.github.greenfinger.service.CrawlerLauncher;
+import com.github.greenfinger.service.DeletionService;
 import com.github.greenfinger.service.ReplayService;
 import lombok.extern.slf4j.Slf4j;
 
@@ -80,6 +83,9 @@ public class CrawlCluster implements CrawlCoordinatorFactory, ManagedBeanLifeCyc
     /** Looked up late: it is a bean this one is a dependency of. */
     private final ObjectProvider<ReplayService> replayService;
 
+    /** Also looked up late, and for the same reason: it is downstream of this bean. */
+    private final ObjectProvider<DeletionService> deletionService;
+
     /** Where a finished crawl is announced to whatever this process has listening. */
     private final ApplicationEventPublisher eventPublisher;
 
@@ -90,12 +96,14 @@ public class CrawlCluster implements CrawlCoordinatorFactory, ManagedBeanLifeCyc
     public CrawlCluster(GossipCluster cluster, CrawlTaskChannel crawlChannel,
             CrawlRegistry crawlRegistry, ObjectProvider<CrawlerLauncher> launcher,
             ObjectProvider<ReplayService> replayService,
+            ObjectProvider<DeletionService> deletionService,
             ApplicationEventPublisher eventPublisher) {
         this.cluster = cluster;
         this.crawlChannel = crawlChannel;
         this.crawlRegistry = crawlRegistry;
         this.launcher = launcher;
         this.replayService = replayService;
+        this.deletionService = deletionService;
         this.eventPublisher = eventPublisher;
         this.controlChannel = new ControlChannel(cluster, this::onControl);
     }
@@ -157,6 +165,7 @@ public class CrawlCluster implements CrawlCoordinatorFactory, ManagedBeanLifeCyc
             case STARTED -> joinLater(message);
             case COMPLETED -> publishCompletion(message);
             case RESTORE_FILES -> restoreFilesHere(message);
+            case PURGE_LOCAL -> purgeHere(message);
         }
     }
 
@@ -231,9 +240,53 @@ public class CrawlCluster implements CrawlCoordinatorFactory, ManagedBeanLifeCyc
         joiners.execute(() -> {
             try {
                 replayService.getObject().replaySlice(message.catalogId(), message.version(),
-                        java.util.Set.of(OutputType.FILE), 0, Integer.MAX_VALUE);
+                        Set.of(OutputType.FILE), 0, Integer.MAX_VALUE);
             } catch (Exception e) {
                 log.error("Could not restore the files of catalog {} here: {}",
+                        message.catalogId(), e.getMessage(), e);
+            }
+        });
+    }
+
+    /**
+     * Asks every other node to remove its own copy of the index and the crawl state directories.
+     *
+     * <p>
+     * Sent after the delete here has finished, not before: the two layers this covers are the
+     * ones no store copies, and everything else in the same delete has already replicated itself
+     * through the store that performed it.
+     */
+    public void announcePurge(String catalogId, Integer version, String layers,
+            boolean dropIndex) {
+        controlChannel.announce(ControlMessage.purgeLocal(catalogId, version, layers, dropIndex,
+                cluster.self().id()));
+    }
+
+    /**
+     * Removes this node's own index documents and RocksDB directories for the version named.
+     *
+     * <p>
+     * The node that asked has already done its own, and says so, so it does not repeat the work.
+     * Everybody else does it against their own paths -- which is the whole point, since the paths
+     * differ per node and there is nothing to copy across.
+     */
+    private void purgeHere(ControlMessage message) {
+        if (cluster.self().id().equals(message.reason())) {
+            return;
+        }
+        Integer version = message.version() == ControlMessage.EVERY_VERSION ? null
+                : Integer.valueOf(message.version());
+        // never on the dispatch thread: emptying a Lucene index and walking three directory
+        // trees is disk work, and every other message is queued behind this one
+        joiners.execute(() -> {
+            try {
+                long documents = deletionService.getObject().purgeNodeLocal(message.catalogId(),
+                        version, DeleteLayer.parse(message.layers()), message.dropIndex());
+                log.info("Removed this node's own copy of catalog {} {}: {} document(s)",
+                        message.catalogId(),
+                        version != null ? "v" + version : "(every version)", documents);
+            } catch (Exception e) {
+                log.error("Could not remove this node's copy of catalog {}: {}",
                         message.catalogId(), e.getMessage(), e);
             }
         });
