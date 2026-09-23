@@ -63,6 +63,9 @@ public class SearchApiController {
     private final OutputFactory outputFactory;
     private final VectorSearchSupport vectorSearchSupport;
 
+    /** What a blank box is answered with, which is not a similarity question. */
+    private final StoredListing listing;
+
     /**
      * Keyword search.
      *
@@ -72,7 +75,11 @@ public class SearchApiController {
      * stopped. Plain {@code page} works too, up to the point Elasticsearch refuses it.
      */
     @GetMapping
-    public ApiResult<SearchResponse> search(@RequestParam("q") String keyword,
+    public ApiResult<SearchResponse> search(
+            // Blank is a question: "what is in here?". The index has always answered it -- an
+            // empty keyword becomes a match-all -- and the only thing stopping anybody asking was
+            // this parameter being required, which turned it into a 400.
+            @RequestParam(value = "q", required = false, defaultValue = "") String keyword,
             @RequestParam(value = "catalog", required = false) String catalogRef,
             @RequestParam(value = "cat", required = false) String cat,
             @RequestParam(value = "page", defaultValue = "1") int page,
@@ -93,13 +100,17 @@ public class SearchApiController {
      * the words the question was asked in.
      */
     @GetMapping("/semantic")
-    public ApiResult<List<VectorHit>> semantic(@RequestParam("q") String keyword,
+    public ApiResult<List<VectorHit>> semantic(
+            @RequestParam(value = "q", required = false, defaultValue = "") String keyword,
             @RequestParam(value = "catalog", required = false) String catalogRef,
             @RequestParam(value = "size", defaultValue = "10") int size,
             @RequestParam(value = "offset", defaultValue = "0") int offset) throws Exception {
         List<String> versions = searchableVersions(catalogRef);
         if (versions.isEmpty()) {
             return ApiResult.failed("Nothing has finished crawling yet");
+        }
+        if (StringUtils.isBlank(keyword)) {
+            return ApiResult.ok(listing.pages(versions, size, capped(offset)));
         }
         return ApiResult.ok(vectorSearchSupport.getVectorSearcher().searchText(keyword, versions,
                 size, capped(offset), true));
@@ -110,13 +121,17 @@ public class SearchApiController {
      * does not says so rather than returning something meaningless.
      */
     @GetMapping("/images")
-    public ApiResult<List<VectorHit>> images(@RequestParam("q") String keyword,
+    public ApiResult<List<VectorHit>> images(
+            @RequestParam(value = "q", required = false, defaultValue = "") String keyword,
             @RequestParam(value = "catalog", required = false) String catalogRef,
             @RequestParam(value = "size", defaultValue = "20") int size,
             @RequestParam(value = "offset", defaultValue = "0") int offset) throws Exception {
         List<String> versions = searchableVersions(catalogRef);
         if (versions.isEmpty()) {
             return ApiResult.failed("Nothing has finished crawling yet");
+        }
+        if (StringUtils.isBlank(keyword)) {
+            return ApiResult.ok(listing.images(versions, size, capped(offset)));
         }
         try {
             return ApiResult

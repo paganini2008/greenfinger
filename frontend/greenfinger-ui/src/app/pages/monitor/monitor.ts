@@ -243,6 +243,52 @@ export class MonitorPage {
   });
 
   /**
+   * The site is pushing back, said while there is still time to do something about it.
+   *
+   * Before this the only sign was the reason the run was abandoned, which arrives twenty failures
+   * too late to lower the rate. Three in a row rather than one, because a single 404 on a dead
+   * link is not a site refusing anybody.
+   */
+  protected readonly refusing = computed(() => {
+    const run = this.summary();
+    if (!run?.live || (run.consecutiveFailures ?? 0) < 3) {
+      return null;
+    }
+    return { inARow: run.consecutiveFailures, last: run.lastFailure };
+  });
+
+  /** What to suggest, which depends on whether the site is rate limiting or simply absent. */
+  protected readonly refusalAdvice = computed(() => {
+    const last = this.refusing()?.last ?? '';
+    if (last.includes('429')) {
+      return 'That is a rate limit. Raise the interval between requests, or lower greenfinger.work-threads, and crawl again.';
+    }
+    if (last.includes('403')) {
+      return 'That is the site refusing this crawler outright, whatever the rate.';
+    }
+    if (/5\d\d/.test(last)) {
+      return 'That is the site failing rather than refusing. It may be worth waiting.';
+    }
+    return 'Nothing is being read, so nothing is being kept.';
+  });
+
+  /** Every url this run touched, which is what the sieve is drawn against. */
+  protected readonly urlsSeen = computed(() =>
+    this.outcomes().reduce((sum, part) => sum + part.value, 0),
+  );
+
+  /**
+   * "One page in every n urls", which is the sentence the sieve is drawing.
+   *
+   * Null when nothing was kept: "one in infinity" is not a thing to print at somebody, and a run
+   * that kept nothing has a bigger problem than its ratio.
+   */
+  protected readonly keepRate = computed(() => {
+    const kept = this.summary()?.savedResourceCount ?? 0;
+    return kept > 0 ? Math.round(this.urlsSeen() / kept) : null;
+  });
+
+  /**
    * The progress ring, as the stroke-dasharray of one circle.
    *
    * A ring rather than a fourth progress bar: the two bars above it are a race between two limits
@@ -253,6 +299,43 @@ export class MonitorPage {
   protected readonly ringOffset = computed(
     () => this.ringCircumference * (1 - Math.min(1, Math.max(0, this.summary()?.progress ?? 0))),
   );
+
+  /**
+   * Why the last run stopped, in English.
+   *
+   * The server says `reached maxFetchSize: savedResourceCount = 63 > 60`, which is exactly right
+   * and is a log line. It names a field, an internal counter and an inequality, and a person
+   * reading a page wants the sentence those three things add up to.
+   *
+   * Anything this does not recognise is passed through untouched rather than mangled: a reason
+   * nobody anticipated is still better read raw than summarised wrongly.
+   */
+  protected readonly stoppedBecause = computed(() => {
+    const reason = this.summary()?.completionReason ?? '';
+    const limit = reason.match(/reached maxFetchSize: (\w+) = (\d+) > (\d+)/);
+    if (limit) {
+      const [, counter, got, asked] = limit;
+      const noun = counter.startsWith('saved') ? 'pages' : 'urls';
+      return `it reached the limit of ${asked} ${noun} after ${got}`;
+    }
+    if (/fetchDuration|duration/i.test(reason)) {
+      return 'it ran for as long as it was allowed to';
+    }
+    if (/idle|quiet/i.test(reason)) {
+      return 'the site ran out of urls to follow';
+    }
+    const inARow = reason.match(/(\d+) fetch\(es\) in a row came back with nothing \(last: ([^)]+)\)/);
+    if (inARow) {
+      return `the site stopped serving this crawler — ${inARow[1]} fetches in a row came back with ${inARow[2]}`;
+    }
+    if (/has not moved for|never dispatched/i.test(reason)) {
+      return 'it stood still long enough to be wound up, so a node had probably stopped answering';
+    }
+    if (/refused by/i.test(reason)) {
+      return reason.replace(/^the entry point /, 'its starting url, ').replace(/ was refused by /, ', was refused by ');
+    }
+    return reason;
+  });
 
   protected readonly progressPercent = computed(() =>
     Math.round((this.summary()?.progress ?? 0) * 100),

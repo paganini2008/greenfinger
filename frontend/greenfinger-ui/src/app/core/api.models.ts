@@ -25,6 +25,19 @@ export interface Session {
 
 export type OutputType = 'file' | 'index' | 'vector';
 export type ContentMode = 'text' | 'text+image';
+
+/**
+ * One picture per output, used everywhere an output is named: the cards, the editor. Outputs are a
+ * fixed set of three that appear on every card, so once the shape is known the word is read past
+ * rather than read -- and a card then says where its pages went without a line of text on it. The
+ * name stays in the tooltip, which is where somebody meeting the mark for the first time looks.
+ */
+export const OUTPUT_MARKS: Record<OutputType, { icon: string; label: string; hint: string }> = {
+  file: { icon: 'folder', label: 'Files', hint: 'Files -- pages and images kept on disk or in MinIO' },
+  index: { icon: 'manage_search', label: 'Index', hint: 'Index -- searchable by words' },
+  vector: { icon: 'scatter_plot', label: 'Vectors', hint: 'Vectors -- searchable by meaning' },
+};
+
 export type RunningState = 'none' | 'crawl' | 'update' | 'rebuild';
 export type DeleteLayer = 'db' | 'file' | 'index' | 'vector' | 'all';
 
@@ -121,7 +134,21 @@ export interface Catalog {
   searchVersion?: number;
   maxVersions?: number;
   lastIndexed?: string | null;
-  lastModified?: string | null;
+  /**
+   * When the row was made and when it was last written.
+   *
+   * <p>
+   * `updatedAt` is stamped by whichever store performed the write, including when it writes a
+   * copy that arrived from another node, which is what lets the catalog list wait for the node it
+   * is reading from to have caught up with an edit that was just made.
+   *
+   * <p>
+   * There used to be a `lastModified` here instead. This api has never sent one, so it was null
+   * on every row, and the dashboard sorted by it -- which sorts nothing and says nothing about
+   * it. A field that cannot be filled in is worse than a field that is not there.
+   */
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 /** Everything the runtime will use, with the defaults already applied. Read only. */
@@ -167,6 +194,15 @@ export interface CatalogSummary {
   existingUrlCount: number;
   filteredUrlCount: number;
   invalidUrlCount: number;
+  /**
+   * Failed fetches in a row, right now, and what the last one answered.
+   *
+   * Reset by the first page that arrives, so it is the length of the run happening at this moment
+   * rather than a total: a hundred failures spread over a long crawl is ordinary, and twenty in a
+   * row is a door that has been closed.
+   */
+  consecutiveFailures: number;
+  lastFailure: string;
   savedResourceCount: number;
   indexedResourceCount: number;
   /** Pages handed to the vector store. Counted apart from the index: either output can be off. */

@@ -43,6 +43,17 @@ public class DefaultGlobalStateManager implements GlobalStateManager {
     }
 
     @Override
+    public void noteFetchFailure(String reason) {
+        dashboard.consecutiveFailures.incrementAndGet();
+        dashboard.lastFailure = reason == null ? "" : reason;
+    }
+
+    @Override
+    public void noteFetchSuccess() {
+        dashboard.consecutiveFailures.set(0);
+    }
+
+    @Override
     public String getName() {
         return "default";
     }
@@ -74,11 +85,27 @@ public class DefaultGlobalStateManager implements GlobalStateManager {
         return dashboard.isCompleted();
     }
 
+    /**
+     * A reason there is always something to read.
+     *
+     * <p>
+     * Every deliberate ending writes a sentence, but a run can finish with nobody having written
+     * one -- an exception on the way out is the ordinary case -- and a page that says
+     * "interrupted" and nothing else tells somebody that something went wrong while refusing to
+     * say what. That the reason was not recorded is at least true.
+     */
+    static String saying(String reason, boolean interrupted) {
+        if (reason != null && !reason.isBlank()) {
+            return reason;
+        }
+        return interrupted ? "the run ended without recording why" : "finished";
+    }
+
     @Override
     public void setCompleted(boolean completed, String reason, boolean interrupted) {
         // the reason before the flag: whoever reads the flag reads the reason in the same breath
         if (completed && dashboard.completionReason == null) {
-            dashboard.completionReason = reason;
+            dashboard.completionReason = saying(reason, interrupted);
             dashboard.interrupted = interrupted;
         }
         dashboard.completed.set(completed);
@@ -87,7 +114,7 @@ public class DefaultGlobalStateManager implements GlobalStateManager {
 
     @Override
     public void overrideAsUnproductive(String reason) {
-        dashboard.completionReason = reason;
+        dashboard.completionReason = saying(reason, true);
         dashboard.interrupted = true;
         dashboard.completed.set(true);
         dashboard.lastModified = System.currentTimeMillis();

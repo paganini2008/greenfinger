@@ -20,6 +20,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
 import com.github.greenfinger.core.catalog.CatalogDetailsNotFoundException;
 import com.github.greenfinger.core.catalog.CatalogStore;
@@ -57,6 +58,7 @@ public class JpaCatalogStore implements CatalogStore {
         if (catalog.getId() == null) {
             catalog.setId(UuidUtils.timeBasedString());
         }
+        requireNameIsFree(catalog);
         if (catalog.getIndexVersion() == null) {
             catalog.setIndexVersion(0);
         }
@@ -83,6 +85,42 @@ public class JpaCatalogStore implements CatalogStore {
         }
         catalog.setUpdatedAt(now);
         return catalogRepository.save(catalog);
+    }
+
+    /**
+     * One catalog per name, enforced here rather than left to {@code uk_catalog_name}.
+     *
+     * <p>
+     * The constraint is declared on the entity and H2, MySQL, PostgreSQL and the rest all create
+     * it. SQLite does not: Hibernate's community dialect emits neither the unique constraint nor
+     * a unique index for it, so the generated schema -- and {@code docs/sql/schema-sqlite.sql},
+     * which is generated from the same entities -- has no uniqueness of any kind. A deployment on
+     * SQLite would therefore accept two catalogs called the same thing, and
+     * {@code findByName} would answer with whichever the query happened to reach first.
+     *
+     * <p>
+     * That matters more in a cluster than on one machine. Nodes are free to use different
+     * databases, and a name collision that one node refuses and another accepts is precisely the
+     * divergence the replication in {@code greenfinger-cluster} then has to repair. Checking here
+     * makes every dialect behave like the strictest of them.
+     *
+     * <p>
+     * A check and then a write is not atomic, and on the dialects that create the constraint the
+     * constraint is still what makes it safe. This closes the gap on the one that does not; two
+     * catalogs created in the same millisecond on two connections to one SQLite file remain
+     * possible in theory, and the reconciler in the cluster module is what notices.
+     */
+    private void requireNameIsFree(Catalog catalog) {
+        if (catalog.getName() == null) {
+            return;
+        }
+        catalogRepository.findByNameIgnoreCase(catalog.getName())
+                .filter(other -> !Objects.equals(other.getId(), catalog.getId()))
+                .ifPresent(other -> {
+                    throw new DataIntegrityViolationException(
+                            "unique index or primary key violation: uk_catalog_name '"
+                                    + catalog.getName() + "' is already held by " + other.getId());
+                });
     }
 
     @Override

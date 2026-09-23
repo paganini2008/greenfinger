@@ -88,8 +88,8 @@
 
 // The number the operator is actually watching gets the colour; the rest are context.
 .gf-counter-accent {
-  border-color: color-mix(in srgb, var(--gf-green) 40%, var(--gf-outline));
-  background: var(--gf-green-container);
+  border-color: var(--gf-green);
+  background: var(--gf-green);
 
   mat-icon,
   .gf-counter-value {
@@ -106,8 +106,6 @@
 
 .gf-counter-label {
   font-size: 0.6875rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--gf-muted);
 }
 
@@ -205,21 +203,21 @@
   width: 100%;
   min-height: 2px;
   border-radius: 3px 3px 0 0;
-  background: light-dark(rgb(134 186 143), rgb(96 146 106));
+  background: rgb(134 186 143);
   transition: background 120ms ease;
 }
 
 .gf-bar:hover .gf-bar-fill {
-  background: light-dark(rgb(106 166 118), rgb(126 176 136));
+  background: rgb(106 166 118);
 }
 
 .gf-bar-on .gf-bar-fill {
-  background: light-dark(rgb(58 122 74), rgb(150 200 160));
+  background: rgb(58 122 74);
 }
 
 .gf-bar-label {
   font-size: 0.65rem;
-  color: light-dark(rgb(110 120 112), rgb(150 160 152));
+  color: rgb(110 120 112);
 }
 
 .gf-run-detail {
@@ -229,7 +227,7 @@
 .gf-seg-title {
   margin: 1rem 0 0.35rem;
   font-size: 0.8rem;
-  color: light-dark(rgb(90 100 92), rgb(160 170 162));
+  color: rgb(90 100 92);
 }
 
 /* dispatched is the whole width; the segments are what became of those urls */
@@ -239,7 +237,7 @@
   height: 0.9rem;
   border-radius: 999px;
   overflow: hidden;
-  background: light-dark(rgb(232 236 232), rgb(48 54 49));
+  background: rgb(232 236 232);
 }
 
 .gf-seg {
@@ -247,11 +245,11 @@
 }
 
 .gf-seg-handled {
-  background: light-dark(rgb(88 156 102), rgb(118 176 130));
+  background: rgb(88 156 102);
 }
 
 .gf-seg-outstanding {
-  background: light-dark(rgb(214 178 92), rgb(178 148 78));
+  background: rgb(214 178 92);
 }
 
 .gf-seg-legend {
@@ -290,7 +288,7 @@
 
 .gf-node-name {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: light-dark(rgb(90 100 92), rgb(160 170 162));
+  color: rgb(90 100 92);
 }
 
 .gf-node-value {
@@ -360,36 +358,10 @@
   font-weight: 700;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  color: light-dark(color-mix(in srgb, var(--gf-green) 88%, #000), var(--gf-green));
+  color: var(--mat-sys-on-surface);
 }
 
-/* One colour per outcome, used by both the bar and its legend so the two are read together.
-   Saved is the theme's green; the rest are fixed hues, because "filtered" and "invalid" are not
-   shades of the brand -- they mean different things and have to be told apart at 12px. */
-.gf-tone-saved {
-  background: var(--gf-green);
-}
+/* The bar's colours are .gf-band-* in styles.scss, shared with the Dashboard's sieve. They were
+   a second set here -- same seven outcomes, different hues -- so one page called "filtered out"
+   tan and the other called it ochre, and a palette change reached only whichever was edited. */
 
-.gf-tone-duplicate {
-  background: light-dark(#8fbf9a, #5f8f6a);
-}
-
-.gf-tone-known {
-  background: light-dark(#9fb8d8, #5f7f9f);
-}
-
-.gf-tone-filtered {
-  background: light-dark(#d8c68f, #a8965f);
-}
-
-.gf-tone-invalid {
-  background: light-dark(#d89a9a, #a86a6a);
-}
-
-.gf-tone-dropped {
-  background: light-dark(#c4a3d8, #8f6aa8);
-}
-
-.gf-tone-queued {
-  background: light-dark(#c9cec9, #6a706a);
-}

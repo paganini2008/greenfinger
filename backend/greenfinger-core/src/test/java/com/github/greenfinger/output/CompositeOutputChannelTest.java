@@ -46,6 +46,7 @@ class CompositeOutputChannelTest {
         private final List<String> events;
         private boolean failOnWrite;
         private boolean failOnOpen;
+        private boolean failOnFlush;
 
         SpyChannel(OutputType type, List<String> events) {
             this.type = type;
@@ -81,6 +82,9 @@ class CompositeOutputChannelTest {
         @Override
         public void flush() {
             events.add("flush:" + getName());
+            if (failOnFlush) {
+                throw new IllegalStateException(getName() + " could not write the batch");
+            }
         }
 
         @Override
@@ -111,6 +115,28 @@ class CompositeOutputChannelTest {
     private OutputPayload payload(CatalogDetails details) {
         return OutputFixtures.payload(details,
                 OutputFixtures.page("https://www.example.com/a", "A", "in memory"));
+    }
+
+    @Test
+    @DisplayName("a flush that fails is counted, not only logged")
+    void countsFailedFlushes() throws Exception {
+        List<String> events = new ArrayList<>();
+        SpyChannel vector = new SpyChannel(OutputType.VECTOR, events);
+        vector.failOnFlush = true;
+        CompositeOutputChannel composite = new CompositeOutputChannel(
+                List.of(new SpyChannel(OutputType.FILE, events), vector),
+                new FixedContentReader("on disk"));
+        composite.open(OutputFixtures.catalogDetails());
+
+        composite.flush();
+        composite.flush();
+
+        // a flush is a whole batch: uncounted, a run that lost every vector it produced still
+        // ended saying nothing but "finished"
+        assertThat(composite.getFailures().get(OutputType.VECTOR.getRepr()).get()).isEqualTo(2L);
+        assertThat(composite.getFailures().get(OutputType.FILE.getRepr()).get()).isZero();
+        // and it does not stop the run: the file layer is the one that may
+        composite.reportFailures();
     }
 
     @Test

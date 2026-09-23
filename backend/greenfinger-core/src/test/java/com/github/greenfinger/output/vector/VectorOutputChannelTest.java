@@ -257,6 +257,51 @@ class VectorOutputChannelTest {
     }
 
     @Test
+    @DisplayName("images switched off: no image model is asked for, never mind loaded")
+    void doesNotAskForAnImageModelWhenImagesAreOff() throws Exception {
+        // The content mode is the default -- text and images -- and the crawl is not fetching
+        // images. Asking the client for its image dimensions here is what loads the model, and
+        // the local one is around 360 MB of onnx: enough to take a node past the memory a
+        // container is given, for pictures that are never going to arrive.
+        CatalogDetails details = OutputFixtures.catalogDetails(Set.of(OutputType.VECTOR),
+                ContentMode.TEXT_IMAGE, false);
+        CountingEmbeddingClient client = new CountingEmbeddingClient(4, 8);
+
+        try (VectorOutputChannel channel = channel(client)) {
+            channel.open(details);
+            channel.write(OutputFixtures.payload(details,
+                    OutputFixtures.pageWithImage("https://www.example.com/b", "B", "text")));
+            channel.flush();
+            assertThat(channel.getImageCollection()).isNull();
+        }
+
+        assertThat(client.imageDimensionsAsked()).isZero();
+        assertThat(vectorStore.of("greenfinger_image_8")).isEmpty();
+        // and the text half is unaffected
+        assertThat(vectorStore.of("greenfinger_text_4")).isNotEmpty();
+    }
+
+    /** A client that says when it was asked for the thing that loads the image model. */
+    private static class CountingEmbeddingClient extends StubEmbeddingClient {
+
+        private int asked;
+
+        CountingEmbeddingClient(int textDimensions, int imageDimensions) {
+            super(textDimensions, imageDimensions);
+        }
+
+        @Override
+        public int imageDimensions() {
+            asked++;
+            return super.imageDimensions();
+        }
+
+        int imageDimensionsAsked() {
+            return asked;
+        }
+    }
+
+    @Test
     void longTextIsSplitIntoSeveralPoints() throws Exception {
         config.setChunkSize(50);
         config.setChunkOverlap(10);

@@ -72,6 +72,7 @@ public class CatalogAdminService {
         if (StringUtils.isBlank(catalog.getUrl())) {
             throw new WebCrawlerException("A catalog needs a url");
         }
+        keepWhatWasNotSent(catalog);
         if (StringUtils.isBlank(catalog.getName())) {
             // the registrable domain: short, recognisable, and stable across subdomains
             catalog.setName(UrlUtils.getDomainName(catalog.getUrl()));
@@ -106,6 +107,53 @@ public class CatalogAdminService {
         }
         catalog.setUpdatedAt(new Date());
         return catalogStore.save(catalog);
+    }
+
+    /**
+     * An edit changes what it names and nothing else.
+     *
+     * <p>
+     * A form sends the fields somebody filled in. Everything it does not send arrives as null,
+     * and null is indistinguishable from "clear this" unless somebody decides which it is. Here
+     * it means "leave it alone", because the fields most likely to be missing are the ones no
+     * form has any business setting: which version is being written, which one search is serving,
+     * when the index was last built.
+     *
+     * <p>
+     * Without this, editing a catalog quietly unpublished it. The defaults for a <em>new</em>
+     * catalog were applied to an <em>existing</em> one: {@code searchVersion} went back to -1, so
+     * the catalog stopped being searchable although its index was still there and still correct,
+     * and {@code indexVersion} went back to 0, so the next crawl would have written over the
+     * newest version instead of adding one. Changing the category was enough to do it, and
+     * nothing said so.
+     *
+     * <p>
+     * Only on this path. The replication applier writes rows that are already complete and
+     * authoritative, and it goes to the store directly.
+     */
+    private void keepWhatWasNotSent(Catalog catalog) {
+        if (catalog.getId() == null) {
+            return;
+        }
+        Catalog stored = catalogStore.findById(catalog.getId()).orElse(null);
+        if (stored == null) {
+            return;
+        }
+        if (catalog.getIndexVersion() == null) {
+            catalog.setIndexVersion(stored.getIndexVersion());
+        }
+        if (catalog.getSearchVersion() == null) {
+            catalog.setSearchVersion(stored.getSearchVersion());
+        }
+        if (catalog.getLastIndexed() == null) {
+            catalog.setLastIndexed(stored.getLastIndexed());
+        }
+        if (catalog.getCreatedAt() == null) {
+            catalog.setCreatedAt(stored.getCreatedAt());
+        }
+        if (StringUtils.isBlank(catalog.getRunningState())) {
+            catalog.setRunningState(stored.getRunningState());
+        }
     }
 
     /**

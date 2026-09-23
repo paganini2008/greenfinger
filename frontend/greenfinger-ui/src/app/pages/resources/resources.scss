@@ -47,7 +47,7 @@
   overflow: hidden;
 
   &.gf-row-open {
-    border-color: var(--gf-green);
+    border-color: var(--mat-sys-on-surface);
   }
 }
 
@@ -67,7 +67,7 @@
   font: inherit;
 
   &:hover {
-    background: color-mix(in srgb, var(--gf-green) 6%, transparent);
+    background: var(--gf-surface-container);
   }
 }
 
@@ -109,7 +109,7 @@
 .gf-chip {
   padding: 0.1rem 0.5rem;
   border-radius: 999px;
-  background: var(--gf-green-container);
+  background: var(--gf-green);
   color: var(--mat-sys-on-primary-container);
   font: var(--mat-sys-label-large);
 }
@@ -137,7 +137,7 @@
   }
 
   a {
-    color: var(--gf-green);
+    color: var(--mat-sys-on-surface);
     text-decoration: none;
 
     &:hover {

@@ -37,7 +37,12 @@ import com.github.greenfinger.core.engine.CrawlCoordinatorFactory;
 import com.github.greenfinger.core.engine.CrawlRegistry;
 import com.github.greenfinger.cluster.replication.ClusterReplication;
 import com.github.greenfinger.cluster.replication.JpaRowWriter;
+import com.github.greenfinger.cluster.leader.CatalogCatchUp;
+import com.github.greenfinger.cluster.leader.LeaderCatalogStore;
+import com.github.greenfinger.cluster.leader.LeaderChannel;
+import com.github.greenfinger.cluster.leader.LeaderDeletionService;
 import com.github.greenfinger.cluster.replication.ReplicatedCatalogStore;
+import com.github.greenfinger.cluster.replication.ReplicationSink;
 import com.github.greenfinger.cluster.replication.ReplicatedRecordStore;
 import com.github.greenfinger.core.catalog.CatalogStore;
 import com.github.greenfinger.core.output.BlobStore;
@@ -45,6 +50,8 @@ import com.github.greenfinger.output.index.LuceneIndexes;
 import com.github.greenfinger.output.vector.VectorStore;
 import com.github.greenfinger.core.catalog.CatalogDetailsService;
 import com.github.greenfinger.core.record.ResourceRecordStore;
+import com.github.greenfinger.core.report.CrawlReportStore;
+import com.github.greenfinger.core.WebCrawlerSemaphore;
 import com.github.greenfinger.output.OutputFactory;
 import com.github.greenfinger.output.OutputProperties;
 import com.github.greenfinger.output.vector.EmbeddingProperties;
@@ -52,6 +59,8 @@ import com.github.greenfinger.record.ImageRepository;
 import com.github.greenfinger.record.ResourceImageRepository;
 import com.github.greenfinger.record.ResourceRepository;
 import com.github.greenfinger.service.CrawlerLauncher;
+import com.github.greenfinger.service.DeletionBroadcast;
+import com.github.greenfinger.service.DeletionService;
 import com.github.greenfinger.service.FileRestorer;
 import com.github.greenfinger.service.ClusterSnapshot;
 import com.github.greenfinger.service.ReplayService;
@@ -111,9 +120,22 @@ public class GreenfingerClusterAutoConfiguration {
     public CrawlCluster crawlCluster(GossipCluster cluster, CrawlTaskChannel crawlTaskChannel,
             CrawlRegistry crawlRegistry, ObjectProvider<CrawlerLauncher> launcher,
             ObjectProvider<ReplayService> replayService,
+            ObjectProvider<DeletionService> deletionService,
             ApplicationEventPublisher eventPublisher) {
         return new CrawlCluster(cluster, crawlTaskChannel, crawlRegistry, launcher, replayService,
-                eventPublisher);
+                deletionService, eventPublisher);
+    }
+
+    /**
+     * How a delete reaches the two layers that no store copies: the embedded index, which is
+     * handed out undecorated, and the RocksDB directories, which are plain files. Primary for the
+     * reason every override in this class is -- core's own bean is registered first, so a
+     * same-named one here would be a duplicate rather than a replacement.
+     */
+    @Bean
+    @Primary
+    public DeletionBroadcast clusterDeletionBroadcast(ObjectProvider<CrawlCluster> crawlCluster) {
+        return new ClusterDeletionBroadcast(crawlCluster);
     }
 
     /**
@@ -198,10 +220,60 @@ public class GreenfingerClusterAutoConfiguration {
     @Primary
     public CatalogStore clusterCatalogStore(
             @Qualifier("catalogStore") CatalogStore catalogStore,
-            ClusterReplication replication) {
+            ClusterReplication replication, LeaderCatalogStore leaderCatalogStore) {
         return replication.getRecords() != null
-                ? new ReplicatedCatalogStore(catalogStore, replication.getRecords())
+                ? leaderCatalogStore
                 : catalogStore;
+    }
+
+    /**
+     * Where an administrative write goes, and the answer back.
+     *
+     * <p>
+     * Declared whatever the database is. A shared one has nothing to replicate, but the same
+     * gateway is what carries a delete, and a delete removes things from this node's own disk
+     * however the rows are stored.
+     */
+    @Bean(initMethod = "afterPropertiesSet", destroyMethod = "destroy")
+    public LeaderChannel leaderChannel(GossipCluster cluster, ClusterProperties properties) {
+        return new LeaderChannel(cluster, properties.getLeader().getTimeoutMs(),
+                properties.getLeader().getMaxAttempts());
+    }
+
+    /**
+     * Catalog writes, performed by the leader and told to the others; reads answered here.
+     *
+     * <p>
+     * Built even when the database is shared, because the handlers have to be registered on every
+     * node -- leadership moves, and a node that took it over without them would refuse every
+     * write. It is only returned as <em>the</em> catalog store when there is something to keep in
+     * step: with one shared table, every node's write is already every node's write.
+     */
+    @Bean(initMethod = "afterPropertiesSet", destroyMethod = "destroy")
+    public LeaderCatalogStore leaderCatalogStore(
+            @Qualifier("catalogStore") CatalogStore catalogStore, ClusterReplication replication,
+            LeaderChannel leaderChannel) {
+        ReplicationSink sink =
+                replication.getRecords() != null ? replication.getRecords() : entry -> {};
+        return new LeaderCatalogStore(catalogStore,
+                new ReplicatedCatalogStore(catalogStore, sink), leaderChannel);
+    }
+
+    /**
+     * What a node that has been away does about it: take the leader's table.
+     *
+     * <p>
+     * Only when the table is one file per node. A shared database cannot fall behind itself, and
+     * a timer pointed at it would spend every interval proving that.
+     */
+    @Bean(initMethod = "afterPropertiesSet", destroyMethod = "destroy")
+    @ConditionalOnBean(GossipCluster.class)
+    public CatalogCatchUp catalogCatchUp(GossipCluster cluster, LeaderCatalogStore store,
+            @Qualifier("catalogStore") CatalogStore catalogStore, ClusterReplication replication,
+            ClusterProperties properties) {
+        return new CatalogCatchUp(cluster, store, catalogStore,
+                replication.getRecords() != null ? properties.getLeader().getCatchUpIntervalMs()
+                        : Long.MAX_VALUE);
     }
 
     /** Wraps the record store when the database is a file per node. */
@@ -240,6 +312,27 @@ public class GreenfingerClusterAutoConfiguration {
         replayService.setAnnouncer((catalogId, version) -> crawlCluster.getObject()
                 .announceRestoreFiles(catalogId, version));
         return replayService;
+    }
+
+    /**
+     * A delete, performed by the leader.
+     *
+     * <p>
+     * Primary over core's, and for the same reason every override here is: core declares its own
+     * {@code @ConditionalOnMissingBean}, and that condition is met only by a bean registered
+     * earlier, which auto-configuration by definition is not.
+     */
+    @Bean(initMethod = "afterPropertiesSet", destroyMethod = "destroy")
+    @Primary
+    public DeletionService leaderDeletionService(OutputFactory outputFactory,
+            OutputProperties outputProperties, WebCrawlerProperties webCrawlerProperties,
+            ResourceRecordStore recordStore, WebCrawlerSemaphore semaphore,
+            CatalogStore catalogStore, CrawlReportStore crawlReportStore,
+            DeletionBroadcast deletionBroadcast, LeaderChannel leaderChannel,
+            CatalogDetailsService catalogDetailsService) {
+        return new LeaderDeletionService(outputFactory, outputProperties, webCrawlerProperties,
+                recordStore, semaphore, catalogStore, crawlReportStore, deletionBroadcast,
+                leaderChannel, catalogDetailsService);
     }
 
     @Bean

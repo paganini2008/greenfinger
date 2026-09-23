@@ -1,0 +1,176 @@
+<div class="gf-page">
+  <header class="gf-hero">
+    <div class="gf-hero-inner">
+      <div>
+        <h1>Dashboard</h1>
+        <p>
+          What this installation is doing, what it has kept, and what it threw away to keep it.
+        </p>
+      </div>
+      @if (auth.isAdmin()) {
+        <div class="gf-hero-actions">
+          <a mat-stroked-button class="gf-ghost-button" routerLink="/catalogs">Catalogs</a>
+          <a mat-flat-button class="gf-hero-cta" routerLink="/catalogs/new">
+            <mat-icon>add</mat-icon>
+            New catalog
+          </a>
+        </div>
+      }
+    </div>
+
+    <div class="gf-stats">
+      <div class="gf-stat">
+        <span class="gf-stat-value">{{ catalogs().length | number }}</span>
+        <span class="gf-stat-label">catalogs</span>
+      </div>
+      <div class="gf-stat gf-stat-live">
+        <span class="gf-stat-value">
+          {{ running().length | number }}
+          @if (running().length) {
+            <span class="gf-running-dot"></span>
+          }
+        </span>
+        <span class="gf-stat-label">crawling now</span>
+      </div>
+      <div class="gf-stat">
+        <span class="gf-stat-value">{{ storage()?.pageCount ?? 0 | number }}</span>
+        <span class="gf-stat-label">pages kept</span>
+      </div>
+      <div class="gf-stat">
+        <span class="gf-stat-value">{{ storage()?.imageCount ?? 0 | number }}</span>
+        <span class="gf-stat-label">images kept</span>
+      </div>
+      <div class="gf-stat">
+        <span class="gf-stat-value">{{ bytes(storage()?.bytes) }}</span>
+        <span class="gf-stat-label">{{ where() }}</span>
+      </div>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" class="gf-top-bar" />
+  }
+
+  <!-- ==============================================================================================
+       The sieve. The one picture on this page that belongs to a crawler and to nothing else.
+       =========================================================================================== -->
+  @if (sieve().length) {
+    <section class="gf-sieve-block">
+      <div class="gf-sieve-head">
+        <div>
+          <span class="gf-sieve-kept">{{ kept() | number }}</span>
+          <span class="gf-sieve-kept-unit">pages kept</span>
+        </div>
+        <p class="gf-sieve-say">
+          out of <strong>{{ seen() | number }}</strong> urls
+          {{ live() ? 'seen so far' : 'seen' }} by
+          <a [routerLink]="['/catalogs', featuredName(), 'monitor']">{{ featuredName() }}</a>
+          @if (keepRate()) {
+            &mdash; one page in every {{ keepRate() | number }}.
+          }
+          @if (live()) {
+            <span class="gf-sieve-live"><span class="gf-running-dot"></span> crawling</span>
+          }
+        </p>
+      </div>
+
+      <div class="gf-sieve" role="img"
+           [attr.aria-label]="kept() + ' pages kept out of ' + seen() + ' urls seen'">
+        @for (band of sieve(); track band.key) {
+          <span
+            class="gf-sieve-band"
+            [class]="'gf-sieve-band gf-band-' + band.key"
+            [style.flex-basis.%]="band.share"
+            [matTooltip]="band.label + ': ' + band.value"
+          ></span>
+        }
+      </div>
+
+      <!-- The legend is the ledger: a colour is only useful if the number beside it is too. -->
+      <dl class="gf-sieve-legend">
+        @for (band of sieve(); track band.key) {
+          <div>
+            <dt>
+              <span class="gf-sieve-key" [class]="'gf-sieve-key gf-band-' + band.key"></span>
+              {{ band.label }}
+            </dt>
+            <dd>{{ band.value | number }}</dd>
+          </div>
+        }
+      </dl>
+    </section>
+  } @else if (!loading()) {
+    <section class="gf-panel">
+      <div class="gf-empty">
+        <mat-icon>travel_explore</mat-icon>
+        <p>
+          Nothing has been crawled yet. Set up a catalog with a url, press Crawl, and this page
+          fills in while it runs.
+        </p>
+        @if (auth.isAdmin()) {
+          <a mat-flat-button routerLink="/catalogs/new">New catalog</a>
+        }
+      </div>
+    </section>
+  }
+
+  <!-- ==============================================================================================
+       Everything else, quiet: one ledger of catalogs, one of where the work can go next.
+       =========================================================================================== -->
+  <div class="gf-dash-cols">
+    <section class="gf-panel">
+      <h2 class="gf-panel-title"><mat-icon>list_alt</mat-icon> Catalogs</h2>
+      @if (!recent().length) {
+        <p class="gf-panel-note">Nothing set up yet.</p>
+      } @else {
+        <ul class="gf-ledger">
+          @for (catalog of recent(); track catalog.id) {
+            <li>
+              <a class="gf-ledger-name" [routerLink]="['/catalogs', catalog.name, 'monitor']">
+                {{ catalog.name }}
+              </a>
+              <span class="gf-ledger-note gf-mono">{{ catalog.url }}</span>
+              <span class="gf-ledger-value">
+                @if (running().length && running()[0].name === catalog.name) {
+                  <span class="gf-running-dot"></span> crawling
+                } @else if ((catalog.searchVersion ?? -1) >= 0) {
+                  v{{ catalog.searchVersion }}
+                } @else {
+                  <span class="gf-muted">not published</span>
+                }
+              </span>
+            </li>
+          }
+        </ul>
+        <a class="gf-ledger-more" routerLink="/catalogs">All catalogs</a>
+      }
+    </section>
+
+    <section class="gf-panel">
+      <h2 class="gf-panel-title"><mat-icon>inventory_2</mat-icon> What is kept</h2>
+      <ul class="gf-ledger">
+        <li>
+          <span class="gf-ledger-name">Pages</span>
+          <span class="gf-ledger-note">html, and the text pulled out of it</span>
+          <span class="gf-ledger-value">{{ storage()?.pageCount ?? 0 | number }}</span>
+        </li>
+        <li>
+          <span class="gf-ledger-name">Images</span>
+          <span class="gf-ledger-note">stored once however many pages point at them</span>
+          <span class="gf-ledger-value">{{ storage()?.imageCount ?? 0 | number }}</span>
+        </li>
+        <li>
+          <span class="gf-ledger-name">Searchable</span>
+          <span class="gf-ledger-note">catalogs with a published index</span>
+          <span class="gf-ledger-value">{{ searchable() | number }}</span>
+        </li>
+        <li>
+          <span class="gf-ledger-name gf-ledger-name-plain">Stored {{ where() }}</span>
+          <span class="gf-ledger-note">every version that has not been pruned</span>
+          <span class="gf-ledger-value">{{ bytes(storage()?.bytes) }}</span>
+        </li>
+      </ul>
+      <a class="gf-ledger-more" routerLink="/resources">Browse what was crawled</a>
+    </section>
+  </div>
+</div>

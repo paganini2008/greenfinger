@@ -28,7 +28,7 @@
     <div class="gf-stats">
       <div class="gf-stat">
         <span class="gf-stat-value">{{ catalogs().length }}</span>
-        <span class="gf-stat-label">Catalogs</span>
+        <span class="gf-stat-label">catalogs</span>
       </div>
       <div class="gf-stat" [class.gf-stat-live]="runningCount() > 0">
         <span class="gf-stat-value">
@@ -37,15 +37,11 @@
             <span class="gf-running-dot"></span>
           }
         </span>
-        <span class="gf-stat-label">Running now</span>
-      </div>
-      <div class="gf-stat">
-        <span class="gf-stat-value">{{ categories().length }}</span>
-        <span class="gf-stat-label">Categories</span>
+        <span class="gf-stat-label">crawling now</span>
       </div>
       <div class="gf-stat">
         <span class="gf-stat-value">{{ searchableCount() }}</span>
-        <span class="gf-stat-label">Searchable</span>
+        <span class="gf-stat-label">searchable</span>
       </div>
     </div>
   </header>
@@ -161,10 +157,22 @@
         <div class="gf-tile-meta">
           <span class="gf-chip gf-chip-cat">{{ catalog.cat }}</span>
           @for (output of catalog.outputTypes; track output) {
-            <span class="gf-chip gf-chip-{{ output }}">{{ output }}</span>
+            <span
+              class="gf-chip gf-chip-mark"
+              [matTooltip]="mark(output).hint"
+              [attr.aria-label]="mark(output).label"
+            >
+              <mat-icon>{{ mark(output).icon }}</mat-icon>
+            </span>
           }
           @if (catalog.imageEnabled) {
-            <span class="gf-chip gf-chip-ghost"><mat-icon class="gf-chip-icon">image</mat-icon>images</span>
+            <span
+              class="gf-chip gf-chip-mark"
+              matTooltip="Images -- pictures are downloaded, not just linked"
+              aria-label="Images"
+            >
+              <mat-icon>image</mat-icon>
+            </span>
           }
         </div>
 

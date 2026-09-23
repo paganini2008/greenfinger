@@ -84,6 +84,12 @@ public class DeletionService {
     private final CrawlReportStore reportStore;
 
     /**
+     * How the other nodes are told to remove their own copy of the two layers that do not
+     * replicate themselves. {@link DeletionBroadcast#NONE} in a single process.
+     */
+    private final DeletionBroadcast broadcast;
+
+    /**
      * @param dryRun report what would go, and touch nothing
      * @param force allow removing the version search is currently serving
      */
@@ -168,6 +174,13 @@ public class DeletionService {
                 catalogStore.resetVersions(catalogDetails.getId());
                 log.info("Catalog '{}' is empty: back to v0, with nothing to search",
                         catalogDetails.getName());
+            }
+            // Said last, and only for a real delete: by this point every layer that replicates
+            // itself has, and what is left is the two that do not. Announced rather than done
+            // here, because "remove the index and the frontier" means a different set of paths on
+            // every node -- each one has to run it against its own.
+            if (!dryRun) {
+                announcePurge(catalogDetails, versions, layers, scope);
             }
         } catch (Exception e) {
             throw new WebCrawlerException("Delete failed", e);
@@ -419,6 +432,83 @@ public class DeletionService {
         }
     }
 
+    /**
+     * One announcement per version when versions were named, and one for the whole catalog
+     * otherwise -- which is also what tells the other side whether the index is being emptied or
+     * dropped.
+     */
+    private void announcePurge(CatalogDetails catalogDetails, List<Integer> versions,
+            Set<DeleteLayer> layers, Scope scope) {
+        if (!layers.contains(DeleteLayer.INDEX) && !layers.contains(DeleteLayer.DB)) {
+            // the other two layers replicate themselves, so there is nothing left to repeat
+            return;
+        }
+        try {
+            if (scope == Scope.VERSIONS) {
+                for (int version : versions) {
+                    broadcast.purgeElsewhere(catalogDetails.getId(), version, layers, false);
+                }
+            } else {
+                broadcast.purgeElsewhere(catalogDetails.getId(), null, layers,
+                        scope == Scope.CATALOG);
+            }
+        } catch (RuntimeException e) {
+            // the delete here succeeded; failing it now would be a lie about what happened
+            log.error("Could not ask the other nodes to remove their copy of '{}': {}",
+                    catalogDetails.getName(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * The half of a delete that only ever removes this node's own copy: the embedded index, and
+     * the three RocksDB directories.
+     *
+     * <p>
+     * Run here by {@link #delete} as part of the ordinary flow, and run on every other node when
+     * that one announces it. Public because the cluster calls it on the receiving side -- the
+     * instruction that travels is a catalog and a version, and this is what a node does with it.
+     *
+     * <p>
+     * Repeating it is safe and is expected to happen: removing an index that is already empty and
+     * a directory that is already gone are both no-ops, which is what lets the announcement be
+     * sent without waiting to hear who acted on it.
+     *
+     * @param version null for every version of the catalog
+     * @return documents removed from this node's index. Zero when the index is shared, because
+     *         then there is nothing here that is only here
+     */
+    public long purgeNodeLocal(String catalogId, Integer version, Set<DeleteLayer> layers,
+            boolean dropIndex) {
+        long documents = 0L;
+        if (layers.contains(DeleteLayer.INDEX) && indexIsPerNode()) {
+            try (IndexAdmin admin = outputFactory.getIndexAdmin()) {
+                documents = version != null
+                        ? admin.deleteByCatalogVersion(catalogId + ":" + version)
+                        : dropIndex ? admin.deleteByCatalog(catalogId)
+                                : admin.deleteAllVersions(catalogId);
+            } catch (Exception e) {
+                log.warn("Could not remove catalog {} from this node's index: {}", catalogId,
+                        e.getMessage());
+            }
+        }
+        if (layers.contains(DeleteLayer.DB)) {
+            removeState(stateDirectories(catalogId, version), false);
+        }
+        return documents;
+    }
+
+    /**
+     * Whether this node's index is its own or one every node dials.
+     *
+     * <p>
+     * Only the embedded one has a copy that is only here. Running the same delete against
+     * Elasticsearch once per node would remove nothing the first statement had not already
+     * removed, and would do it as many times as there are nodes.
+     */
+    private boolean indexIsPerNode() {
+        return "lucene".equalsIgnoreCase(outputProperties.getIndex().getProvider());
+    }
+
     private long deleteVectors(String catalogVersion, boolean dryRun) throws Exception {
         VectorStore vectorStore = outputFactory.getVectorStore();
         BeanLifeCycleUtils.afterPropertiesSet(vectorStore);
@@ -460,18 +550,32 @@ public class DeletionService {
         }
     }
 
+    /**
+     * The pages and pictures of one version, and what else goes with them.
+     *
+     * <p>
+     * Counted the same way whether it is being predicted or performed, which it was not: the dry
+     * run counted pages and pictures, the delete returned every row it had touched -- the
+     * page-to-picture references and the run report as well -- and a preview of 293 items was
+     * followed by "removed 397". Both numbers were true and the pair was not, and the one worth
+     * showing is the one somebody can recognise: the things they crawled, not the rows underneath
+     * them. The whole-catalog path already counted it this way, so the two agree now too.
+     */
     private long deleteDb(CatalogDetails catalogDetails, int version, boolean dryRun) {
+        long kept = recordStore.countByCatalog(catalogDetails.getId(), version)
+                + recordStore.countImagesByCatalog(catalogDetails.getId(), version);
         if (dryRun) {
-            return recordStore.countByCatalog(catalogDetails.getId(), version)
-                    + recordStore.countImagesByCatalog(catalogDetails.getId(), version);
+            return kept;
         }
-        long deleted = recordStore.deleteByCatalogAndVersion(catalogDetails.getId(), version);
+        long rows = recordStore.deleteByCatalogAndVersion(catalogDetails.getId(), version);
         if (reportStore != null) {
             // the report accounts for rows that no longer exist, so it goes with them rather than
             // becoming a row nothing can be joined back to
-            deleted += reportStore.deleteByCatalogAndVersion(catalogDetails.getId(), version);
+            rows += reportStore.deleteByCatalogAndVersion(catalogDetails.getId(), version);
         }
-        return deleted;
+        log.info("Removed v{} of '{}': {} page(s) and picture(s), {} row(s) in all", version,
+                catalogDetails.getName(), kept, rows);
+        return kept;
     }
 
     /**

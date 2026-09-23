@@ -16,6 +16,14 @@
 
 package com.github.greenfinger.api.web;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeParseException;
+import java.util.Date;
+import org.springframework.format.FormatterRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import java.util.stream.Collectors;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
@@ -33,7 +41,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.DispatcherServlet;
 import org.springframework.context.annotation.Bean;
 import com.github.greenfinger.api.security.WebSecurityConfiguration;
+import com.github.greenfinger.core.record.ResourceRecordStore;
 import com.github.greenfinger.output.OutputFactory;
+import com.github.greenfinger.service.CatalogAdminService;
 import com.github.greenfinger.core.WebCrawlerException;
 import com.github.greenfinger.core.catalog.CatalogDetailsNotFoundException;
 import lombok.extern.slf4j.Slf4j;
@@ -63,6 +73,73 @@ public class GreenfingerWebConfiguration {
     @Bean
     public VectorSearchSupport vectorSearchSupport(OutputFactory outputFactory) {
         return new VectorSearchSupport(outputFactory);
+    }
+
+    /**
+     * What a blank search box is answered with. Not a similarity question, so not the vector
+     * store's business: it comes out of the table that knows what everything is.
+     */
+    @Bean
+    public StoredListing storedListing(ResourceRecordStore recordStore,
+            CatalogAdminService catalogAdminService) {
+        return new StoredListing(recordStore, catalogAdminService);
+    }
+
+    /**
+     * A date in a query string, written the way people write dates.
+     *
+     * <p>
+     * The Resources page sends a full instant and always has, so the api only ever had to accept
+     * one form -- and only accepted one, while the documentation offered {@code 2026-09-01} as
+     * well. Anybody typing that at a terminal got "failed to convert", which is a true answer to
+     * the wrong question. A date on its own is now read as midnight UTC, and the instant is read
+     * as it always was.
+     */
+    @Bean
+    public WebMvcConfigurer greenfingerDateFormats() {
+        return new WebMvcConfigurer() {
+
+            @Override
+            public void addFormatters(FormatterRegistry registry) {
+                registry.addConverter(String.class, Date.class, ApiDates::parse);
+            }
+        };
+    }
+
+    /**
+     *
+     * @Description: ApiDates
+     * @Author: Fred Feng
+     * @Date: 23/09/2026
+     * @Version 2.0.0
+     */
+    static final class ApiDates {
+
+        private ApiDates() {}
+
+        static Date parse(String text) {
+            String value = text != null ? text.trim() : "";
+            if (value.isEmpty()) {
+                return null;
+            }
+            try {
+                // a day, meaning the moment it starts
+                if (value.length() == 10) {
+                    return Date.from(LocalDate.parse(value).atStartOfDay(ZoneOffset.UTC)
+                            .toInstant());
+                }
+                // an instant, with a zone or without one
+                try {
+                    return Date.from(Instant.parse(value));
+                } catch (DateTimeParseException withoutZone) {
+                    return Date.from(LocalDateTime.parse(value).toInstant(ZoneOffset.UTC));
+                }
+            } catch (DateTimeParseException e) {
+                throw new IllegalArgumentException(
+                        "Not a date: '" + text + "'. Write 2026-09-01, or a full instant such as"
+                                + " 2026-09-01T00:00:00Z.");
+            }
+        }
     }
 
     /**

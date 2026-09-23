@@ -31,6 +31,8 @@ import com.github.greenfinger.service.FileRestorer;
 import com.github.greenfinger.service.ReplayService;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import java.util.LinkedHashSet;
+import java.util.function.BiConsumer;
 
 /**
  * Rebuilds an index or a vector collection using every node, rather than one.
@@ -92,7 +94,7 @@ public class ClusterReplayService extends ReplayService {
      * because the thing that announces is a bean this one is a dependency of.
      */
     @Setter
-    private java.util.function.BiConsumer<String, Integer> announcer;
+    private BiConsumer<String, Integer> announcer;
 
     public ClusterReplayService(OutputFactory outputFactory, ResourceRecordStore recordStore,
             CatalogDetailsService catalogDetailsService, FileRestorer fileRestorer,
@@ -121,7 +123,7 @@ public class ClusterReplayService extends ReplayService {
         // find it complete, and report nothing to do -- while the node that actually lost the
         // files was never asked. So each node is told to repair itself, and one that has nothing
         // missing sends no requests at all.
-        Set<OutputType> rest = new java.util.LinkedHashSet<>(layers);
+        Set<OutputType> rest = new LinkedHashSet<>(layers);
         long restored = 0L;
         if (rest.remove(OutputType.FILE)) {
             restored = super.replay(catalogId, version, Set.of(OutputType.FILE));

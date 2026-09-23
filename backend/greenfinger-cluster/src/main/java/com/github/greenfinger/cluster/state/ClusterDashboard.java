@@ -17,6 +17,7 @@
 package com.github.greenfinger.cluster.state;
 
 import java.nio.charset.StandardCharsets;
+import org.apache.commons.lang3.StringUtils;
 import java.text.DateFormat;
 import java.util.Date;
 import java.util.EnumMap;
@@ -30,6 +31,7 @@ import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.core.component.state.CountingType;
 import com.github.greenfinger.core.component.state.Dashboard;
 import lombok.extern.slf4j.Slf4j;
+import java.util.LinkedHashMap;
 
 /**
  * One crawl's counters, held in the cluster cache so that every node's Monitor page shows the
@@ -141,8 +143,8 @@ public class ClusterDashboard implements Dashboard, ManagedBeanLifeCycle {
     }
 
     /** The per node breakdown of one counter, as a hash keyed by node. */
-    java.util.Map<String, Long> byNode(CountingType countingType) {
-        java.util.Map<String, Long> result = new java.util.LinkedHashMap<>();
+    Map<String, Long> byNode(CountingType countingType) {
+        Map<String, Long> result = new LinkedHashMap<>();
         try {
             cache.hgetAll(byNodeKey(countingType)).forEach((node, value) -> result.put(node,
                     Long.parseLong(new String(value, StandardCharsets.UTF_8))));
@@ -217,9 +219,25 @@ public class ClusterDashboard implements Dashboard, ManagedBeanLifeCycle {
         }
     }
 
+    /**
+     * A reason there is always something to read.
+     *
+     * <p>
+     * A blank one used to be stored as it arrived, and a run that ended as interrupted with an
+     * empty string behind it left the page with one word and no explanation. The stores keep
+     * strings, so there is no way to tell "nothing was recorded" from "this is the reason" once
+     * it is written -- it has to be said while it is still known.
+     */
+    private static String saying(String reason, boolean interrupted) {
+        if (reason != null && !reason.isBlank()) {
+            return reason;
+        }
+        return interrupted ? "the run ended without recording why" : "finished";
+    }
+
     /** See {@code GlobalStateManager.overrideAsUnproductive}: the one reason that overwrites. */
     void overrideAsUnproductive(String reason) {
-        set(key("completionReason"), reason == null ? "" : reason);
+        set(key("completionReason"), saying(reason, true));
         set(key("interrupted"), "1");
         set(key("completed"), "1");
         lastModified = System.currentTimeMillis();
@@ -230,7 +248,7 @@ public class ClusterDashboard implements Dashboard, ManagedBeanLifeCycle {
         // flag reads the reason with it, and a crawl that stopped at a limit keeps the limit as
         // its reason rather than whatever wound it down afterwards.
         if (completed) {
-            setIfAbsent(key("completionReason"), reason == null ? "" : reason);
+            setIfAbsent(key("completionReason"), saying(reason, interrupted));
             setIfAbsent(key("interrupted"), interrupted ? "1" : "0");
         }
         try {
@@ -266,6 +284,37 @@ public class ClusterDashboard implements Dashboard, ManagedBeanLifeCycle {
     @Override
     public long getHandledUrlCount() {
         return read(CountingType.HANDLED_URL_COUNT);
+    }
+
+    /**
+     * The run of failures, shared.
+     *
+     * Cluster-wide rather than per node, and that is the useful reading: a site refusing this
+     * crawler refuses all of it, and a run counted per node would need three nodes to each reach
+     * the limit before anything said so.
+     */
+    @Override
+    public int getConsecutiveFailures() {
+        String value = readString(key("consecutiveFailures"));
+        return StringUtils.isNumeric(value) ? Integer.parseInt(value) : 0;
+    }
+
+    @Override
+    public String getLastFailure() {
+        return StringUtils.defaultString(readString(key("lastFailure")));
+    }
+
+    /** Called on every failed fetch, from whichever node made it. */
+    public void noteFetchFailure(String reason) {
+        set(key("consecutiveFailures"), String.valueOf(getConsecutiveFailures() + 1));
+        set(key("lastFailure"), StringUtils.defaultString(reason));
+    }
+
+    /** Called by the first page that arrives: a run of failures is over the moment one works. */
+    public void noteFetchSuccess() {
+        if (getConsecutiveFailures() != 0) {
+            set(key("consecutiveFailures"), "0");
+        }
     }
 
     @Override

@@ -188,7 +188,16 @@ export class CatalogEditPage {
         // The list is served by whichever node answers next, and replication between them is
         // asynchronous, so it may not know about this catalog yet. Naming it in the url lets that
         // page wait for its own write instead of opening on a list that is a moment out of date.
-        this.router.navigate(['/catalogs'], { queryParams: { saved: saved.id ?? saved.name } });
+        // The write stamp travels with the id. The list is served by whichever node the proxy
+        // picks, and that node may not have applied this write yet -- an edit then landed on a
+        // page still showing the old values, because "is the row there" was already true of the
+        // copy that had not changed. The stamp is what makes the difference visible.
+        this.router.navigate(['/catalogs'], {
+          queryParams: {
+            saved: saved.id ?? saved.name,
+            at: saved.updatedAt ? Date.parse(saved.updatedAt) : null,
+          },
+        });
       },
       error: (failure) => {
         this.saving.set(false);

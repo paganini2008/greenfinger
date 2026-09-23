@@ -125,14 +125,25 @@ public class GreenfingerConfiguration {
                 outputFactory, crawlRegistry);
     }
 
+    /**
+     * A single process has nobody to tell, so it gets {@link DeletionBroadcast#NONE}. The cluster
+     * declares a primary one that announces the two layers a delete cannot replicate on its own.
+     */
+    @ConditionalOnMissingBean
+    @Bean
+    public DeletionBroadcast deletionBroadcast() {
+        return DeletionBroadcast.NONE;
+    }
+
     @ConditionalOnMissingBean
     @Bean
     public DeletionService deletionService(OutputFactory outputFactory,
             OutputProperties outputProperties, WebCrawlerProperties webCrawlerProperties,
             ResourceRecordStore recordStore, WebCrawlerSemaphore semaphore,
-            CatalogStore catalogStore, CrawlReportStore crawlReportStore) {
+            CatalogStore catalogStore, CrawlReportStore crawlReportStore,
+            DeletionBroadcast deletionBroadcast) {
         return new DeletionService(outputFactory, outputProperties, webCrawlerProperties,
-                recordStore, semaphore, catalogStore, crawlReportStore);
+                recordStore, semaphore, catalogStore, crawlReportStore, deletionBroadcast);
     }
 
     @ConditionalOnMissingBean

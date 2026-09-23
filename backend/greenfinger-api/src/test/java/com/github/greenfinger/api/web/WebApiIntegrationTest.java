@@ -189,6 +189,21 @@ class WebApiIntegrationTest {
     }
 
     @Test
+    @DisplayName("an empty box is a question, not a bad request: it asks for everything")
+    void searchWithNoKeywordIsAllowed() throws Exception {
+        saved("kappa-all");
+
+        // `q` used to be required, so a blank box answered 400 and the page could only shrug.
+        // Blank reaches the index now, where it has always meant a match-all.
+        mockMvc.perform(get("/v2/search")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message")
+                        .value(org.hamcrest.Matchers.containsString("finished crawling")));
+
+        mockMvc.perform(get("/v2/search").param("q", "")).andExpect(status().isOk());
+    }
+
+    @Test
     @DisplayName("meaning and pictures answer the same way, and never reach the vector store")
     void semanticSearchNeedsSomethingPublishedFirst() throws Exception {
         saved("lambda");

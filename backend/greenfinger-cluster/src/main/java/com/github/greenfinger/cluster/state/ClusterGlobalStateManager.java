@@ -30,6 +30,7 @@ import com.github.greenfinger.core.component.state.CountingType;
 import com.github.greenfinger.core.component.state.Dashboard;
 import com.github.greenfinger.core.component.state.GlobalStateManager;
 import lombok.extern.slf4j.Slf4j;
+import java.util.LinkedHashMap;
 
 /**
  * The counters for a crawl that several processes are sharing.
@@ -91,6 +92,16 @@ public class ClusterGlobalStateManager implements GlobalStateManager {
         for (CountingType countingType : CountingType.values()) {
             pending.put(countingType, new AtomicLong());
         }
+    }
+
+    @Override
+    public void noteFetchFailure(String reason) {
+        dashboard.noteFetchFailure(reason);
+    }
+
+    @Override
+    public void noteFetchSuccess() {
+        dashboard.noteFetchSuccess();
     }
 
     @Override
@@ -156,11 +167,11 @@ public class ClusterGlobalStateManager implements GlobalStateManager {
     }
 
     @Override
-    public java.util.Map<String, java.util.Map<String, Long>> perNodeCounters() {
-        java.util.Map<String, java.util.Map<String, Long>> byCounter =
-                new java.util.LinkedHashMap<>();
+    public Map<String, Map<String, Long>> perNodeCounters() {
+        Map<String, Map<String, Long>> byCounter =
+                new LinkedHashMap<>();
         for (CountingType countingType : CountingType.values()) {
-            java.util.Map<String, Long> nodes = dashboard.byNode(countingType);
+            Map<String, Long> nodes = dashboard.byNode(countingType);
             if (!nodes.isEmpty()) {
                 byCounter.put(countingType.getRepr(), nodes);
             }

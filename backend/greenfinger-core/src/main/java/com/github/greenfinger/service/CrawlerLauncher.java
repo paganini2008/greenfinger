@@ -346,6 +346,12 @@ public class CrawlerLauncher {
             }
             return reported;
         } finally {
+            // said before anything else in here, while it is still obviously part of this run:
+            // a layer that failed every write is the first thing somebody needs to know, and it
+            // is the one thing a "finished" line does not say
+            if (outputChannel != null) {
+                outputChannel.reportFailures();
+            }
             if (shutdownHook != null) {
                 try {
                     Runtime.getRuntime().removeShutdownHook(shutdownHook);
@@ -403,8 +409,18 @@ public class CrawlerLauncher {
             boolean completed) {
         Dashboard dashboard = crawlRegistry.getDashboard(catalogDetails.getId())
                 .orElse(null);
-        String reason = dashboard != null ? dashboard.getCompletionReason() : null;
         boolean interrupted = dashboard != null ? dashboard.isInterrupted() : !completed;
+        // Never announced blank. Every place that ends a run on purpose writes a sentence saying
+        // why, but a run can also get here with its dashboard already gone -- an exception on the
+        // way out, a node unregistering first -- and then there is nothing to quote. That
+        // travelled as null, was stored as an empty string, and left the page saying
+        // "interrupted" and nothing else, which tells somebody that something went wrong and
+        // refuses to say what. Saying that the reason was not recorded is at least true, and it
+        // is the difference between a page that looks broken and one that can be acted on.
+        String reason = dashboard != null ? dashboard.getCompletionReason() : null;
+        if (StringUtils.isBlank(reason)) {
+            reason = interrupted ? "the run ended without recording why" : "finished";
+        }
         try {
             // false means there was no cluster to tell, so this process publishes it itself
             if (!coordinator.announceCompleted(catalogDetails.getId(), catalogDetails.getVersion(),

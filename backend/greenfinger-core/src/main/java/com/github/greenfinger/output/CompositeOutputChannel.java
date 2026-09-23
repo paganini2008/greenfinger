@@ -170,9 +170,34 @@ public class CompositeOutputChannel implements OutputChannel {
                 if (channel.isRequired()) {
                     throw e;
                 }
+                // counted like a failed page, because that is what it is: a flush is where a
+                // batch of them is actually written, and one that fails loses the lot. Left
+                // uncounted, a whole run could fail every flush and end saying nothing but
+                // "finished" -- which it did, with an empty vector store and a Meaning search
+                // that answered "no close enough match".
+                failures.get(channel.getName()).incrementAndGet();
                 log.warn("Flushing '{}' failed: {}", channel.getName(), e.getMessage());
             }
         }
+    }
+
+    /**
+     * What each layer could not write, said once at the end.
+     *
+     * <p>
+     * The individual failures are warnings among thousands of lines; this is the line somebody
+     * reads when a search comes back empty and they want to know whether anything was written at
+     * all. Said at error level when a layer failed, because a layer that wrote nothing is not a
+     * detail of the run, it is a result of it.
+     */
+    public void reportFailures() {
+        failures.forEach((name, count) -> {
+            if (count.get() > 0) {
+                log.error("Output '{}' failed {} time(s) during this run. What it missed can be"
+                        + " replayed from the database once the reason is fixed.", name,
+                        count.get());
+            }
+        });
     }
 
     @Override

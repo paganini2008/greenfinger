@@ -18,7 +18,9 @@ package com.github.greenfinger.cluster.replication;
 
 import java.util.List;
 import java.util.Optional;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.github.greenfinger.core.catalog.CatalogStore;
 import com.github.greenfinger.core.model.Catalog;
 import lombok.extern.slf4j.Slf4j;
@@ -109,16 +111,25 @@ public class ReplicatedCatalogStore implements CatalogStore {
     }
 
     private Catalog announce(Catalog catalog) {
+        announceOn(channel, catalog);
+        return catalog;
+    }
+
+    /**
+     * Puts one definition on the wire. Static because the reconciler sends rows it did not write
+     * -- it is repairing somebody else's copy, not announcing its own change -- and there is no
+     * reason for it to hold a whole store to do that.
+     */
+    static void announceOn(ReplicationSink channel, Catalog catalog) {
         try {
             channel.replicate(ReplicationBatch.Entry.of(OP_CATALOG, catalog.getId(),
                     catalog.getId(), OBJECT_MAPPER.writeValueAsBytes(catalog)));
         } catch (Exception e) {
             log.warn("Could not replicate catalog '{}': {}", catalog.getName(), e.getMessage());
         }
-        return catalog;
     }
 
-    /** Applies a definition from another node, straight to the plain store. */
+    /** Applies a definition from the leader, straight to the plain store. */
     public static void apply(ReplicationBatch.Entry entry, CatalogStore plain) {
         try {
             switch (entry.op()) {
@@ -133,7 +144,12 @@ public class ReplicatedCatalogStore implements CatalogStore {
                 default -> log.debug("Unknown catalog op: {}", entry.op());
             }
         } catch (Exception e) {
-            log.warn("Could not apply catalog '{}': {}", entry.key(), e.getMessage());
+            // Logged and stepped over, which is where this used to end. A row that a node refuses
+            // -- a stale one colliding on the unique name index is the case that happened --
+            // stayed refused for ever, because nothing came back for it. CatalogCatchUp is what
+            // comes back for it now, so this is a delay rather than a loss.
+            log.warn("Could not apply catalog '{}': {}. The next catch-up will put it right.",
+                    entry.key(), e.getMessage());
         }
     }
 
@@ -147,7 +163,7 @@ public class ReplicatedCatalogStore implements CatalogStore {
      * make every copy differ from every other and the check would never once say "already have
      * this" -- which is exactly what it is for, since delivery is at least once.
      */
-    private static boolean sameAs(Catalog stored, Catalog incoming) {
+    public static boolean sameAs(Catalog stored, Catalog incoming) {
         try {
             return withoutWriteStamp(stored).equals(withoutWriteStamp(incoming));
         } catch (Exception e) {
@@ -155,9 +171,8 @@ public class ReplicatedCatalogStore implements CatalogStore {
         }
     }
 
-    private static com.fasterxml.jackson.databind.JsonNode withoutWriteStamp(Catalog catalog) {
-        com.fasterxml.jackson.databind.node.ObjectNode node =
-                OBJECT_MAPPER.valueToTree(catalog);
+    private static JsonNode withoutWriteStamp(Catalog catalog) {
+        ObjectNode node = OBJECT_MAPPER.valueToTree(catalog);
         node.remove("createdAt");
         node.remove("updatedAt");
         return node;

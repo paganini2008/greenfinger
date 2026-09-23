@@ -14,7 +14,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Observable, Subscription, forkJoin, interval, startWith, switchMap } from 'rxjs';
 import { ApiService } from '../../core/api.service';
-import { Catalog, CrawlStatus } from '../../core/api.models';
+import { Catalog, CrawlStatus, OUTPUT_MARKS, OutputType } from '../../core/api.models';
 import { AuthService } from '../../core/auth.service';
 import { NotifyService } from '../../core/notify.service';
 import { ConfirmDialog, ConfirmData } from '../../shared/confirm-dialog';
@@ -109,6 +109,11 @@ export class CatalogsPage {
   );
 
   /** True for every catalog except the one actually running. */
+  /** The icon, name and explanation for one output. See OUTPUT_MARKS. */
+  protected mark(output: OutputType) {
+    return OUTPUT_MARKS[output];
+  }
+
   protected blockedBy(catalog: Catalog): string {
     const running = this.busyWith();
     return running && running !== catalog.name ? running : '';
@@ -134,7 +139,8 @@ export class CatalogsPage {
   constructor() {
     // catalog-edit names what it just wrote, so the first read can wait for that node's copy
     const saved = this.route.snapshot.queryParamMap.get('saved');
-    this.reload(saved ? (rows) => rows.some((row) => row.id === saved || row.name === saved) : undefined);
+    const at = Number(this.route.snapshot.queryParamMap.get('at'));
+    this.reload(saved ? (rows) => CatalogsPage.settledWith(rows, saved, at) : undefined);
     inject(DestroyRef).onDestroy(() => this.stopPolling());
     // Poll only while something is moving, and stop the moment nothing is: an idle page should
     // not be sending a request every three seconds for the rest of the afternoon.
@@ -154,6 +160,29 @@ export class CatalogsPage {
         this.stopPolling();
       }
     });
+  }
+
+  /**
+   * Whether the list being shown already has the write that was just made.
+   *
+   * <p>
+   * Presence alone is not enough for an edit: the row existed before it and exists after it, so
+   * "the id is in the list" is true of the stale copy as well. With the write stamp it is: every
+   * store stamps `updatedAt` as it writes, including when it writes a copy that arrived from
+   * somewhere else, so a node that has applied this edit carries a stamp at least as new as the
+   * one the write came back with. Without a stamp -- a create, or an older link -- presence is
+   * the right question.
+   */
+  private static settledWith(rows: Catalog[], saved: string, at: number): boolean {
+    const row = rows.find((one) => one.id === saved || one.name === saved);
+    if (!row) {
+      return false;
+    }
+    if (!at || Number.isNaN(at)) {
+      return true;
+    }
+    const stamp = row.updatedAt ? Date.parse(row.updatedAt) : 0;
+    return stamp >= at;
   }
 
   /**

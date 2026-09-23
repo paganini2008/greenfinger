@@ -50,6 +50,9 @@ export class SearchPage {
 
   protected readonly mode = signal<Mode>('words');
   protected readonly keyword = signal('');
+
+  /** The keyword the results on screen were fetched for. */
+  private readonly asked = signal('');
   protected readonly catalog = signal('');
   protected readonly catalogs = signal<Catalog[]>([]);
 
@@ -122,19 +125,36 @@ export class SearchPage {
     }
     this.mode.set(mode);
     this.reset();
-    if (this.keyword().trim()) {
-      this.search();
-    }
+    this.search();
   }
 
+  /**
+   * Search, including with nothing typed, in every mode.
+   *
+   * An empty box used to return early, so pressing Search did nothing and gave no reason. Blank
+   * means everything now: "show me what is in here" is a reasonable first thing to ask of a
+   * crawler you have just pointed at a site.
+   *
+   * The two vector modes kept a guard for a while, on the grounds that there is no match-all for
+   * "things like this". True of similarity, and beside the point for the person typing: a box
+   * that answers under one tab and does nothing under the next is a rule to learn rather than a
+   * distinction to notice. The server answers a blank one from the table instead -- every page,
+   * every picture -- and the results carry no similarity because nothing was compared.
+   */
   protected search(): void {
-    const keyword = this.keyword().trim();
-    if (!keyword) {
-      return;
-    }
     this.reset();
-    this.run(keyword, null);
+    this.run(this.keyword().trim(), null);
   }
+
+  /**
+   * Whether what is on screen was ranked against something.
+   *
+   * <p>
+   * A blank box lists rather than ranks, and a similarity beside a row nobody compared would be
+   * a number that means nothing. It is the keyword the results came back for, not the one in the
+   * box: the box can be typed in while the previous answer is still shown.
+   */
+  protected readonly ranked = computed(() => this.asked().length > 0);
 
   protected nextPage(): void {
     if (this.mode() !== 'words') {
@@ -171,6 +191,7 @@ export class SearchPage {
   }
 
   private run(keyword: string, cursor: unknown[] | null): void {
+    this.asked.set(keyword);
     this.searching.set(true);
     this.error.set(null);
     const catalog = this.catalog() || undefined;

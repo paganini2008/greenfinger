@@ -45,7 +45,7 @@ mat-form-field {
 
   &:hover:not(:disabled) {
     transform: translateY(-1px);
-    border-color: color-mix(in srgb, var(--gf-green) 45%, var(--gf-outline));
+    border-color: var(--gf-green);
   }
 
   mat-icon {
@@ -53,12 +53,25 @@ mat-form-field {
   }
 }
 
+// Selected is a green card, so everything on it has to be reversed out -- the name, the note and
+// the icon. Only the icon was, which left the explanation in the page's muted grey on green: the
+// one line telling you what the output actually does became the least readable thing on the form
+// the moment you chose it.
 .gf-output-on {
   border-color: var(--gf-green);
-  background: var(--gf-green-container);
+  background: var(--gf-green);
+  color: var(--gf-on-chrome);
 
+  .gf-output-name,
+  .gf-output-note,
   mat-icon {
-    color: var(--gf-green);
+    color: var(--gf-on-chrome);
+  }
+
+  // the note is quieter than the name, but on this ground that is a little transparency rather
+  // than a grey that was mixed for white paper
+  .gf-output-note {
+    opacity: 0.85;
   }
 }
 
@@ -95,7 +108,7 @@ mat-form-field {
     font-weight: 600;
 
     mat-icon {
-      color: var(--gf-green);
+      color: var(--mat-sys-on-surface);
     }
   }
 }

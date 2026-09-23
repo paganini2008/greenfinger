@@ -4,7 +4,7 @@
     <div class="gf-hero-inner gf-search-inner">
       <div class="w-full">
         <span class="gf-eyebrow">Search</span>
-        <h1>What did we crawl?</h1>
+        <h1>Search</h1>
 
         <div class="gf-searchbar">
           <mat-icon>search</mat-icon>
@@ -14,7 +14,11 @@
             (ngModelChange)="keyword.set($event)"
             (keyup.enter)="search()"
             [placeholder]="
-              mode() === 'pictures' ? 'a red book cover on a wooden table' : 'anything you crawled'
+              mode() === 'pictures'
+                ? 'a red book cover on a wooden table'
+                : mode() === 'meaning'
+                  ? 'what a page is about, in your own words'
+                  : 'anything you crawled, or nothing to list it all'
             "
             autofocus
           />
@@ -94,7 +98,9 @@
             <div class="gf-result-foot">
               <span class="gf-chip gf-chip-cat">{{ hit.catalog }}</span>
               <span class="gf-chip">v{{ hit.version }}</span>
-              <span class="gf-muted">score {{ hit.score | number: '1.2-2' }}</span>
+              @if (ranked()) {
+                <span class="gf-muted">score {{ hit.score | number: '1.2-2' }}</span>
+              }
             </div>
           </article>
         }
@@ -150,7 +156,11 @@
             <p class="gf-result-snippet">{{ text(hit, 'text') }}</p>
           }
           <div class="gf-result-foot">
-            <span class="gf-chip gf-chip-vector">similarity {{ hit.score | number: '1.3-3' }}</span>
+            @if (ranked()) {
+              <span class="gf-chip gf-chip-vector">
+                similarity {{ hit.score | number: '1.3-3' }}
+              </span>
+            }
             @if (text(hit, 'catalog')) {
               <span class="gf-chip gf-chip-cat">{{ text(hit, 'catalog') }}</span>
             }
@@ -204,7 +214,9 @@
                 (error)="onImageFailed(hit)"
               />
             }
-            <span class="gf-shot-score">{{ hit.score | number: '1.3-3' }}</span>
+            @if (ranked()) {
+              <span class="gf-shot-score">{{ hit.score | number: '1.3-3' }}</span>
+            }
           </div>
           <figcaption>
             @if (text(hit, 'alt')) {
@@ -239,7 +251,19 @@
     @if (searched() && hits().length === 0 && !error()) {
       <div class="gf-empty">
         <mat-icon>image_search</mat-icon>
-        <p>Nothing found. Pictures need the local embedding provider and the vector output.</p>
+        @if (ranked()) {
+          <!-- a question was asked and nothing matched, or nothing can answer it -->
+          <p>
+            Nothing matched. Searching pictures by description needs an embedding provider that
+            reads images; the local one does, Ollama and OpenAI do not.
+          </p>
+        } @else {
+          <!-- nothing was asked, so this is simply what is there -->
+          <p>
+            No pictures have been stored. Turn on <strong>Fetch images</strong> for a catalog and
+            crawl it again.
+          </p>
+        }
       </div>
     }
 
@@ -266,7 +290,10 @@
   @if (!searched() && !searching()) {
     <div class="gf-empty">
       <mat-icon>eco</mat-icon>
-      <p>Type something above. Words are exact, Meaning is not, Pictures wants what a picture looks like.</p>
+      <p>
+        An empty box lists everything, whichever tab you are on. Words are exact; Meaning finds
+        pages that never say the words; Pictures wants what a picture looks like.
+      </p>
     </div>
   }
 </div>

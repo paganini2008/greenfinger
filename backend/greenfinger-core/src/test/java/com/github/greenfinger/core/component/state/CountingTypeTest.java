@@ -48,6 +48,23 @@ class CountingTypeTest {
     }
 
     @Test
+    @DisplayName("a run of failures is the run happening now, and the first page ends it")
+    void aRunOfFailuresEndsWithTheFirstPage() {
+        DefaultGlobalStateManager state = new DefaultGlobalStateManager(CatalogFixtures.details());
+
+        state.noteFetchFailure("429 TOO_MANY_REQUESTS");
+        state.noteFetchFailure("429 TOO_MANY_REQUESTS");
+        assertThat(state.getDashboard().getConsecutiveFailures()).isEqualTo(2);
+        assertThat(state.getDashboard().getLastFailure()).isEqualTo("429 TOO_MANY_REQUESTS");
+
+        // a hundred failures over a long crawl is ordinary; what matters is whether they are
+        // still happening, so one page that works resets the run and not the total
+        state.noteFetchSuccess();
+        assertThat(state.getDashboard().getConsecutiveFailures()).isZero();
+        assertThat(state.getDashboard().getLastFailure()).isEqualTo("429 TOO_MANY_REQUESTS");
+    }
+
+    @Test
     @DisplayName("the two outputs are counted apart: an index that works says nothing about vectors")
     void indexAndVectorAreCountedApart() {
         DefaultDashboard dashboard = new DefaultDashboard(CatalogFixtures.details());

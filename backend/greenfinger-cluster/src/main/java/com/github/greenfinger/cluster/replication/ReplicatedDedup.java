@@ -18,6 +18,7 @@ package com.github.greenfinger.cluster.replication;
 
 import com.github.greenfinger.core.component.dedup.ContentDedupFilter;
 import com.github.greenfinger.core.component.dedup.ExistingUrlPathFilter;
+import com.github.greenfinger.core.component.dedup.UrlPathFilterExporter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -127,7 +128,7 @@ public final class ReplicatedDedup {
         }
 
         @Override
-        public int export(com.github.greenfinger.core.component.dedup.UrlPathFilterExporter
+        public int export(UrlPathFilterExporter
                 exporter, boolean deleted) throws Exception {
             return delegate.export(exporter, deleted);
         }

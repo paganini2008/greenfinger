@@ -177,6 +177,25 @@ export class ApiService {
   }
 
   /**
+   * One actuator metric, as its single value.
+   *
+   * Micrometer answers with a list of measurements and a list of the tags it could be sliced by;
+   * everything this application asks for has exactly one measurement, so the shape is unwrapped
+   * here rather than in the three places that would otherwise each do it slightly differently.
+   * Missing or unreadable is 0 rather than an error: a memory reading that did not arrive should
+   * leave a gap in a table, not empty the page around it.
+   */
+  metric(name: string, node?: number | null, tag?: string): Observable<number> {
+    let params = pin(node);
+    if (tag) {
+      params = params.set('tag', tag);
+    }
+    return this.http
+      .get<{ measurements?: { value?: number }[] }>(`/actuator/metrics/${name}`, { params })
+      .pipe(map((answer) => answer?.measurements?.[0]?.value ?? 0));
+  }
+
+  /**
    * The nodes this front end is in front of, as it can reach them.
    *
    * Served by the front end's own proxy, not by the api: a node knows who is in its cluster but

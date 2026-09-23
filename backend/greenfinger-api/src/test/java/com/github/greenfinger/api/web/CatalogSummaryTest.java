@@ -201,6 +201,16 @@ class CatalogSummaryTest {
             }
 
             @Override
+            public int getConsecutiveFailures() {
+                return 7;
+            }
+
+            @Override
+            public String getLastFailure() {
+                return "429 TOO_MANY_REQUESTS";
+            }
+
+            @Override
             public long getInvalidUrlCount() {
                 return 5L;
             }

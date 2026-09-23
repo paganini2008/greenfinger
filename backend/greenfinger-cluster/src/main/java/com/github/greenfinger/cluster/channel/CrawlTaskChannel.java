@@ -40,6 +40,8 @@ import com.github.greenfinger.core.engine.CrawlRegistry;
 import com.github.greenfinger.core.engine.CrawlTask;
 import com.github.greenfinger.core.engine.WebCrawlerExecutionContext;
 import lombok.extern.slf4j.Slf4j;
+import java.util.ArrayList;
+import org.slf4j.LoggerFactory;
 
 /**
  * The recursive call, as it crosses a process boundary.
@@ -139,7 +141,7 @@ public class CrawlTaskChannel extends BufferedGossipListener
     public CrawlTaskChannel(GossipCluster cluster, CrawlRegistry crawlRegistry,
             ClusterProperties.Dispatch dispatch) {
         super("gf-crawl", dispatch.getBufferCapacity(), dispatch.getConsumers(),
-                org.slf4j.LoggerFactory.getLogger(CrawlTaskChannel.class));
+                LoggerFactory.getLogger(CrawlTaskChannel.class));
         this.cluster = cluster;
         this.crawlRegistry = crawlRegistry;
     }
@@ -168,13 +170,19 @@ public class CrawlTaskChannel extends BufferedGossipListener
     }
 
     /**
-     * Hands one url to whichever node the balancer picks.
+     * Hands one url to the node that url belongs to.
      *
      * <p>
-     * No routing key. Round robin is what spreads a crawl evenly, and a key would defeat that:
-     * hashing by url would be a lottery over an uneven keyspace, and hashing by host would pin a
-     * whole site to one node. Politeness towards the site is handled where it belongs, in the
-     * fetch interval, not by pretending the cluster is one machine.
+     * Routed by a consistent hash of the url rather than round robin, and the reason is stated at
+     * the call below: round robin sends the same url wherever the counter happens to point, so two
+     * nodes that discover the same link inside the replication window each fetch it and neither
+     * frontier can see that the other has it.
+     *
+     * <p>
+     * This comment used to say the opposite -- no routing key, round robin spreads a crawl evenly
+     * -- which was true of an earlier cut and had been left standing over code that does the other
+     * thing. Evenness is not lost: a hash over urls is even in aggregate, because there are far
+     * more urls than nodes.
      *
      * @return false when nothing took it, and the caller has to keep it.
      */
@@ -308,7 +316,7 @@ public class CrawlTaskChannel extends BufferedGossipListener
             WebCrawlerExecutionContext context = crawlRegistry.getContext(entry.getKey());
             CrawlFrontier frontier = context != null ? context.getCrawlFrontier() : null;
             long now = System.currentTimeMillis();
-            List<CrawlTask> expired = new java.util.ArrayList<>();
+            List<CrawlTask> expired = new ArrayList<>();
             StagedTask head;
             while ((head = queue.poll()) != null) {
                 if (frontier != null) {

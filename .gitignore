@@ -48,6 +48,7 @@
 #   lib/                   the two executable jars
 #   data/, logs/           what a run leaves behind
 /deploy/
+/docs/blogger/
 
 # macOS
 .DS_Store
