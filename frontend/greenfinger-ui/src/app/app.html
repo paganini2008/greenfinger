@@ -1,54 +1,19 @@
 @if (showShell()) {
-  <div class="flex min-h-screen flex-col">
-    <mat-toolbar class="gf-toolbar shrink-0">
-      <button mat-icon-button (click)="toggleSidenav()" aria-label="Toggle navigation">
-        <mat-icon>menu</mat-icon>
-      </button>
+  <div class="gf-frame">
 
-      <a routerLink="/dashboard" class="ml-1 flex items-center gap-2 no-underline text-inherit">
-        <img src="logo.png" alt="Greenfinger" class="gf-logo" />
-        @if (version()) {
-          <span class="gf-version">{{ version() }}</span>
-        }
-      </a>
-
-      <span class="flex-1"></span>
-
-
-      <button mat-icon-button [matMenuTriggerFor]="accountMenu" aria-label="Account">
-        <div class="gf-avatar">{{ initial() }}</div>
-      </button>
-      <mat-menu #accountMenu="matMenu">
-        <div class="px-4 py-2">
-          <div class="font-medium">{{ auth.username() }}</div>
-          <div class="text-xs opacity-70">{{ role() }}</div>
-        </div>
-        <mat-divider />
-        <a mat-menu-item routerLink="/about">
-          <mat-icon>info</mat-icon>
-          <span>About</span>
-        </a>
-        <button mat-menu-item (click)="signOut()">
-          <mat-icon>logout</mat-icon>
-          <span>Sign out</span>
-        </button>
-      </mat-menu>
-    </mat-toolbar>
-
-    @if (running().length) {
-      <div class="gf-running-banner">
-        <span class="gf-running-dot"></span>
-        <span class="gf-running-text">
-          Crawling <strong>{{ runningName() }}</strong
-          >. One crawl runs at a time across the whole cluster, so nothing else can be started
-          until it finishes or is stopped.
-        </span>
-        <a mat-button [routerLink]="['/catalogs', runningName(), 'monitor']">Watch it</a>
-      </div>
-    }
 
     <mat-sidenav-container class="gf-shell flex-1">
       <mat-sidenav [mode]="sidenavMode()" [opened]="sidenavOpened()" class="gf-sidenav">
+        <!-- The wordmark lives in the rail rather than over the page: the rail is the one piece
+             of chrome the product owns, and a masthead that only carried a logo was a band of
+             green charging rent for it. -->
+        <a routerLink="/dashboard" class="gf-brand" (click)="navigated()">
+          <img src="logo.png" alt="Greenfinger" class="gf-logo" />
+          @if (version()) {
+            <span class="gf-version">{{ version() }}</span>
+          }
+        </a>
+
         <!-- Places, not verbs. 'New catalog' was in here between Search and Resources, which made
              the list a mix of where-you-can-go and what-you-can-do: everything else in it is a
              thing that exists whether or not you act on it, and creating a catalog is something
@@ -56,29 +21,41 @@
         <mat-nav-list>
           <a mat-list-item routerLink="/dashboard" routerLinkActive="gf-active" (click)="navigated()">
             <mat-icon matListItemIcon>speed</mat-icon>
+            <span class="gf-tab-notch" aria-hidden="true"></span>
             <span matListItemTitle>Dashboard</span>
           </a>
           <a mat-list-item routerLink="/catalogs" routerLinkActive="gf-active" (click)="navigated()">
             <mat-icon matListItemIcon>list_alt</mat-icon>
+            <span class="gf-tab-notch" aria-hidden="true"></span>
             <span matListItemTitle>Catalogs</span>
           </a>
           <a mat-list-item routerLink="/resources" routerLinkActive="gf-active" (click)="navigated()">
             <mat-icon matListItemIcon>inventory_2</mat-icon>
+            <span class="gf-tab-notch" aria-hidden="true"></span>
             <span matListItemTitle>Resources</span>
           </a>
           <a mat-list-item routerLink="/search" routerLinkActive="gf-active" (click)="navigated()">
             <mat-icon matListItemIcon>search</mat-icon>
+            <span class="gf-tab-notch" aria-hidden="true"></span>
             <span matListItemTitle>Search</span>
           </a>
           <a mat-list-item routerLink="/cluster" routerLinkActive="gf-active" (click)="navigated()">
             <mat-icon matListItemIcon>monitor_heart</mat-icon>
+            <span class="gf-tab-notch" aria-hidden="true"></span>
             <span matListItemTitle>System</span>
           </a>
-          <a mat-list-item routerLink="/about" routerLinkActive="gf-active" (click)="navigated()">
-            <mat-icon matListItemIcon>info</mat-icon>
-            <span matListItemTitle>About</span>
-          </a>
         </mat-nav-list>
+
+        @if (running().length) {
+          <a class="gf-rail-live" [routerLink]="['/catalogs', runningName(), 'monitor']"
+             (click)="navigated()">
+            <span class="gf-rail-live-head">
+              <span class="gf-running-dot"></span> Crawling now
+            </span>
+            <span class="gf-rail-live-name">{{ runningName() }}</span>
+            <span class="gf-rail-live-go">Watch it</span>
+          </a>
+        }
 
         @if (!auth.isAdmin()) {
           <div class="gf-role-note">
@@ -89,27 +66,83 @@
       </mat-sidenav>
 
       <mat-sidenav-content class="gf-content">
+        <!-- What is left of a masthead once the logo is in the rail: a way to open the rail on a
+             phone, and who you are signed in as. It sits on the paper rather than on a coloured
+             band, so the first thing on the page is the page. -->
+        <header class="gf-topbar">
+          <button mat-icon-button class="gf-rail-toggle" (click)="toggleSidenav()"
+                  aria-label="Toggle navigation">
+            <mat-icon>menu</mat-icon>
+          </button>
+
+          <span class="flex-1"></span>
+
+          <button type="button" class="gf-account" [matMenuTriggerFor]="accountMenu"
+                  aria-label="Account">
+            <div class="gf-avatar">{{ initial() }}</div>
+            <span class="gf-account-name">{{ auth.username() }}</span>
+            <mat-icon class="gf-account-caret">expand_more</mat-icon>
+          </button>
+          <mat-menu #accountMenu="matMenu">
+            <div class="px-4 py-2">
+              <div class="font-medium">{{ auth.username() }}</div>
+              <div class="text-xs opacity-70">{{ role() }}</div>
+            </div>
+            <mat-divider />
+            <button mat-menu-item (click)="signOut()">
+              <mat-icon>logout</mat-icon>
+              <span>Sign out</span>
+            </button>
+          </mat-menu>
+        </header>
+
+        @if (running().length) {
+          <div class="gf-running-banner">
+            <span class="gf-running-dot"></span>
+            <span class="gf-running-text">
+              Crawling <strong>{{ runningName() }}</strong
+              >. One crawl runs at a time across the whole cluster, so nothing else can be started
+              until it finishes or is stopped.
+            </span>
+            <a mat-button [routerLink]="['/catalogs', runningName(), 'monitor']">Watch it</a>
+          </div>
+        }
+
         <router-outlet />
 
         <!-- What a footer is for on an operator's tool: which build you are looking at, and where
              to go when it does something you did not expect. Not a sitemap of a six-page app. -->
+        <!-- Two things, and nothing else: which build you are looking at, and the repository.
+             "Report a problem" pointed at the issues of the repository the mark already opens,
+             and the About page it also linked to no longer exists -- a footer that repeats what
+             the navigation says is a second navigation nobody asked for. -->
         <footer class="gf-footer">
-          <span>
+          <!-- An empty first column, so the name is centred on the page rather than on what is
+               left of it once the mark has taken its corner. -->
+          <span aria-hidden="true"></span>
+
+          <span class="gf-footer-name">
             Greenfinger
             @if (version()) {
               <span class="gf-mono">{{ version() }}</span>
             }
           </span>
-          <span class="gf-footer-sep" aria-hidden="true"></span>
-          <a href="https://github.com/paganini2008/greenfinger" target="_blank" rel="noopener">
-            Source
+
+          <a class="gf-footer-mark" href="https://github.com/paganini2008/greenfinger"
+             target="_blank" rel="noopener" aria-label="Greenfinger on GitHub">
+            <!-- The mark itself rather than a generic link icon: it is recognised without being
+                 read, which is the entire job of the thing in the corner. -->
+            <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
+                       0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13
+                       -.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66
+                       .07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15
+                       -.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0
+                       1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82
+                       1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01
+                       1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+            </svg>
           </a>
-          <a href="https://github.com/paganini2008/greenfinger/issues" target="_blank" rel="noopener">
-            Report a problem
-          </a>
-          <a routerLink="/about">About</a>
-          <span class="flex-1"></span>
-          <span class="gf-muted">Apache&nbsp;2.0</span>
         </footer>
       </mat-sidenav-content>
     </mat-sidenav-container>

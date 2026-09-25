@@ -32,6 +32,7 @@ import com.github.greenfinger.core.output.SearchResult;
 import com.github.greenfinger.core.output.Searcher;
 import com.github.greenfinger.output.OutputProperties;
 import com.github.greenfinger.output.RestJsonClient;
+import java.util.stream.Collectors;
 
 /**
  * Searches the Elasticsearch output path.
@@ -70,18 +71,10 @@ public class ElasticsearchSearcher implements Searcher {
     }
 
     /**
-     * The indices a request touches.
-     *
-     * <p>
-     * One index per catalog, so a search that names its catalogs names that many indices, and one
-     * that names none takes the prefix wildcard. Elasticsearch scores a multi-index search from
-     * the combined term statistics, so narrowing to the indices actually in play makes the request
-     * cheaper without making the ranking differ from what a search of everything would have
-     * produced for the same documents.
-     *
-     * <p>
-     * The {@code catalogVersion} filter still does the version half of the work: an index holds
-     * every version of its catalog, and only the published one should be visible.
+     * The indices a request touches -- one per named catalog, or the prefix wildcard when none is
+     * named. Elasticsearch scores across indices from combined term statistics, so narrowing is
+     * cheaper without changing the ranking. The {@code catalogVersion} filter does the version
+     * half: an index holds every version, and only the published one is visible.
      */
     private String indexPattern(SearchRequest request) {
         if (request.getCatalogVersions() == null || request.getCatalogVersions().isEmpty()) {
@@ -90,19 +83,13 @@ public class ElasticsearchSearcher implements Searcher {
         return request.getCatalogVersions().stream()
                 .map(catalogVersion -> IndexAdmin.indexOf(config.getPrefix(),
                         IndexAdmin.catalogIdOf(catalogVersion)))
-                .distinct().collect(java.util.stream.Collectors.joining(","));
+                .distinct().collect(Collectors.joining(","));
     }
 
     /**
-     * Pushes detail pages above listings.
-     *
-     * <p>
-     * A listing matches a search term as readily as the page it links to, and is almost never what
-     * someone wanted. The two are told apart without any classification: a listing is mostly links
-     * and little prose, a detail page the reverse. So prose lifts a document and links push it
-     * down. Both go through a logarithm, which keeps the adjustment to a factor of roughly two or
-     * three -- enough to reorder documents of similar relevance, not enough to float an irrelevant
-     * page above a relevant one.
+     * Pushes detail pages above listings, which match as readily and are almost never wanted. No
+     * classification: a listing is mostly links and little prose, so prose lifts and links push
+     * down, both through a logarithm that keeps the adjustment to a factor of two or three.
      */
     /**
      * The sort values Elasticsearch attached to a hit, which are what the next page resumes from.

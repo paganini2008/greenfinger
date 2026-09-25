@@ -135,19 +135,10 @@ public class UrlUtils {
     }
 
     /**
-     * The side requests -- robots.txt and the sitemaps -- as opposed to the pages themselves.
-     *
-     * It identifies itself. Left to itself {@link URLConnection} sends {@code Java/17.0.2} as the
-     * user agent, and a number of large sites answer that with 403 before looking at the path --
-     * Wikimedia among them. That produced the worst possible failure: robots.txt came back
-     * unreadable, {@link com.github.greenfinger.core.component.acceptor.RobotRuleUrlPathAcceptor}
-     * fell back to "no rules" as the protocol says it should for an absent file, and the crawl went
-     * ahead ignoring rules the site was publishing all along. The one request that decides whether
-     * we are allowed to crawl has to be the one that introduces itself properly.
-     *
-     * The agent is one of the same {@link WebCrawlerConstants#USER_AGENTS} the extractors send, so
-     * a site sees one client rather than a browser asking for pages and something else asking for
-     * the rules -- and so the rules that come back are the rules that apply to us.
+     * The side requests -- robots.txt and the sitemaps -- which identify themselves with the same
+     * agent the extractors send. {@link URLConnection} otherwise sends {@code Java/17.0.2}, which
+     * large sites answer with 403; robots.txt then reads as absent and the crawl ignores rules the
+     * site was publishing.
      */
     public InputStream openStream(URL url, int connectTimeout, int readTimeout) throws IOException {
         URLConnection connection = url.openConnection();
@@ -169,23 +160,10 @@ public class UrlUtils {
     }
 
     /**
-     * Canonical form of a url for deduplication purposes, in two passes.
-     *
-     * <p>
-     * The first is syntactic and belongs to the standard: crawler-commons collapses {@code /a/./b/..}
-     * into {@code /a}, decodes percent escapes that never needed escaping, and folds repeated
-     * slashes. Those are genuinely the same resource by RFC 3986, and without this the crawler
-     * fetches {@code /a/./b/../c} and {@code /a/c} as if they were two pages.
-     *
-     * <p>
-     * The second is what deduplication needs and the standard deliberately does not do: a lone
-     * trailing slash removed, tracking parameters dropped, the rest sorted, the fragment gone. A
-     * standards-compliant normaliser keeps all of those, because {@code /x} and {@code /x/} are
-     * allowed to be different resources -- on the web as it is actually built, they are the same
-     * page.
-     *
-     * <p>
-     * Returns the input untouched when it cannot be parsed.
+     * Canonical form of a url for deduplication, in two passes: RFC 3986 from crawler-commons
+     * (collapsing {@code /a/./b/..}, needless escapes, repeated slashes), then what deduplication
+     * needs and the standard refuses -- trailing slash, tracking parameters, parameter order,
+     * fragment. Returns the input untouched when it cannot be parsed.
      */
     public String normalize(String url) {
         if (StringUtils.isBlank(url)) {

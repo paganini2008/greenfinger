@@ -54,21 +54,19 @@ import com.github.greenfinger.service.FileRestorer;
 import com.github.greenfinger.service.ReplayService;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import java.util.function.Consumer;
+import java.util.function.BooleanSupplier;
 
 /**
  * The crawl verbs.
  *
  * <p>
- * Every one of them acts on a catalog by its id, never on a url: a catalog is created by
- * {@code catalog-save}, and running one is a separate thing from defining it. That separation is
- * new -- {@code crawl} used to take nineteen options and save a definition on the way past, which
- * meant a typo in any of them produced a catalog nobody had asked for.
+ * Each acts on a catalog by its id, never a url: defining one is {@code catalog-save}'s job, and
+ * a verb that also saved a definition turned a typo into a catalog nobody asked for.
  *
  * <p>
- * A crawl runs behind the prompt rather than on it. {@code crawl} starts one and shows the same
- * live view {@code status} shows; {@code q} leaves the view without touching the crawl, and
- * {@code pause} is what stops it. On a one-line invocation there is nothing to go back to, so the
- * command waits for the crawl to end and prints the summary.
+ * A crawl runs behind the prompt: {@code q} leaves the live view without touching it, and
+ * {@code pause} stops it. On one line there is nothing to go back to, so the command waits.
  * 
  * @Description: CrawlCommands
  * @Author: Fred Feng
@@ -123,29 +121,97 @@ public class CrawlCommands {
         }
     }
 
+    /**
+     * What the one-line form runs: the crawl verbs, and nothing else.
+     *
+     * <p>
+     * A cron entry or a deploy script wants a verb and an exit code. Everything else the shell can
+     * do is looking at the installation rather than working it, and that is the prompt's job -- a
+     * one-liner that did both would be a third face to keep in step. Anything else is refused by
+     * name rather than ignored: a script is entitled to know its request did not happen.
+     */
     private void run(String command, CrawlOptions options) throws Exception {
-        switch (command) {
+        switch (canonical(command)) {
             case "catalog-crawl" -> crawl(options.get("id", null),
                     options.getIntegerOrNull("node"),
                     options.getIntegerOrNull("threads"));
             case "update" -> update(options.get("id", null), options.get("from", null),
                     options.getBooleanOrNull("refresh"), options.getIntegerOrNull("threads"));
+            // merge is update with the pages it already has revisited: one verb for the thing
+            // people were writing --refresh=true for, and the word they were using for it
+            case "merge" -> update(options.get("id", null), options.get("from", null), true,
+                    options.getIntegerOrNull("threads"));
             case "resume" -> resume(options.get("id", null), options.getIntegerOrNull("threads"));
             case "rebuild" -> rebuild(options.get("id", null),
                     options.getIntegerOrNull("threads"));
-            case "pause" -> pause(options.get("id", null));
-            case "status" -> status(options.getBooleanOrNull("all"));
-            case "delete" -> delete(options);
             case "replay" -> replay(options);
-            case "versions" -> catalogCommands.versions(options.get("id", null));
-            case "crawler-report" -> catalogCommands.report(options.get("id", null),
-                    options.getIntegerOrNull("version"));
-            case "test-url" -> testUrl(options.get("url", null), options.get("extractor", null));
-            case "options" -> options();
-            case "help" -> help();
-            default -> delegate(command, options);
+            case "pause" -> pause(options.get("id", null));
+            case "help" -> oneLineHelp();
+            default -> throw notAVerb(command);
         }
     }
+
+    /**
+     * The one-line form's own help: seven verbs and where everything else went.
+     *
+     * <p>
+     * Not the prompt's help table, which lists twenty commands this form no longer runs. A help
+     * that answers with things that will be refused when typed is worse than no help.
+     */
+    private void oneLineHelp() {
+        TextTable table = TextTable.of("Command", "What it does")
+                .title("greenfinger-cli.sh -- the crawl verbs");
+        table.row("catalog-crawl --id=<id>", "Crawl from the start url");
+        table.row("update --id=<id>", "Take the urls that have appeared since");
+        table.row("merge --id=<id>", "Update, and revisit the pages already held");
+        table.row("rebuild --id=<id>", "A new version, the whole site again");
+        table.row("replay --id=<id> --layers=index", "Rebuild an output from the database");
+        table.row("resume --id=<id>", "Continue after a pause");
+        table.row("pause --id=<id>", "Stop a running crawl where it is");
+        print(table.render());
+        print(Ansi.dim("Ids come from the prompt or the page. Everything else this can do --"
+                + " lists, reports, search, the state of the index -- is in"
+                + "  ./greenfinger-face.sh"));
+    }
+
+    /** The one spelling of each verb, so an alias is resolved once rather than at every case. */
+    private static String canonical(String command) {
+        String name = command == null ? "" : command.trim().toLowerCase();
+        return switch (name) {
+            case "crawl" -> "catalog-crawl";
+            case "refresh" -> "merge";
+            default -> name;
+        };
+    }
+
+    /**
+     * Said in the words of whoever typed it, and pointing at where the thing they wanted lives.
+     * A command that exists in the prompt gets a different sentence from one that exists nowhere,
+     * because "not here" and "not at all" are different problems with different next steps.
+     */
+    private UsageException notAVerb(String command) {
+        boolean elsewhere = ELSEWHERE.contains(canonical(command));
+        return new UsageException(
+                elsewhere ? "'" + command + "' is not a crawl verb, so the one-line form does not"
+                        + " run it."
+                        : "Unknown command: " + command,
+                elsewhere
+                        ? "It lives in the prompt, beside the rest of what this can show you:"
+                                + "  ./greenfinger-face.sh"
+                        : "The one-line form runs the crawl verbs: catalog-crawl, update, merge,"
+                                + " rebuild, replay, resume, pause. Everything else is in"
+                                + "  ./greenfinger-face.sh");
+    }
+
+    /**
+     * The commands that exist, in the prompt, and are deliberately not on the one-line form.
+     * Listed rather than inferred so the message can tell somebody where their command went
+     * instead of calling it unknown, which it is not.
+     */
+    private static final Set<String> ELSEWHERE = Set.of("status", "delete", "versions",
+            "crawler-report", "test-url", "options", "catalog-list", "catalogs", "catalog-show",
+            "catalog", "catalog-save", "catalog-delete", "catalog-cats", "cats", "search",
+            "query", "index-info", "index", "vector-info", "vector");
 
     // ---------------------------------------------------------------------------------------
     // The verbs
@@ -243,14 +309,8 @@ public class CrawlCommands {
      *        that says whether one node is doing all of the work.
      */
     /**
-     * What is happening -- watched at the prompt, read once from the command line.
-     *
-     * <p>
-     * The difference is the process, not the command. A session outlives the crawl it started, so
-     * "status" there means watch it: the block redraws in place until the crawl ends or you type
-     * q. {@code greenfinger-cli.sh status} is a process that exists to answer one question and
-     * then exit, so watching would mean holding a terminal open on a crawl that belongs to a
-     * different process. It prints the numbers as they stand and returns.
+     * Watched at the prompt, read once on the command line: a session outlives the crawl and can
+     * redraw, while a one-shot process would be holding a terminal open on somebody else's crawl.
      */
     @Command(name = "status", group = "Crawl",
             description = "What is running. A live view at the prompt, a snapshot from the"
@@ -368,10 +428,8 @@ public class CrawlCommands {
                         live -> crawlerLauncher.crawl(catalog.getId(), threads, live));
             }
         } finally {
-            // the nodes were asked for by this crawl, so they go when it does. Otherwise a
-            // session that crawls twice with --node=3 would be running five nodes the second
-            // time. They are left alone if the reader detached from the live view instead: the
-            // crawl is still going and still wants them.
+            // The nodes belong to this crawl, so they go when it does -- otherwise crawling
+            // twice with --node=3 leaves five running. Left alone if the reader only detached.
             if (forked > 0 && !crawlRegistry.isRunning(catalog.getId())) {
                 stopForkedNodes();
             }
@@ -379,13 +437,8 @@ public class CrawlCommands {
     }
 
     /**
-     * Extra nodes for the crawl about to start.
-     *
-     * <p>
-     * On the command line the launcher has already done this -- it read {@code --node} before the
-     * jvm existed and started the workers itself -- so there is nothing to do here. In a session
-     * there was no launcher left to read it: this process is node 1 and already the leader, so
-     * {@code --node=3} means forking two more.
+     * Extra nodes for the crawl about to start. On the command line the launcher already did it
+     * before the jvm existed; in a session this process is node 1, so {@code --node=3} forks two.
      *
      * @return how many were started.
      */
@@ -446,7 +499,7 @@ public class CrawlCommands {
      * @return true when the crawl finished, false when the reader left the view.
      */
     private boolean attach(WebCrawlerExecutionContext context, boolean perNode,
-            java.util.function.BooleanSupplier finished) {
+            BooleanSupplier finished) {
         LiveDashboard dashboard = new LiveDashboard(context.getCatalogDetails(),
                 context.getGlobalStateManager().getDashboard(), context.getCrawlFrontier(),
                 System.out);
@@ -492,20 +545,12 @@ public class CrawlCommands {
     }
 
     /**
-     * A run that achieved nothing at all is a failure, whatever the exit code would otherwise say.
+     * A run that achieved nothing at all is a failure, whatever the exit code would say.
      *
      * <p>
-     * The usual cause is a url that does not resolve, or one whose every page the path patterns
-     * reject. Neither throws -- the engine counts an unreachable page as one more failed fetch --
-     * so without this the command reports success and exits zero having done nothing, which is the
-     * worst possible answer for anything driving it from a script.
-     *
-     * <p>
-     * "Nothing at all" is deliberately strict. Saving no pages is a perfectly good outcome on its
-     * own: a merge of a site that has not changed saves nothing and should, and so does an update
-     * that finds no new urls. What those have in common is that pages were still <em>reached</em>
-     * -- counted as unchanged, or as already seen. Only when none of the three happened did the
-     * crawl genuinely get nowhere.
+     * A url that does not resolve throws nothing -- it is counted as another failed fetch -- so
+     * without this the command exits zero having done nothing. Strictly nothing: saving no pages
+     * is fine for a merge of an unchanged site, because those pages were still reached.
      */
     private void failIfNothingWasCrawled(CrawlerEngine.Result result) {
         var dashboard = result.getDashboard();
@@ -525,7 +570,7 @@ public class CrawlCommands {
     @FunctionalInterface
     private interface Run {
 
-        CrawlerEngine.Result execute(java.util.function.Consumer<WebCrawlerExecutionContext> onReady)
+        CrawlerEngine.Result execute(Consumer<WebCrawlerExecutionContext> onReady)
                 throws Exception;
 
     }
@@ -736,8 +781,11 @@ public class CrawlCommands {
         table.row("replay --id=<id> --layers=index", "Rebuild an output from the database");
         table.row("test-url --url=<url>", "Fetch one url and report what came back");
         table.row("", "");
-        table.row("search --query=<words>", "Search crawled pages");
-        table.row("search --query=<words> --image=true", "Find pictures by describing them");
+        table.row("search --query=<words>", "Search crawled pages by the words on them");
+        table.row("search --query=<words> --mode=meaning", "Pages about it, whether or not they"
+                + " say it");
+        table.row("search --query=<words> --mode=pictures", "Find pictures by describing them");
+        table.row("search", "With no query: everything that was kept");
         table.row("index-info", "The full text index, and what is in it");
         table.row("vector-info", "The vector store, and what is in it");
         table.row("", "");
@@ -796,26 +844,6 @@ public class CrawlCommands {
      * Commands that live on the other command classes, routed here so one dispatcher serves the
      * whole command line.
      */
-    private void delegate(String command, CrawlOptions options) throws Exception {
-        switch (command) {
-            case "catalog-list", "catalogs" -> catalogCommands.list();
-            case "catalog-show", "catalog" -> catalogCommands.show(options.get("id", null));
-            case "catalog-save" -> catalogCommands.save(options.get("id", null),
-                    options.get("json", null));
-            case "catalog-delete" -> catalogCommands.deleteCatalog(options.get("id", null));
-            case "catalog-cats", "cats" -> catalogCommands.categories();
-            case "search", "query" -> queryCommands.search(options.get("query", null),
-                    options.get("id", null), options.getIntegerOrNull("size"),
-                    options.getBooleanOrNull("image"));
-            case "index-info", "index" -> queryCommands.indexInfo();
-            case "vector-info", "vector" -> queryCommands.vectorInfo();
-            // dispatch is only reached from the one-line form; the interactive prompt has its
-            // own idea of an unknown command
-            default -> throw new UsageException("Unknown command: " + command,
-                    "Run 'help' to see every command.");
-        }
-    }
-
     private void print(String text) {
         System.out.println(text);
     }

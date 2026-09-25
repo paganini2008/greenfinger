@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import com.github.greenfinger.core.ManagedBeanLifeCycle;
 import com.github.greenfinger.core.catalog.CatalogDetails;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * In-memory counters for one crawl. 1.x kept these in Redis because several nodes shared them; a
@@ -43,8 +44,8 @@ public class DefaultDashboard implements Dashboard, ManagedBeanLifeCycle {
     final AtomicLong totalUrlCount = new AtomicLong(0);
     final AtomicLong handledUrlCount = new AtomicLong(0);
     final AtomicLong invalidUrlCount = new AtomicLong(0);
-    final java.util.concurrent.atomic.AtomicInteger consecutiveFailures =
-            new java.util.concurrent.atomic.AtomicInteger(0);
+    final AtomicInteger consecutiveFailures =
+            new AtomicInteger(0);
     volatile String lastFailure = "";
     final AtomicLong existingUrlCount = new AtomicLong(0);
     final AtomicLong filteredUrlCount = new AtomicLong(0);

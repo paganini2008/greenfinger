@@ -45,19 +45,13 @@ import com.github.greenfinger.core.engine.CrawlTask;
 import com.github.greenfinger.core.utils.ThreadUtils;
 
 /**
- * The default engine: a plain http fetch, for the great majority of pages whose content is in the
- * response rather than assembled by script.
+ * The default engine: a plain http fetch, for the majority of pages whose content is in the
+ * response rather than assembled by script. {@code RestClient} over a pooled Apache HttpClient 5,
+ * so connections are reused across the thousands of requests a crawl makes against one host.
  *
  * <p>
- * Built on {@code RestClient} over Apache HttpClient 5. 1.x used {@code RestTemplate} with
- * {@code SimpleClientHttpRequestFactory}, which opens a fresh TCP connection per request and offers
- * no cookie store; a pooled client reuses connections across the thousands of requests a crawl
- * makes against one host.
- *
- * <p>
- * The body is read as bytes and decoded deliberately -- by the response's own charset when it
- * declares one, otherwise by the catalog's configured page encoding. 1.x forced UTF-8 on every
- * response, which turned any GBK or Shift-JIS page into mojibake.
+ * The body is read as bytes and decoded by the response's own charset, falling back to the
+ * catalog's page encoding -- forcing UTF-8 turns any GBK or Shift-JIS page into mojibake.
  * 
  * @Description: RestClientExtractor
  * @Author: Fred Feng
@@ -172,29 +166,16 @@ public class RestClientExtractor extends AbstractExtractor
                 // the site kept its word; carry the same validators forward
                 return FetchedPage.notModified(conditions);
             }
-            // Success is the 2xx range, and anything outside it is an invalid url.
-            //
-            // The status is the one at the end of the chain, not the first on it. Redirects are
-            // followed by the http client (followRedirects, on by default), so a page behind a
-            // 301 or a 302 arrives here as the 200 it finally answered with and is kept. A 3xx
-            // only reaches this line when redirects are off or the chain ran out, and then it
-            // really is a url that served nothing.
-            //
-            // 304 is handled above and is not a failure: it is the site answering the
-            // conditional request an update sent, which means the page has not changed.
+            // Success is 2xx; anything else is an invalid url. This is the status at the end of
+            // the redirect chain, so a 3xx here means redirects are off or the chain ran out.
+            // 304 is handled above -- the site answering an update's conditional request.
             if (!response.getStatusCode().is2xxSuccessful()) {
                 throw new ExtractorException(url, response.getStatusCode());
             }
             HttpHeaders responseHeaders = response.getHeaders();
-            // A 200 is not the same as a page. Sites link straight at their own pictures and
-            // their own pdfs -- apod.nasa.gov links every day's photograph that way -- and those
-            // links are in scope, pass every filter and answer 200. Decoded as text, a jpeg
-            // becomes a "page" with no title and half a megabyte of mojibake, which is then
-            // written to disk, counted against maxFetchSize and put into the search index.
-            //
-            // Images are fetched by the image pipeline, from the <img> tags that point at them,
-            // and this is not that. So anything that is not markup is refused here, and refused
-            // as an invalid url, because for a crawler of pages that is exactly what it is.
+            // A 200 is not the same as a page. Sites link straight at their own jpegs and pdfs,
+            // which pass every filter and answer 200; decoded as text a jpeg becomes half a
+            // megabyte of mojibake in the index. Images come from the <img> pipeline instead.
             requireMarkup(url, responseHeaders.getContentType());
             Charset charset = charsetOf(responseHeaders, fallback);
             try (InputStream in = response.getBody()) {
@@ -211,12 +192,8 @@ public class RestClientExtractor extends AbstractExtractor
     }
 
     /**
-     * Refuses a body that is not markup.
-     *
-     * <p>
-     * A missing Content-Type is allowed through: it is rare, it is usually html, and refusing it
-     * would drop pages from servers that are merely old. Everything that does declare itself has
-     * to declare itself as html, xhtml, xml or plain text.
+     * Refuses a body that is not markup. A missing Content-Type is allowed through -- rare, usually
+     * html, and refusing it would drop pages from servers that are merely old.
      */
     private void requireMarkup(String url, MediaType contentType) {
         if (contentType == null) {

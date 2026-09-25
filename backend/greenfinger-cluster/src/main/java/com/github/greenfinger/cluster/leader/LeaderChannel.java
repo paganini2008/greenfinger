@@ -36,29 +36,20 @@ import com.github.greenfinger.core.WebCrawlerException;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * One request, to whoever holds the cluster port, and the answer back.
+ * One request, to whoever holds the cluster port, and the answer back -- the shape
+ * {@code CacheService} uses for its own writes: read {@link GossipCluster#leader()} at the moment
+ * of the call, run it locally if that is this node, otherwise unicast and wait. Nothing caches who
+ * the leader is, because leadership moves.
  *
  * <p>
- * The shape is the one {@code CacheService} already uses for its own writes, which is where it
- * was taken from: read {@link GossipCluster#leader()} at the moment of the call, run it here if
- * that is this node, otherwise unicast it and wait for the reply. Nothing caches who the leader
- * is -- leadership moves, and a cached answer is how a write ends up at a node that has stopped
- * being the one that performs them.
+ * Three transient failures are retried by reading the leader again: nobody holds the port mid
+ * election, the message is lost, or the node answers that it is no longer leader. A handler that
+ * threw for its own reason -- a name already taken -- is not, since the answer would be the same.
  *
- * <h2>Retrying, and what is not worth retrying</h2>
- * Three things are ordinary and transient: the port is briefly held by nobody while an election
- * settles, the message does not reach the node, and the node replies that it is no longer the
- * leader. All three are answered by reading the leader again and asking again, a bounded number
- * of times. A handler that threw for a reason of its own -- a name already taken, a version that
- * is being crawled -- is not retried: asking the same node the same question would get the same
- * answer, and the caller wants the answer rather than the delay.
- *
- * <h2>The request id</h2>
- * Carried so that a reply can be matched to the caller waiting for it, and reused across the
- * retries of one call so that the leader can recognise a message it has already seen. What the
- * operations behind this gateway have in common is that repeating one is harmless -- saving the
- * same row again, deleting something that is already gone -- which is what makes at-least-once
- * delivery an acceptable contract here.
+ * <p>
+ * The request id matches a reply to its caller and is reused across retries so the leader can spot
+ * a message it has seen. Every operation here is safe to repeat, which is what makes at-least-once
+ * acceptable.
  *
  * @Description: LeaderChannel
  * @Author: Fred Feng
@@ -86,12 +77,8 @@ public class LeaderChannel
     }
 
     /**
-     * One shape for both directions, with a field that says which it is.
-     *
-     * <p>
-     * Both travel on one channel, and a listener has to tell them apart before it can read them.
-     * Deciding that from which fields happen to be present is the kind of thing that works until
-     * somebody adds a field; a discriminator says it outright.
+     * One shape for both directions, with a field saying which it is -- both travel on one channel,
+     * and inferring the direction from which fields are present works until somebody adds one.
      *
      * @param ask       true for a request, false for the answer to one
      * @param notLeader set on an answer, and told apart from an ordinary failure because only

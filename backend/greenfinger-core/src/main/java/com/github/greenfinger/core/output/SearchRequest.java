@@ -19,6 +19,7 @@ package com.github.greenfinger.core.output;
 import lombok.Builder;
 import lombok.Singular;
 import lombok.Getter;
+import java.util.List;
 
 /**
  * 
@@ -47,7 +48,7 @@ public class SearchRequest {
      * search across several of them is an any-of match on this one field, which is also exactly how
      * the vector store is queried.
      */
-    private final java.util.List<String> catalogVersions;
+    private final List<String> catalogVersions;
 
     /**
      * Rank detail pages above listings. On by default: a listing matches the same words as the
@@ -65,7 +66,7 @@ public class SearchRequest {
      * carries the sort values of its last hit, and the next page resumes from there. Cost stays
      * flat however deep the paging goes, which {@code from} never does.
      */
-    private final java.util.List<Object> cursor;
+    private final List<Object> cursor;
 
     @Builder.Default
     private final int page = 1;

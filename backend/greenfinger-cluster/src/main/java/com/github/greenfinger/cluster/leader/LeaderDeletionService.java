@@ -35,26 +35,16 @@ import com.github.greenfinger.service.DeletionBroadcast;
 import com.github.greenfinger.service.DeletionService;
 
 /**
- * A delete, performed by the leader wherever it was asked for.
+ * A delete, performed by the leader wherever it was asked for. A delete is four deletes -- rows,
+ * files, index, vectors -- across stores each node copies, and two of the four cannot replicate at
+ * all; run wherever the request landed, four nodes could empty one catalog at once. The leader's
+ * own execution removes the replicating layers and every node removes the other two when told, so
+ * "who deleted this" has one answer.
  *
  * <p>
- * A delete is four deletes -- rows, files, index, vectors -- across stores that each node has its
- * own copy of, and two of those four cannot replicate themselves at all. Running it wherever the
- * request happened to land meant four different nodes could be emptying the same catalog at once,
- * each announcing what it had done to the others. One node does it and tells everybody, which is
- * the same rule the catalog rows follow, for the same reason.
- *
- * <p>
- * The detail that made this worth routing rather than merely announcing: the layers that do
- * replicate are removed by the leader's own execution, and the two that do not -- the embedded
- * index and the RocksDB directories -- are removed by every node when the leader says so. Both
- * halves then have one origin, and "who deleted this" has one answer.
- *
- * <h2>What crosses the wire</h2>
- * The catalog's id and what was asked for, not the {@code CatalogDetails}: that is a view over a
- * row plus the configuration in force, and the leader has both. Reloading it there also means the
- * delete runs against the leader's idea of the catalog rather than a follower's, which is the one
- * that matters.
+ * Only the catalog id and the request cross the wire, not {@code CatalogDetails}: the leader has
+ * the row and the configuration, and reloading there means the delete runs against the leader's
+ * idea of the catalog.
  *
  * @Description: LeaderDeletionService
  * @Author: Fred Feng

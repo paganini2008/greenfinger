@@ -52,22 +52,18 @@ import com.github.greenfinger.core.utils.UrlUtils;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Set;
+import com.github.greenfinger.core.model.OutputType;
 
 /**
  * Runs one crawl to completion.
  *
  * <p>
- * A crawl is a recursive function -- handle a page, then handle every link on it -- and this class
- * is that function with a queue in the middle of the recursive call, so that the call can be made
- * by a different thread, or by a different process. Take a url from the frontier, hand it to a
- * worker, and give whatever links it yields to the {@link CrawlCoordinator}, which decides where
- * the next call happens: this node's frontier, or a peer's.
- *
- * <p>
- * That is also why the loop does not decide on its own when to stop. An empty frontier means this
- * node has nothing to do right now, not that the crawl is over -- a peer may hand it more work a
- * millisecond later. The coordinator answers that question, and for a single process it answers
- * it the plain way.
+ * A crawl is a recursive function -- handle a page, then handle its links -- with a queue in the
+ * middle of the recursive call, so the call can be made by another thread or another process. The
+ * {@link CrawlCoordinator} decides where the next one happens, and also when it is over: an empty
+ * frontier means this node has nothing to do right now, not that the crawl has finished.
  * 
  * @Description: CrawlerEngine
  * @Author: Fred Feng
@@ -101,8 +97,8 @@ public class CrawlerEngine {
     private final boolean refresh;
 
     /** Stands in for the persistent url filter during a refresh, which bypasses it. */
-    private final java.util.Set<String> visitedThisRun =
-            java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private final Set<String> visitedThisRun =
+            ConcurrentHashMap.newKeySet();
     private final PageParser pageParser;
     private final ImageFetcher imageFetcher;
     private final ResourceRecordStore recordStore;
@@ -122,11 +118,8 @@ public class CrawlerEngine {
     private final AtomicLong fetchesSucceeded = new AtomicLong(0);
 
     /**
-     * This run's worker count, overriding the configured one. Zero to use the configuration.
-     *
-     * <p>
-     * Per run rather than per catalog: how many threads to give a crawl is a property of the
-     * machine it is running on and of what else that machine is doing, not of the site.
+     * This run's worker count, overriding the configured one; zero to use the configuration. Per
+     * run rather than per catalog: it is a property of the machine, not of the site.
      */
     @lombok.Setter
     private int workThreads;
@@ -167,11 +160,8 @@ public class CrawlerEngine {
     }
 
     /**
-     * Seeds the frontier when it is empty and crawls until the coordinator says it is over.
-     *
-     * <p>
-     * A frontier that already holds urls is a crawl that was interrupted, so it is resumed rather
-     * than restarted and the seed is not added again.
+     * Seeds the frontier when it is empty and crawls until the coordinator says it is over. A
+     * frontier that already holds urls is an interrupted crawl, so it resumes rather than restarts.
      *
      * @param seed where to start, or null for a node joining a crawl that is already under way --
      *        it has no entry point of its own and works on whatever it is sent.
@@ -188,13 +178,9 @@ public class CrawlerEngine {
             log.info("Resuming catalog '{}' with {} url(s) left from the previous run.",
                     catalogDetails.getName(), recovered);
         } else {
-            // The entry point is asked the same question every link it finds will be asked.
-            //
-            // It used to be exempt, and the exemption was wrong in the one case that matters: a
-            // site whose robots.txt says "Disallow: /" refuses every link on the page, so the
-            // crawl fetched exactly one page -- the one the rules forbade most plainly -- stored
-            // its text and its images, and published the result. Being told no is not a reason
-            // to take the first page anyway.
+            // The entry point is asked the same question every link will be asked. Exempting it
+            // meant a site saying "Disallow: /" got exactly one page crawled -- the one it
+            // forbade most plainly -- and published.
             String refusedBy = context.rejectedBy(seed.getReferUrl(), seed.getUrl(), seed);
             if (refusedBy != null) {
                 String reason = String.format(
@@ -205,10 +191,8 @@ public class CrawlerEngine {
                 stateManager.interrupt(reason);
                 return finish(catalogDetails, stateManager, frontier);
             }
-            // The seed skips the dedup gate rather than the dispatch. On an incremental update
-            // its url has been seen before, and refusing to revisit the entry point would mean
-            // never discovering what has been added to it since -- but it is still one url that
-            // somebody has to fetch, so it is counted and routed like any other.
+            // The seed skips the dedup gate, not the dispatch: on an update its url has been
+            // seen, and refusing it would mean never finding what has been added since.
             context.getExistingUrlPathFilter().mightExist(seed.getUrl());
             coordinator.dispatch(seed);
             log.info("Starting catalog '{}' from {}", catalogDetails.getName(), seed.getUrl());
@@ -237,10 +221,8 @@ public class CrawlerEngine {
                 }
                 CrawlTask task = frontier.poll();
                 if (task == null) {
-                    // An empty frontier here is not the end of anything. This node may simply have
-                    // handed its share to a peer, and even alone it means only that no url is
-                    // queued at this instant. Whether the crawl is over is decided against the
-                    // shared counters, by the checkers and the watchdog, so this waits for them.
+                    // An empty frontier is not the end of anything -- this node may have handed
+                    // its share to a peer. The counters decide, so this waits for them.
                     ThreadUtils.sleep(IDLE_POLL_INTERVAL);
                     continue;
                 }
@@ -251,24 +233,19 @@ public class CrawlerEngine {
                     try {
                         handled = handle(task);
                     } catch (Throwable e) {
-                        // Throwable rather than Exception on purpose. Nobody reads the future
-                        // this returns, so whatever is not caught here is lost in silence -- and
-                        // the failures that arrive as an Error rather than an Exception are
-                        // exactly the ones worth seeing, an engine missing from the classpath
-                        // being the one that cost a morning.
+                        // Throwable, not Exception: nobody reads this future, so anything not
+                        // caught is lost in silence -- including a missing engine on the
+                        // classpath, which arrives as an Error.
                         failures.incrementAndGet();
                         if (log.isErrorEnabled()) {
                             log.error("Failed to handle '{}': {}", task.getUrl(), e.getMessage(),
                                     e);
                         }
                     } finally {
-                        // A task abandoned rather than concluded stays in the frontier, so a
-                        // later resume picks it up instead of losing the page for good. It is
-                        // still reported handled, and that is not a contradiction: the counters
-                        // answer "is anything still owed in this run", and this url is not --
-                        // it left the queue, no worker will see it again before the run ends,
-                        // and leaving it unanswered idles the crawl until the watchdog gives up
-                        // on a node that never went anywhere.
+                        // An abandoned task stays in the frontier for a resume, and is still
+                        // reported handled: the counters answer "is anything still owed in this
+                        // run", and leaving it unanswered would idle the crawl until the
+                        // watchdog gave up.
                         if (handled) {
                             completeQuietly(frontier, task);
                         }
@@ -287,19 +264,14 @@ public class CrawlerEngine {
             coordinator.close();
             outputChannel.flush();
             outputChannel.close();
-            // A safety net, not the decision. Reaching here with the crawl still marked running
-            // means the loop left for a reason nobody recorded -- an exception on the way out --
-            // so the run is ended and marked an intervention, which is what it was. When a
-            // checker or the watchdog got here first this writes nothing: the reason is kept by
-            // whoever wrote it.
+            // A safety net, not the decision: still running here means the loop left for a
+            // reason nobody recorded. Writes nothing if a checker got here first.
             if (!stateManager.isCompleted()) {
                 stateManager.interrupt("the run ended without reaching a limit");
             }
-            // A crawl that read nothing has nothing to publish, however tidily it ended. One url
-            // behind a challenge is the whole crawl: the 403 leaves no links to follow, so the
-            // frontier drains, the counters agree, and the watchdog calls it a site that ran out
-            // of urls -- which would publish an empty version over a good one. There is no
-            // threshold to cross here because there was never more than one request to make.
+            // A crawl that read nothing has nothing to publish, however tidily it ended: one
+            // url behind a challenge drains the frontier with the counters agreeing, and an empty
+            // version would go over a good one.
             if (fetchesAttempted.get() > 0 && fetchesSucceeded.get() == 0) {
                 String reason = String.format(
                         "not one of %d fetch(es) came back with a page; nothing was read and "
@@ -319,12 +291,9 @@ public class CrawlerEngine {
     }
 
     /**
-     * The same ending whichever way the run got here.
-     *
-     * <p>
-     * Reached twice: after the loop, and by the entry point being refused before there was a loop
-     * to run. Nothing in it touches the workers or the output channel, so it is safe on the path
-     * where neither was ever created.
+     * The same ending whichever way the run got here -- after the loop, or the entry point being
+     * refused before there was one. Touches neither the workers nor the output channel, so it is
+     * safe where neither was created.
      */
     private Result finish(CatalogDetails catalogDetails, GlobalStateManager stateManager,
             CrawlFrontier frontier) throws Exception {
@@ -345,13 +314,9 @@ public class CrawlerEngine {
     }
 
     /**
-     * Counts a fetch that came back as nothing, and ends the crawl once enough of them have come
-     * back in a row.
-     *
-     * <p>
-     * Ended the way a person asking for it is: interrupted, so the version is not published. A
-     * crawl that could not read the site has nothing worth publishing, and calling it a completion
-     * would replace a good previous version with an empty one.
+     * Counts a fetch that came back as nothing, and ends the crawl once enough have in a row --
+     * as an interruption, so nothing is published: calling it a completion would replace a good
+     * version with an empty one.
      */
     private void noteFailedFetch(CrawlTask task, Exception e) {
         int limit = webCrawlerProperties.getMaxConsecutiveFailures();
@@ -521,10 +486,8 @@ public class CrawlerEngine {
             }
         }
 
-        // Re-check right before the write. The dispatcher runs ahead of the workers, so a limit
-        // that fires while this page was in flight would otherwise be overshot by the whole
-        // in-flight batch rather than by at most one page per worker. Reporting the task as
-        // unhandled leaves it in the frontier for a resume to finish.
+        // Re-checked before the write: the dispatcher runs ahead, so a limit that fires
+        // mid-flight would be overshot by the whole batch rather than by one page per worker.
         if (context.checkCompletion()) {
             stateManager.incrementCount(task.getTimestamp(), CountingType.ABANDONED_URL_COUNT);
             return false;
@@ -539,13 +502,13 @@ public class CrawlerEngine {
         }
         outputChannel.write(new OutputPayload(catalogDetails, record, page));
         stateManager.incrementCount(task.getTimestamp(), CountingType.SAVED_RESOURCE_COUNT);
-        if (catalogDetails.hasOutput(com.github.greenfinger.core.model.OutputType.INDEX)) {
+        if (catalogDetails.hasOutput(OutputType.INDEX)) {
             // counted here rather than inside the channel, which has no state manager. Nothing
             // incremented this until 2026-09-02, so the Monitor page reported "0 indexed" through
             // every crawl that indexed perfectly well
             stateManager.incrementCount(task.getTimestamp(), CountingType.INDEXED_RESOURCE_COUNT);
         }
-        if (catalogDetails.hasOutput(com.github.greenfinger.core.model.OutputType.VECTOR)) {
+        if (catalogDetails.hasOutput(OutputType.VECTOR)) {
             // and its counterpart, for the same reason: two outputs that can each be off, behind
             // or failing on their own need two numbers, or a crawl reports the healthy one
             stateManager.incrementCount(task.getTimestamp(), CountingType.VECTORED_RESOURCE_COUNT);
@@ -559,13 +522,9 @@ public class CrawlerEngine {
     }
 
     /**
-     * Adds a url to the frontier unless it has been seen before.
-     *
-     * <p>
-     * Deduplication happens here, on the way in, rather than on the way out. A task taken from the
-     * frontier is then known to be unique, so one that does not finish can simply be left there and
-     * retried -- whereas checking on the way out would have already recorded the url, and a retry
-     * would find it "seen" and skip it.
+     * Adds a url to the frontier unless it has been seen. Deduplicated on the way in, so a task
+     * that does not finish can be left there and retried -- checking on the way out would have
+     * recorded it, and the retry would skip it.
      */
     private void enqueue(CrawlTask task) throws Exception {
         // On a refresh the persistent filter is deliberately bypassed -- its whole purpose is to
@@ -589,12 +548,9 @@ public class CrawlerEngine {
     }
 
     /**
-     * Whether this page says the same thing it said last time.
-     *
-     * <p>
-     * Compared against the fingerprint stored for this url, not against the global content filter:
-     * that filter answers "have I seen these words anywhere", which on a refresh is true of every
-     * page and would discard the whole site.
+     * Whether this page says what it said last time. Against the fingerprint stored for this
+     * url, not the global content filter -- that answers "seen these words anywhere", which on a
+     * refresh is true of every page.
      */
     private boolean isUnchanged(Optional<PageState> lastCrawl, String text) {
         String fingerprint = context.getContentDedupFilter().fingerprint(text);
@@ -628,23 +584,13 @@ public class CrawlerEngine {
      * A site with no sitemap costs one request that returns 404.
      */
     /**
-     * The database write, and the two ways another writer can interfere with it.
+     * The database write, and the two ways another writer interferes with it.
      *
      * <p>
-     * A duplicate is not a failure. Delivery is at-least-once, so the same url can reach two
-     * workers, both find no row and both insert; the unique constraint is exactly what settles
-     * that, and the one that loses has nothing left to do because the page the winner wrote is the
-     * page it was about to write. It is counted as seen before rather than logged with a stack
-     * trace, which reads like data loss and is a duplicate being refused correctly.
-     *
-     * <p>
-     * A busy database is not a failure either, only a "not yet". SQLite locks the whole file to
-     * write, so two workers finishing within the same millisecond means one of them is told the
-     * database is locked -- and Spring's own name for that class of exception is transient, which
-     * says what to do about it. Letting it through loses the page for good: the url is reported
-     * unhandled, the counters never meet, and at the end the run is declared stalled and publishes
-     * nothing. Measured on the twelve page regression site, four threads on SQLite lost two pages
-     * out of six without this.
+     * A duplicate is not a failure: delivery is at-least-once, the unique constraint settles it,
+     * and the loser's page is the one the winner just wrote. A busy database is a "not yet" --
+     * SQLite locks the whole file, and letting that through loses the page, which shows up at the
+     * end as a stalled run that publishes nothing.
      *
      * @return the record, or null when this url was already written by somebody else
      */
@@ -700,18 +646,11 @@ public class CrawlerEngine {
 
     /**
      * Queues every page the last crawl saved, so a merge revisits what it knows rather than
-     * rediscovering it.
+     * rediscovering it by following links -- which fails for a page dropped from the navigation,
+     * and for a 304, which carries no body and so no links.
      *
      * <p>
-     * A merge used to reach its pages by following links from the entry point, which works only
-     * while every page is still linked from somewhere. Two things break that. A page dropped from
-     * the site's navigation would silently stop being merged, though it is still there and still
-     * indexed. And a conditional request answered with 304 carries no body, so there are no links
-     * on it to follow -- the first unchanged page would end the traversal.
-     *
-     * <p>
-     * Only for a refresh. A plain update is looking for what has appeared since, and the pages it
-     * already has are precisely the ones it is entitled to skip.
+     * Only for a refresh: a plain update wants what has appeared since.
      */
     private void seedFromLastCrawl(CrawlTask seed, CatalogDetails catalogDetails) {
         if (!refresh) {
@@ -784,29 +723,18 @@ public class CrawlerEngine {
         private final long remaining;
 
         /**
-         * Urls the crawl dispatched and nobody reported finishing, across every node.
-         *
-         * <p>
-         * Zero is the ordinary ending. Non-zero has three causes and they are worth telling
-         * apart: a limit fired and the rest were left queued; the crawl was interrupted; or a node
-         * stopped answering while holding work. All three end the same way -- what was crawled is
-         * whole, and what was not is still on a frontier somewhere, so {@code update} picks it up
-         * without re-fetching anything already saved.
+         * Urls dispatched that nobody reported finishing. Non-zero means a limit fired, the
+         * crawl was interrupted, or a node stopped answering -- and all three leave the rest on a
+         * frontier, so {@code update} picks them up without re-fetching.
          */
         private final long outstanding;
 
         private final long failures;
 
         /**
-         * Whether the crawl reached an ending of its own -- it ran out of urls, a limit fired, or
-         * the cluster gave up on urls a departed node was holding -- rather than being stopped
-         * from outside by Ctrl+C or the interrupt command.
-         *
-         * <p>
-         * It is what decides whether the version is published. A crawl that ended on its own
-         * terms has produced everything it was ever going to produce, so serving it is better
-         * than serving the older version, even when some urls were left over; a crawl somebody
-         * stopped halfway has not, and the previous version stays.
+         * Whether the crawl reached an ending of its own rather than being stopped from outside.
+         * It decides whether the version is published: one that ended on its own terms has
+         * produced all it was going to, and one somebody stopped halfway has not.
          */
         private final boolean selfTerminated;
 

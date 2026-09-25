@@ -28,25 +28,16 @@ import com.github.greenfinger.output.RestJsonClient;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Vectors in Elasticsearch, beside the full text index rather than in a second server.
+ * Vectors in Elasticsearch, beside the full text index rather than in a second server: a deployment
+ * already running it for the index would otherwise install, watch, back up and upgrade a vector
+ * database for one field per document. {@code dense_vector} and {@code knn} have been there since
+ * 8.x, over the same Lucene HNSW the embedded store uses.
  *
- * <h2>Why this exists when Qdrant does</h2>
- * A deployment that already runs Elasticsearch for the index is one service away from running a
- * vector database as well, and that service has to be installed, watched, backed up and upgraded
- * for one field per document. Elasticsearch has held {@code dense_vector} and answered {@code knn}
- * since 8.x, over the same Lucene HNSW the embedded store uses -- so this is not a lesser engine,
- * it is the engine already there.
- *
- * <h2>Same addressing as everywhere else</h2>
- * A collection is an index, named for the embedding width the way the Qdrant and Weaviate
- * collections are ({@code greenfinger_text_384}), so two models never share a space and never have
- * to be told apart. Which catalog and which version a vector belongs to is a keyword field on the
- * document, filtered at query time. Nothing about the layout is specific to this store, which is
- * what makes moving between the four a setting rather than a re-crawl.
- *
- * <h2>Deleting</h2>
- * Delete by query, and refreshed: the count that follows a delete is read by a person deciding
- * whether it worked, and an unrefreshed index would answer with what was true a second ago.
+ * <p>
+ * Addressed like the others -- a collection is an index named for the embedding width
+ * ({@code greenfinger_text_384}), with catalog and version as filtered keyword fields -- which is
+ * what makes moving between the four stores a setting rather than a re-crawl. Deletes go by query
+ * and are refreshed, since the count after a delete is read by a person deciding whether it worked.
  *
  * @Description: ElasticsearchVectorStore
  * @Author: Fred Feng

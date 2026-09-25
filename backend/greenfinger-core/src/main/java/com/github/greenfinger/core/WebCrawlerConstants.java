@@ -17,6 +17,9 @@
 package com.github.greenfinger.core;
 
 import java.util.List;
+import org.openqa.selenium.WebDriver;
+import org.htmlunit.WebClient;
+import com.microsoft.playwright.Playwright;
 
 /**
  * 
@@ -61,9 +64,9 @@ public abstract class WebCrawlerConstants {
      * The browser engines are optional dependencies. These are the classes whose presence says one
      * is actually on the classpath.
      */
-    public static final String CLASS_HTMLUNIT = "org.htmlunit.WebClient";
-    public static final String CLASS_PLAYWRIGHT = "com.microsoft.playwright.Playwright";
-    public static final String CLASS_SELENIUM = "org.openqa.selenium.WebDriver";
+    public static final String CLASS_HTMLUNIT = "WebClient";
+    public static final String CLASS_PLAYWRIGHT = "Playwright";
+    public static final String CLASS_SELENIUM = "WebDriver";
 
     /**
      * Which browser to reach for when the configured one is not on the classpath, best first.

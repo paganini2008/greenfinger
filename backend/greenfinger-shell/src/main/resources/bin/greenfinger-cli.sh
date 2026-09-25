@@ -4,24 +4,33 @@
 #
 # Nothing has to be installed: the metadata goes into an H2 file and the pages onto disk.
 #
-# This is the one-shot face: it runs the command on the line and exits. For a session that stays
-# open -- one jvm, many commands, the greenfinger:> prompt -- run ./greenfinger-face.sh instead.
-# The two are the same program and read the same data; they differ only in how long they live.
+# This is the one-shot face, and it runs the crawl verbs: the things a cron entry, a deploy script
+# or somebody's runbook asks for. A verb, an exit code, no questions.
 #
-# Quick start -- define a catalog by answering questions, then run it:
+#     ./greenfinger-cli.sh catalog-crawl --id=<id>     # crawl from the start url
+#     ./greenfinger-cli.sh update --id=<id>            # the urls that have appeared since
+#     ./greenfinger-cli.sh merge --id=<id>             # update, revisiting what is already held
+#     ./greenfinger-cli.sh rebuild --id=<id>           # a new version, the whole site again
+#     ./greenfinger-cli.sh replay --id=<id> --layers=index
+#     ./greenfinger-cli.sh resume --id=<id>            # continue after a pause
+#     ./greenfinger-cli.sh pause --id=<id>
+#     ./greenfinger-cli.sh help                        # these verbs, and nothing else
+#
+# Everything else the shell can do -- catalogs, versions, reports, search, the state of the index
+# and the vectors, deleting things -- is looking at the installation rather than working it, and
+# lives in the prompt, which is the same program with a session around it:
 #
 #     ./greenfinger-face.sh                    # the prompt
 #     greenfinger:> catalog-save               # one question per setting
 #     greenfinger:> catalog-crawl --id=<id>    # the id it printed
 #
-# One line at a time instead of the prompt:
+# The prompt is what the page is, at a terminal: it has everything the page has. Asking this form
+# for one of those commands is refused by name and points at the prompt, rather than quietly doing
+# nothing -- a script that asked for something is entitled to know it did not happen.
 #
-#     ./greenfinger-cli.sh catalog-list
-#     ./greenfinger-cli.sh catalog-crawl --id=<id>
-#     ./greenfinger-cli.sh update --id=<id> --refresh=true
-#     ./greenfinger-cli.sh delete --id=<id> --keep-latest=3
-#     ./greenfinger-cli.sh options             # every catalog setting and its default
-#     ./greenfinger-cli.sh help                # every command
+# Anything that goes wrong stops the command and exits non-zero: a catalog id that is not there,
+# a crawl already running, an option that makes no sense. There is nothing to ask, so there is
+# nothing to carry on with.
 #
 # Every option is long form, and the catalog is always addressed by its id.
 #
@@ -31,7 +40,7 @@
 # describe the installation rather than the command, and a run that has to be reproduced tomorrow
 # is the normal case here. A one-off is still a one-off:
 #
-#     GF_DATA_STORE=/var/gf ./greenfinger-cli.sh catalog-list
+#     GF_DATA_STORE=/var/gf ./greenfinger-cli.sh catalog-crawl --id=<id>
 #
 # More than one process on this machine:
 #
@@ -79,7 +88,7 @@ drop_empty_gf() {
 #   GF_WORKER_ROOT     where extra local nodes keep theirs, when --node asks for more than one
 #
 # What the caller already exported is put back afterwards, so `GF_DATA_STORE=/tmp/x ./greenfinger-cli.sh
-# catalog-list` is still a one-off. `export -p` rather than an associative array: bash 4, and
+# catalog-crawl` is still a one-off. `export -p` rather than an associative array: bash 4, and
 # macOS ships 3.2.
 if [[ -f "${SCRIPT_DIR}/run.conf" ]]; then
   # `declare -x` rather than `export` is what `export -p` prints, and `declare` inside a function

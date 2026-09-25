@@ -32,15 +32,13 @@ import lombok.ToString;
  * One url crawled at one version. Metadata only.
  *
  * <p>
- * 1.x kept the whole page here, in {@code html}. Crawling a hundred thousand pages made that one
- * column tens of gigabytes, and neither of the database's two jobs -- driving the crawl, and
- * letting someone look at what was collected -- needs the body. So the body lives in the file
- * store and this row points at it.
+ * The body lives in the file store and this row points at it: neither of the database's jobs --
+ * driving the crawl, showing what was collected -- needs it, and a hundred thousand pages made 1.x's
+ * {@code html} column tens of gigabytes.
  *
  * <p>
- * {@code url_hash} exists because of MySQL. 1.x put its unique constraint straight on
- * {@code url varchar(1000)}, which works on PostgreSQL but exceeds InnoDB's 3072 byte index key
- * limit under utf8mb4. The hash is a fixed 64 characters, and it is also the input the id is
+ * {@code url_hash} exists because a unique constraint on {@code url varchar(1000)} exceeds InnoDB's
+ * 3072 byte key limit under utf8mb4. The hash is a fixed 64 characters, and it is what the id is
  * derived from.
  * 
  * @Description: Resource

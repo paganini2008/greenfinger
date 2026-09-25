@@ -43,27 +43,18 @@ import com.github.greenfinger.service.ReplayService;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * The one thing about a crawl that is nobody's business but the cluster's: who joins it.
+ * Who joins a crawl.
  *
- * <h2>Joining</h2>
- * A crawl is started on one node by a command. That node announces it, and every other node opens
- * its own half -- the same components, the same output channels, the same worker loop, just
- * without the entry point. Without this, urls dispatched to a peer would arrive at a process that
- * has no frontier to put them on.
+ * <p>
+ * It is started on one node, which announces it; every other node opens its own half -- same
+ * components, same output channels, no entry point. Without that, a url dispatched to a peer
+ * arrives at a process with no frontier to put it on.
  *
- * <h2>Nobody decides it is over</h2>
- * Not here, and not on the leader. Whether the crawl has reached {@code maxFetchSize} or run out
- * of {@code fetchDuration} is a question about the shared counters, so every node asks it of the
- * same numbers and reaches the same answer; the first to notice writes the flag and the reason
- * beside those counters, and the others read it on their next tick. That is how 1.x worked, with
- * Redis where this has the cluster cache, and it is why this class has no supervisor: a leader
- * that judged completion would be a single point of failure for a decision that does not need
- * one, and it would only ever see the crawls it happened to be taking part in.
- *
- * <h2>What the leader is still for</h2>
- * Publishing the search version, and that is all -- see {@code ClusterCrawlCoordinator}. It is not
- * a correctness mechanism either: publishing is idempotent, and doing it on the leader only avoids
- * three nodes writing the same row three times.
+ * <p>
+ * Nobody decides it is over, here or on the leader: the limits are questions about shared counters,
+ * so every node reaches the same answer and the first to notice writes the flag. The leader's only
+ * part in a crawl is publishing the search version, which is idempotent and merely avoids three
+ * nodes writing one row; administrative writes are separate -- see {@code LeaderCatalogStore}.
  * 
  * @Description: CrawlCluster
  * @Author: Fred Feng

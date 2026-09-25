@@ -23,33 +23,14 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
 /**
- * Decides whether html that came back from a plain http fetch is the page, or only the shell that
- * javascript was supposed to fill in.
+ * Decides whether plain-http html is the page, or only the shell javascript was to fill in.
  *
  * <p>
- * The question is worth asking because the answer is usually no. Rendering every page in a browser
- * to catch the few that need it costs an order of magnitude in time and memory, and most of the web
- * is still served whole. So the crawler fetches cheaply first and pays for a browser only when what
- * came back looks empty.
- *
- * <p>
- * Three signals, any one of which is enough:
- *
- * <ul>
- * <li>An <b>app shell</b>: a container the frameworks all mount into, sitting empty. {@code <div
- * id="root"></div>} is React's, {@code <div id="app">} Vue's, {@code ng-app} Angular's.</li>
- * <li>A <b>noscript notice</b> telling a human to enable javascript, which is the site saying so
- * itself.</li>
- * <li><b>Scripts without prose</b>: a page whose markup is mostly script tags and whose body holds
- * almost no text. On its own this is weak -- an image gallery looks the same -- so it needs the
- * text to be very short indeed.</li>
- * </ul>
- *
- * <p>
- * The cost of being wrong is asymmetric, and the thresholds lean accordingly: a false positive
- * costs one wasted browser render, while a false negative silently stores an empty page. Even so
- * they are deliberately conservative, because a crawl that renders everything is no better than
- * configuring the browser engine outright.
+ * Rendering everything in a browser costs an order of magnitude, so fetch cheaply first and pay for
+ * a browser only when the result looks empty. Any one of three signals is enough: an empty app
+ * shell ({@code id="root"}, {@code id="app"}, {@code ng-app}), a noscript notice, or scripts with
+ * almost no prose. Thresholds lean conservative -- a false positive costs one wasted render, a
+ * false negative silently stores an empty page.
  * 
  * @Description: RenderingDetector
  * @Author: Fred Feng
@@ -138,18 +119,8 @@ public class RenderingDetector {
     }
 
     /**
-     * Scripts and no words.
-     *
-     * <p>
-     * The bar is one script, not several: a page that shipped almost no text and any javascript at
-     * all is worth a second look. Real pages do this -- a template rendered by a few lines of
-     * inline script carries no framework marker and no noscript notice, and would otherwise be
-     * stored as the eighty characters of chrome that arrived around it.
-     *
-     * <p>
-     * What keeps this from rendering the whole web is the text bar, which is very low, and the
-     * fact that a render producing no more than the plain fetch is discarded -- so the cost of
-     * being wrong is one wasted page load, once.
+     * Scripts and no words. One script is enough: a page with almost no text and any javascript is
+     * worth a second look. The very low text bar is what stops this matching the whole web.
      */
     private boolean isMostlyScript(Document document, int textLength) {
         if (textLength > shellTextLength) {

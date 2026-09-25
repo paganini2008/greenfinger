@@ -34,31 +34,17 @@ import com.github.greenfinger.core.model.Catalog;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Makes this node's catalog table match the leader's.
- *
- * <h2>Why this is the whole of the repair</h2>
- * Every change to a catalog is performed by one node, so "what the leader holds" is not an opinion
- * to be reconciled against other opinions -- it is the state, and a node that fell behind has
- * nothing to contribute, only something to take. Missing rows are copied, differing rows are
- * overwritten, and rows the leader does not have are removed because there is no other way for
- * them to exist.
+ * Makes this node's catalog table match the leader's: rows copied, differing rows overwritten,
+ * and rows the leader does not have removed.
  *
  * <p>
- * That last line is worth sitting with, because it is what a single writer buys. Without one,
- * telling a delete apart from a row the leader has not heard about yet is impossible from the rows
- * themselves: a node that missed a delete looks exactly like the node that made the row. It takes
- * remembering every deletion, with its moment, and keeping those memories alive long enough to
- * reach a node that was down -- a tombstone table, with a lifetime, and a gap in it if every node
- * restarts at once. With one writer, all of that collapses into "the leader does not have it".
- *
- * <h2>When</h2>
- * On joining, because a node that was away is exactly the node that is behind; when a member
- * joins, because it may be that node; when leadership changes, because the answer now comes from
- * somewhere else; and on a slow timer as a backstop for a write whose broadcast was lost.
+ * That last one is what a single writer buys. Without it a node that missed a delete looks exactly
+ * like the node that made the row, and telling them apart needs tombstones with lifetimes; with
+ * one writer it collapses into "the leader does not have it".
  *
  * <p>
- * The leader skips all of it. Asking itself what it holds and then agreeing is a round trip to
- * prove a table agrees with itself.
+ * Runs on joining, on a membership or leadership change, and on a slow timer as a backstop for a
+ * lost broadcast. The leader skips it -- agreeing with itself is a round trip to prove nothing.
  *
  * @Description: CatalogCatchUp
  * @Author: Fred Feng
@@ -102,15 +88,9 @@ public class CatalogCatchUp
             thread.setDaemon(true);
             return thread;
         });
-        // The first run is soon rather than an interval away. A node that has just started is
-        // exactly the node most likely to be behind, and the membership callbacks do not cover
-        // it: the cluster is started by the auto-configuration before this bean exists, so this
-        // node has already joined by the time the listener is registered and its own
-        // onClusterJoined never fires. Waiting for the timer meant a restarted node served a
-        // catalog that had been deleted for up to a minute -- measured, not supposed.
-        //
-        // Not immediately either: membership takes a moment to converge, and a catch-up run
-        // while this node still believes it is alone does nothing and uses up the moment.
+        // Soon rather than an interval away: a node that just started is the one most likely to
+        // be behind, and its own onClusterJoined never fires -- it had already joined before this
+        // bean existed. Not immediately either, or it runs while still believing it is alone.
         ticker.scheduleWithFixedDelay(this::catchUpQuietly, Math.min(intervalMs, FIRST_RUN_MS),
                 intervalMs, TimeUnit.MILLISECONDS);
         // Long.MAX_VALUE is how "no timer" arrives here, and it is the ordinary case on a shared
@@ -173,12 +153,8 @@ public class CatalogCatchUp
     }
 
     /**
-     * Makes this node's table say exactly what the leader's does.
-     *
-     * <p>
-     * Separate from fetching it so that what it does to a real table can be tested without a
-     * cluster: the fetch is one request and has its own test against real nodes, and this is the
-     * part with the rules in it.
+     * Makes this node's table say exactly what the leader's does. Separate from fetching it, so
+     * the rules can be tested against a real table without a cluster.
      *
      * @param authoritative every catalog the leader holds
      * @return how many rows this node was behind by, copied plus removed

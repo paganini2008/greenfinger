@@ -52,91 +52,77 @@ body {
   font: var(--mat-sys-body-large);
 }
 
-// The tokens the pages reach for, each named for the job it does rather than for its colour.
+// The tokens the pages reach for, named for the job rather than the colour.
 //
-// The rule this palette is built on: **green is data ink, not wallpaper.** It was the other way
-// round -- a green gradient field at the top of every page, with the numbers in plain grey boxes
-// underneath -- and that is a landing page's habit, not an instrument's. Green now means a value
-// that is live or kept; the paper stays out of the way; and the two other hues exist because a
-// crawler throws most of what it touches away and "held back" and "lost" are different things.
+// The rule: **green is data ink, not wallpaper.** It means a value that is live or kept; wheat
+// carries everything a crawler saw and did not keep; the paper stays out of the way.
 :root {
   --gf-green: var(--mat-sys-primary);
   --gf-green-container: var(--mat-sys-primary-container);
   --gf-on-green: var(--mat-sys-on-primary);
-  /** What a panel is made of: white, against the faintly tinted ground of the page. */
+  /** What a panel is made of: white, lifted off the warm ground the page is printed on. */
   --gf-surface: #ffffff;
-  --gf-surface-container: #f1f4f1;
-  --gf-outline: #dfe3de;
-  /** Quiet type. Neutral grey rather than the palette's green-cast one. */
-  --gf-muted: #646a63;
+  --gf-surface-container: #f6efe1;
+  /** A line, for the few places that still need one: a white panel on paper has an edge already. */
+  --gf-outline: #ece2cf;
+  /** Quiet type. Warm grey, so it sits on the cream rather than on top of it. */
+  --gf-muted: #6b6558;
 
   /**
-   * The brand green, lighter than the palette's own.
-   *
-   * Material's green palette hands out #026e00 for primary -- almost black, almost fully
-   * saturated -- and used across a toolbar, a rail and a footer that reads as tar rather than as
-   * a colour. These are the same hue opened up: light enough to sit behind a page without
-   * weighing it down, dark enough that white still reads on the chrome and the accent still
-   * passes on paper.
-   *
-   * Overriding --mat-sys-primary rather than only --gf-green, so the buttons, chips and controls
-   * Material draws for itself follow the same green instead of keeping the old one.
+   * The brand green: Material's #026e00 opened up, which across a whole rail read as tar.
+   * Overrides --mat-sys-primary so Material's own buttons and chips follow it too.
    */
   --mat-sys-primary: #2d8a4e;
   --mat-sys-on-primary: #ffffff;
   --mat-sys-primary-container: #cdeed6;
   --mat-sys-on-primary-container: #0c3b20;
 
-  /**
-   * How tall the masthead is, so the rail can start exactly where it ends.
-   *
-   * Written down rather than guessed at: the rail is fixed, and a rem value that did not match
-   * mat-toolbar's own height left an eight pixel stripe of page showing between the two.
-   */
-  --gf-chrome-height: 72px;
+  /** The rail's green: about as light as it goes while white type on it still clears 4:1. */
+  --gf-chrome: #2f7a52;
+  /** The rail's own shade, and the ground of a panel that is green rather than white. */
+  --gf-chrome-deep: #276845;
 
   /**
-   * The chrome: the masthead, the rail and the footer, in one green on all three sides.
-   *
-   * Opened up from the palette's #026e00, and then once more. This is about as light as it goes
-   * while white type on it still clears 4:1 -- lighter than this and the nav labels start being
-   * something people squint at rather than read.
+   * The row you are on: the page's own colour, exactly, because the row runs out of the rail into
+   * the paper and any difference shows as a seam.
    */
-  --gf-chrome: #3a8a51;
-
-  /**
-   * The row you are on, in the rail: a shade darker than the chrome it sits in, so the current
-   * item is marked without being the loudest thing on the page.
-   */
-  --gf-active: #2d8a4e;
+  --gf-active: #fbf4e7;
   --gf-on-chrome: #ffffff;
   /** Nav labels at rest and footer notes: only a little quieter, for the same reason. */
   --gf-on-chrome-muted: color-mix(in srgb, #ffffff 86%, transparent);
 
-  /**
-   * A brighter page.
-   *
-   * The palette's surface is #f9faf3 -- an off-white with a yellow-green cast -- and the panels
-   * sat on it in the same colour, so the whole page was one flat dim sheet with hairlines drawn on
-   * it. The ground stays faintly tinted and the panels go to white, which is what gives a panel an
-   * edge without needing a shadow to say so.
-   */
-  --mat-sys-surface: #f6f8f6;
-  --mat-sys-on-surface: #1b1d1b;
+  /** The paper. Panels are white on it, which is what gives them an edge. */
+  --mat-sys-surface: #fbf4e7;
+  --mat-sys-on-surface: #1e2b23;
   --mat-sys-surface-container-lowest: #ffffff;
+
+  /**
+   * The second data colour. Green only means "kept" while most values are not green, so wheat
+   * carries the rest of the distribution and the one bar that matters stays the green one.
+   */
+  --gf-wheat: #e7d3a1;
+  --gf-wheat-soft: #f3e8cd;
+  --gf-wheat-deep: #d3b877;
+  --gf-on-wheat: #4a3c1c;
 
   /** A page in motion. The only colour allowed to move. */
   --gf-live: #1f9d4d;
 
-  /**
-   * A radius scale rather than one radius.
-   *
-   * Everything was 1rem -- cards, chips, inputs, the hero -- which is why the page read as a kit
-   * of parts rather than a thing with a structure. Size now tracks the size of what it wraps.
-   */
-  --gf-r-sm: 3px;
-  --gf-r-md: 6px;
-  --gf-r-lg: 10px;
+  /** A scale rather than one radius: size tracks the size of what it wraps. */
+  --gf-r-sm: 8px;
+  --gf-r-md: 14px;
+  --gf-r-lg: 22px;
+  --gf-r-pill: 999px;
+
+  /** Two shadows: a tight one for the edge, a wide soft one for the lift. One alone is a smudge. */
+  --gf-shadow: 0 1px 2px rgb(38 53 43 / 5%), 0 10px 28px -16px rgb(38 53 43 / 22%);
+  --gf-shadow-lg: 0 2px 4px rgb(38 53 43 / 6%), 0 22px 48px -24px rgb(38 53 43 / 30%);
+
+  /** How far the chrome floats from the window, so the paper shows around it. */
+  --gf-inset: 0.9rem;
+
+  /** The inside corner where the current row meets the page; smaller than this reads as anti-aliasing. */
+  --gf-notch: 1.05rem;
 
   /** Tabular everywhere a number can be compared with the number under it. */
   font-variant-numeric: tabular-nums;
@@ -189,36 +175,27 @@ body {
 // ================================================================================================
 
 .gf-page {
-  padding: 1.5rem;
+  padding: 0.25rem 0.75rem 1.5rem;
   max-width: 88rem;
   margin: 0 auto;
+  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1rem;
 }
 
-// The one bold surface per page: a deep green field with a soft light behind it. Everything under
-// it is white, so the hero carries the identity and the content stays legible.
+// The page's own first line. Not a surface: the cards below it are the surfaces, and a header
+// that is also a panel puts a box around the one thing on the page that never needed one.
 .gf-hero {
   position: relative;
-  padding: 0 0 1.1rem;
-  border-bottom: 1px solid var(--gf-outline);
+  padding: 0.35rem 0 0.4rem;
   color: var(--mat-sys-on-surface);
 }
 
-// The green that used to be a gradient field behind the title, reduced to the thing it was
-// standing in for: a mark that says which product this is. One stroke, at the start of the page's
-// first line, the way a masthead rule works.
+
+// Gone with the gradient it stood in for: the rail carries the colour now.
 .gf-hero::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0.15rem;
-  width: 3px;
-  height: 2.1rem;
-  border-radius: 2px;
-  background: var(--gf-green);
-  color: var(--gf-on-chrome);
+  content: none;
 }
 
 // Was a drifting radial highlight in the corner. It decorated and said nothing, and non-user
@@ -234,7 +211,7 @@ body {
   gap: 1rem 2rem;
   align-items: flex-start;
   justify-content: space-between;
-  padding-left: 1rem;
+  padding-left: 0;
 
   h1 {
     margin: 0;
@@ -279,23 +256,30 @@ body {
 // weight as a hero image. A number does not need a card around it -- it needs a baseline to sit
 // on, room to be read, and something quiet beside it saying what it counts. The rules between
 // them do the work the four borders were doing, with a twentieth of the ink.
+// The numbers a page opens with, each on paper of its own.
+//
+// They were one row divided by hairlines, which is how a spreadsheet separates values and reads
+// as one object with rules drawn through it. Five cards read as five things -- which is what they
+// are, and what makes one of them worth looking at first.
 .gf-stats {
   position: relative;
-  margin-top: 1.25rem;
-  margin-left: 1rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 2.25rem;
+  margin-top: 0.85rem;
+  margin-left: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.75rem;
 }
 
 .gf-stat {
   position: relative;
-  padding: 0 0 0 1.25rem;
-  border-left: 1px solid var(--gf-outline);
+  padding: 0.85rem 1rem 0.9rem;
+  border-left: 0;
+  border-radius: var(--gf-r-md);
+  background: var(--gf-surface);
+  box-shadow: var(--gf-shadow);
 
   &:first-child {
-    padding-left: 0;
-    border-left: 0;
+    padding-left: 1rem;
   }
 }
 
@@ -428,17 +412,26 @@ body {
   align-items: flex-start;
 }
 
+// The same disc the dashboard puts on a catalog card, and for the same reason: solid green is
+// spent on what is running and on the button that starts it, and twenty green discs on a page of
+// twenty catalogs spends it on the fact that a catalog has a first letter.
 .gf-avatar-tile {
   flex: none;
   width: 2.5rem;
   height: 2.5rem;
-  border-radius: 0.75rem;
+  border-radius: var(--gf-r-pill);
   display: grid;
   place-items: center;
   font-weight: 700;
   font-size: 1.05rem;
-  color: var(--gf-on-green);
+  color: var(--gf-on-wheat);
+  background: var(--gf-wheat-soft);
+}
+
+// Except when it is crawling, which is the one state worth a colour.
+.gf-tile-running .gf-avatar-tile {
   background: var(--gf-green);
+  color: var(--gf-on-chrome);
 }
 
 .gf-tile-name {
@@ -500,9 +493,9 @@ body {
   height: 1.7rem;
   padding: 0;
   justify-content: center;
-  background: var(--gf-surface);
-  border: 1px solid var(--gf-green);
-  color: var(--gf-green);
+  background: color-mix(in srgb, var(--gf-green) 10%, var(--gf-surface));
+  border: 0;
+  color: var(--gf-chrome-deep);
 
   mat-icon {
     font-size: 1rem;
@@ -529,14 +522,17 @@ body {
   color: #6d28d9;
 }
 
+// The category reads as a label on the card rather than as a claim about it: it is how the list
+// is filtered, not something the catalog achieved.
 .gf-chip-cat {
-  background: var(--gf-green);
-  color: var(--gf-on-chrome);
+  background: var(--gf-wheat-soft);
+  color: var(--gf-on-wheat);
 }
 
 .gf-chip-ghost {
   background: transparent;
   border: 1px solid var(--gf-outline);
+  color: var(--gf-muted);
 }
 
 .gf-tile-versions {
@@ -639,26 +635,29 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 0.75rem;
-  padding: 3rem 1rem;
+  padding: 2.5rem 1.5rem;
+  border-radius: var(--gf-r-lg);
+  border: 0;
+  background: color-mix(in srgb, var(--gf-wheat-soft) 60%, var(--gf-surface));
+  text-align: center;
   color: var(--gf-muted);
-  border: 1px dashed var(--gf-outline);
-  border-radius: 1rem;
 
   mat-icon {
-    font-size: 2.5rem;
-    width: 2.5rem;
-    height: 2.5rem;
-    color: color-mix(in srgb, var(--gf-green) 45%, transparent);
+    width: 2rem;
+    height: 2rem;
+    font-size: 2rem;
+    color: var(--gf-wheat-deep);
   }
 
   p {
     margin: 0;
+    max-width: 52ch;
   }
 }
 
 // A plain white card for the pages that are genuinely a form or a list rather than a dashboard.
 .gf-card {
-  border-radius: 1rem;
+  border-radius: var(--gf-r-lg);
   overflow: hidden;
 }
 
@@ -828,10 +827,31 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
-  padding: 1.15rem 1.25rem 1.25rem;
+  padding: 1.25rem 1.4rem 1.4rem;
   border-radius: var(--gf-r-lg);
-  border: 1px solid var(--gf-outline);
+  border: 0;
   background: var(--gf-surface);
+  box-shadow: var(--gf-shadow);
+}
+
+// The same panel, in green, for the one thing on a page that is the answer rather than part of
+// the working. One per page at most: two of them and neither is the answer.
+.gf-panel-green {
+  background: linear-gradient(165deg, var(--gf-chrome) 0%, var(--gf-chrome-deep) 100%);
+  color: var(--gf-on-chrome);
+  box-shadow: var(--gf-shadow-lg);
+
+  .gf-panel-title,
+  .gf-panel-title mat-icon,
+  .gf-panel-note,
+  .gf-muted {
+    color: var(--gf-on-chrome);
+  }
+
+  .gf-panel-note,
+  .gf-muted {
+    color: var(--gf-on-chrome-muted);
+  }
 }
 
 // The icon sits in a tinted square rather than loose beside the words: it gives the heading a
@@ -1246,49 +1266,83 @@ body {
 
 // ---- the footer --------------------------------------------------------------------------------
 
-// The footer stands on the same green as the rail, so the page is framed on two sides by one
-// colour rather than by three different greys. Full bleed: a tinted band that stopped short of
-// the window edge would read as a wide card rather than as the bottom of the page.
-// The routed page takes whatever height is left over, so the footer is at the bottom of the
-// window on a short page and below the content on a long one. Global rather than in app.scss:
-// the outlet creates the page component itself, so it carries no component scoping attribute.
-.gf-content > :not(.gf-footer):not(router-outlet) {
+// The routed page takes the slack, so the footer sits at the bottom of a short page. Global
+// rather than in app.scss: the outlet creates the page, so it carries no scoping attribute.
+// The exclusions matter -- without them the masthead grows to fill a short page too.
+.gf-content > :not(.gf-footer):not(router-outlet):not(.gf-topbar):not(.gf-running-banner) {
   flex: 1 0 auto;
 }
 
+// The quietest row on the page, and read once -- when something has gone wrong and somebody is
+// looking for where to say so. Two things only: which build this is, and the repository.
 .gf-footer {
-  display: flex;
-  flex-wrap: wrap;
+  // Three columns, so the name is centred on the page rather than on what is left beside the
+  // mark.
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 1.25rem;
-  margin-top: 2.5rem;
-  padding: 1.15rem 2rem;
-  background: var(--gf-chrome);
-  border-radius: 0;
-  font-size: 0.84rem;
-  color: var(--gf-on-chrome-muted);
+  gap: 0.5rem;
+  max-width: 88rem;
+  width: 100%;
+  margin: 1.5rem auto 0;
+  padding: 0.9rem 0.75rem 1.1rem;
+  background: transparent;
+  border-top: 1px solid var(--gf-outline);
+  font-size: 0.78rem;
+  color: var(--gf-muted);
 
   a {
-    color: var(--gf-on-chrome);
-    text-decoration: underline;
-    text-underline-offset: 0.18em;
-    text-decoration-color: color-mix(in srgb, #ffffff 45%, transparent);
+    color: var(--gf-muted);
+    text-decoration: none;
 
     &:hover {
-      text-decoration-color: currentColor;
+      color: var(--gf-chrome-deep);
+      text-decoration: underline;
+      text-underline-offset: 0.18em;
     }
   }
 
   .gf-muted {
-    color: var(--gf-on-chrome-muted);
+    color: var(--gf-muted);
   }
 }
 
-.gf-footer-sep {
-  width: 1px;
-  height: 0.9rem;
-  background: color-mix(in srgb, #ffffff 35%, transparent);
+.gf-footer-name {
+  text-align: center;
 }
+
+.gf-footer-name .gf-mono {
+  font-size: 0.72rem;
+  opacity: 0.85;
+}
+
+
+// The mark sits in the same white pill the account does, so the two corners of the application
+// are made of the same thing.
+.gf-footer-mark {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--gf-r-pill);
+  background: var(--gf-surface);
+  box-shadow: var(--gf-shadow);
+  color: var(--gf-chrome-deep);
+
+  svg {
+    width: 1.05rem;
+    height: 1.05rem;
+    fill: currentColor;
+  }
+
+  &:hover {
+    background: color-mix(in srgb, var(--gf-wheat-soft) 55%, var(--gf-surface));
+    color: var(--gf-chrome);
+  }
+}
+
 
 
 // ================================================================================================
@@ -1407,34 +1461,36 @@ body {
 
    The greys are mixed from the type colour rather than from black, so they invert with the scheme
    instead of disappearing into a dark ground. */
+// The bands are not a scale, so they are not a ramp: kept is green because it is the one that
+// matters, and the rest are wheat at different strengths.
 .gf-band-saved {
   background: var(--gf-green);
   color: var(--gf-on-chrome);
 }
 
 .gf-band-duplicate {
-  background: color-mix(in srgb, var(--gf-green) 42%, var(--gf-surface));
+  background: color-mix(in srgb, var(--gf-green) 45%, var(--gf-wheat-soft));
 }
 
 .gf-band-known {
-  background: color-mix(in srgb, var(--mat-sys-on-surface) 16%, var(--gf-surface));
+  background: var(--gf-wheat);
 }
 
 .gf-band-filtered {
-  background: color-mix(in srgb, var(--mat-sys-on-surface) 36%, var(--gf-surface));
+  background: var(--gf-wheat-deep);
 }
 
 .gf-band-dropped {
-  background: color-mix(in srgb, var(--mat-sys-on-surface) 56%, var(--gf-surface));
+  background: color-mix(in srgb, var(--gf-wheat-deep) 70%, var(--gf-on-wheat));
 }
 
 .gf-band-invalid {
-  background: var(--mat-sys-on-surface);
+  background: var(--gf-on-wheat);
 }
 
 .gf-band-queued {
-  background: var(--gf-surface);
-  box-shadow: inset 0 0 0 1px var(--gf-outline);
+  background: var(--gf-wheat-soft);
+  box-shadow: inset 0 0 0 1px var(--gf-wheat);
 }
 
 .gf-sieve-legend {
@@ -1719,4 +1775,429 @@ body {
 .gf-sidenav .mat-mdc-list-item .mat-mdc-list-item-interactive,
 .gf-sidenav .mdc-list-item__content {
   border-radius: 0 !important;
+}
+
+// ================================================================================================
+// The dashboard, and the vocabulary it shares with the monitor.
+//
+// Drawn from a layout where the page is a grid of cards on warm paper rather than a column of
+// sections divided by rules: a row of the things you might open, a chart of what the last run
+// made of what it touched, and one green panel carrying the single number that says whether any
+// of it can be found again.
+// ================================================================================================
+
+.gf-dash {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20rem;
+  gap: 1rem;
+  align-items: start;
+}
+
+.gf-dash-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+// Four, because this row is a shortcut to what somebody came to look at; a fifth is the list
+// page's job.
+// Four across wherever four fit. 10rem of minimum looked safe and was not: beside the green
+// panel the column is about 660px on a laptop, four tracks of 10rem need 718, and the fourth
+// card dropped to a row of its own with three cards' worth of paper beside it. A catalog card
+// holds a letter, a name and three words, so the minimum can be smaller than the name it holds.
+.gf-dash-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 0.75rem;
+}
+
+.gf-cat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.9rem 1rem 1rem;
+  border-radius: var(--gf-r-md);
+  background: var(--gf-surface);
+  box-shadow: var(--gf-shadow);
+  text-decoration: none;
+  color: var(--mat-sys-on-surface);
+  transition: transform 0.12s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--gf-shadow-lg);
+  }
+}
+
+// The initial in a disc: a catalog has no face, and a coloured letter is enough to tell four of
+// them apart at a glance without pretending to be an avatar.
+.gf-cat-disc {
+  width: 2.25rem;
+  height: 2.25rem;
+  margin-bottom: 0.4rem;
+  border-radius: var(--gf-r-pill);
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  background: var(--gf-wheat-soft);
+  color: var(--gf-on-wheat);
+}
+
+.gf-cat-disc-live {
+  background: var(--gf-green);
+  color: var(--gf-on-chrome);
+}
+
+.gf-cat-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gf-cat-state {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--gf-muted);
+}
+
+.gf-dash-mid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.gf-chart-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
+
+  .gf-panel-title {
+    margin-bottom: 0;
+  }
+}
+
+// The dashboard's own header row, where the numbers used to be. They said exactly what the
+// "What is kept" panel two rows down says -- pages, images, searchable, on disk -- and a page
+// that opens by stating its own contents twice has spent its best row on a summary of itself.
+
+
+// Which run the chart is of, said in the chart's own corner rather than in its title: the title
+// is the same sentence on every installation, and the catalog name is the part that changes.
+.gf-chart-chip {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.7rem;
+  border-radius: var(--gf-r-pill);
+  background: var(--gf-wheat-soft);
+  color: var(--gf-on-wheat);
+  font-size: 0.78rem;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+
+  &:hover {
+    background: var(--gf-wheat);
+  }
+}
+
+// Columns from a common baseline, each with its number above it. Height is a share of the
+// tallest band rather than of the total: against the total, every band but the biggest is a stub
+// and the chart says nothing it could not have said as a sentence.
+.gf-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6rem;
+  margin: 1.1rem 0 0.35rem;
+  padding-bottom: 0.4rem;
+}
+
+.gf-chart-col {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.gf-chart-value {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--mat-sys-on-surface);
+  font-variant-numeric: tabular-nums;
+}
+
+.gf-chart-bar {
+  width: 100%;
+  height: 8.5rem;
+  display: flex;
+  align-items: flex-end;
+
+  i {
+    display: block;
+    width: 100%;
+    border-radius: var(--gf-r-sm) var(--gf-r-sm) 0 0;
+  }
+}
+
+.gf-chart-label {
+  font-size: 0.72rem;
+  line-height: 1.1;
+  text-align: center;
+  color: var(--gf-muted);
+}
+
+.gf-chart-say {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  color: var(--gf-muted);
+
+  strong {
+    color: var(--mat-sys-on-surface);
+  }
+}
+
+.gf-kept-list {
+  margin: 0 0 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+
+  > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  dt {
+    font-size: 0.85rem;
+    color: var(--gf-muted);
+  }
+
+  dd {
+    margin: 0;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+// ---- the green panel ---------------------------------------------------------------------------
+
+.gf-side {
+  position: sticky;
+  top: 0.5rem;
+  gap: 0.25rem;
+}
+
+.gf-ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  margin: 0.35rem auto 1.1rem;
+  width: 12rem;
+  height: 12rem;
+
+  svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+
+  circle {
+    fill: none;
+    stroke-width: 9;
+  }
+}
+
+.gf-ring-track {
+  stroke: color-mix(in srgb, #ffffff 16%, transparent);
+}
+
+// Wheat, not white: on a green panel white is the type, and a ring in the same white as the
+// words reads as a border around them rather than as a value.
+.gf-ring-arc {
+  stroke: var(--gf-wheat);
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.6s ease;
+}
+
+.gf-ring-face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+}
+
+.gf-ring-value {
+  display: block;
+  font-size: 2.6rem;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--gf-on-chrome);
+}
+
+.gf-ring-label {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gf-on-chrome-muted);
+}
+
+.gf-facts {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+  }
+}
+
+.gf-fact-icon {
+  flex: none;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: var(--gf-r-sm);
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, #ffffff 14%, transparent);
+
+  mat-icon {
+    width: 1.15rem;
+    height: 1.15rem;
+    font-size: 1.15rem;
+    color: var(--gf-wheat);
+  }
+}
+
+.gf-fact-body {
+  min-width: 0;
+}
+
+.gf-fact-value {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--gf-on-chrome);
+}
+
+.gf-fact-label {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--gf-on-chrome-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// The way out of the panel: wheat on green, which is the only pairing on it that has not already
+// been spent on the ring or the type.
+.gf-side-cta {
+  display: block;
+  margin-top: auto;
+  padding: 0.65rem 1rem;
+  border-radius: var(--gf-r-pill);
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  background: var(--gf-wheat);
+  color: var(--gf-on-wheat);
+
+  &:hover {
+    background: var(--gf-wheat-deep);
+  }
+}
+
+// ---- state, as a tag -----------------------------------------------------------------------
+
+// A word about a row, tinted rather than outlined. The tints are the page's own two hues at
+// their lightest, so a table of them reads as one family and the green one still stands out as
+// the state somebody was hoping for.
+.gf-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: var(--gf-r-pill);
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--gf-muted) 12%, var(--gf-surface));
+  color: var(--gf-muted);
+}
+
+.gf-tag-on {
+  background: color-mix(in srgb, var(--gf-green) 15%, var(--gf-surface));
+  color: var(--gf-chrome-deep);
+}
+
+.gf-tag-wait {
+  background: var(--gf-wheat-soft);
+  color: var(--gf-on-wheat);
+}
+
+.gf-tag-live {
+  background: color-mix(in srgb, var(--gf-live) 16%, var(--gf-surface));
+  color: var(--gf-chrome-deep);
+}
+
+.gf-dash-table {
+  td,
+  th {
+    white-space: nowrap;
+  }
+
+  td.gf-mono {
+    max-width: 26rem;
+  }
+}
+
+// One column on a narrow screen, and the green panel goes under the page rather than beside it.
+@media (max-width: 1100px) {
+  .gf-dash {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .gf-side {
+    position: static;
+  }
+}
+
+@media (max-width: 780px) {
+  .gf-dash-mid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+// ---- dialogs -----------------------------------------------------------------------------
+
+// Material builds a dialog's surface from the page's own colour, which on this ground is cream
+// on dimmed cream -- a patch of the page rather than something in front of it.
+.mat-mdc-dialog-surface {
+  --mdc-dialog-container-color: var(--gf-surface);
+  background: var(--gf-surface) !important;
+  border-radius: var(--gf-r-lg) !important;
+  box-shadow: var(--gf-shadow-lg) !important;
 }

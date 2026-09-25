@@ -34,6 +34,8 @@ import ai.djl.repository.zoo.ZooModel;
 import ai.djl.inference.Predictor;
 import com.github.greenfinger.core.WebCrawlerException;
 import lombok.extern.slf4j.Slf4j;
+import java.io.ByteArrayOutputStream;
+import java.awt.Image;
 
 /**
  * Embeddings computed here, with no account and no service.
@@ -388,7 +390,7 @@ public class LocalEmbeddingClient implements EmbeddingClient {
                 new BufferedImage(IMAGE_SIZE, IMAGE_SIZE, BufferedImage.TYPE_INT_RGB);
         var graphics = scaled.createGraphics();
         graphics.drawImage(source.getScaledInstance(IMAGE_SIZE, IMAGE_SIZE,
-                java.awt.Image.SCALE_SMOOTH), 0, 0, null);
+                Image.SCALE_SMOOTH), 0, 0, null);
         graphics.dispose();
 
         // channel-first, as the model expects: all red, then all green, then all blue
@@ -430,7 +432,7 @@ public class LocalEmbeddingClient implements EmbeddingClient {
     /** A single grey pixel, used only to measure the width of an image vector. */
     private byte[] blankPng() throws Exception {
         BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
-        var out = new java.io.ByteArrayOutputStream();
+        var out = new ByteArrayOutputStream();
         ImageIO.write(image, "png", out);
         return out.toByteArray();
     }

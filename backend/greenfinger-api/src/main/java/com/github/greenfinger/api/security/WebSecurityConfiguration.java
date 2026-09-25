@@ -42,21 +42,20 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.greenfinger.api.web.ApiResult;
 import lombok.RequiredArgsConstructor;
+import java.io.IOException;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Who gets in, and what they may do once in.
  *
  * <p>
- * Two roles, and the line between them is reading against changing. {@code SUPPORT} may look at
- * everything -- catalogs, progress, search results -- and change nothing. {@code ADMIN} may also
- * create a catalog, start a crawl, update, rebuild and delete. That is the whole point of having
- * the second role: the search page can be handed to somebody without handing them the buttons that
- * start and destroy work.
+ * Two roles, divided by reading against changing: {@code SUPPORT} sees everything and changes
+ * nothing, {@code ADMIN} may also create, crawl, update, rebuild and delete -- so the search page
+ * can be handed to somebody without the buttons that start and destroy work.
  *
  * <p>
- * Stateless, because the front end is a single page application holding a bearer token. No
- * session means no CSRF token to carry and no cookie to get wrong across origins, which is why
- * both are disabled rather than merely unconfigured.
+ * Stateless, because the front end holds a bearer token. No session means no CSRF token to carry
+ * and no cookie to get wrong across origins, which is why both are disabled outright.
  *
  * @Description: WebSecurityConfiguration
  * @Author: Fred Feng
@@ -159,8 +158,8 @@ public class WebSecurityConfiguration {
      * The same envelope the controllers return. A front end that has one shape to parse should not
      * suddenly meet another one just because it was turned away at the door.
      */
-    private void write(jakarta.servlet.http.HttpServletResponse response, int status,
-            String message) throws java.io.IOException {
+    private void write(HttpServletResponse response, int status,
+            String message) throws IOException {
         response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");

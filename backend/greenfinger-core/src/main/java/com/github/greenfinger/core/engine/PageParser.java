@@ -26,6 +26,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import com.github.greenfinger.core.WebCrawlerProperties;
+import java.net.URI;
 
 /**
  * Turns fetched html into the title, the text, the outgoing links and the images worth downloading.
@@ -216,7 +217,7 @@ public class PageParser {
 
     private String resolve(String baseUri, String candidate) {
         try {
-            return java.net.URI.create(baseUri).resolve(candidate).toString();
+            return URI.create(baseUri).resolve(candidate).toString();
         } catch (Exception e) {
             return candidate;
         }

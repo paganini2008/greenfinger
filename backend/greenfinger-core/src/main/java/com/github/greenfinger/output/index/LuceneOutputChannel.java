@@ -47,19 +47,12 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Full text search, embedded. The default, and the reason a fresh clone can crawl and then search
- * without anything having been installed.
+ * Full text search, embedded -- the default, so a fresh clone can crawl and search with nothing
+ * installed.
  *
  * <p>
- * One index per catalog, holding every version, exactly as the Elasticsearch channel does; versions
- * are kept apart by the {@code catalogVersion} field rather than by separate indices, so a search
- * across catalogs whose current versions differ is one filter, promoting a finished version is a
- * change of the value being matched, and deleting a version is one term query.
- *
- * <p>
- * Documents are written by id with {@code updateDocument}, not added: an update re-crawls pages it
- * already has, and the id is derived from the url, so replacing is what keeps a second run from
- * doubling the index. It is also what makes a replay idempotent.
+ * One index per catalog holding every version, kept apart by the {@code catalogVersion} field, so
+ * promoting a version is a change of the value being matched and deleting one is a term query.
  * 
  * @Description: LuceneOutputChannel
  * @Author: Fred Feng
@@ -126,13 +119,8 @@ public class LuceneOutputChannel implements OutputChannel {
     }
 
     /**
-     * One page as a plain map of field name to value.
-     *
-     * <p>
-     * A map rather than a {@link Document} because this is also what travels between nodes: every
-     * node holds a complete index, so a page indexed on one has to reach the others, and a Lucene
-     * document is not something that can be put on a wire. The map is, and building the document
-     * from it is {@link #write}, which is therefore the same code on both sides.
+     * One page as a plain map of field to value -- a map rather than a {@link Document} because
+     * this is also what travels between nodes, and a Lucene document cannot go on a wire.
      */
     public static Map<String, Object> fieldsOf(CatalogDetails catalogDetails,
             OutputPayload payload, ObjectMapper objectMapper) throws Exception {
@@ -173,13 +161,9 @@ public class LuceneOutputChannel implements OutputChannel {
     }
 
     /**
-     * Writes one page's fields into an index, replacing whatever was there under the same id.
-     *
-     * <p>
-     * By id with {@code updateDocument}, never {@code addDocument}: an update re-crawls pages it
-     * already has, and the id is derived from the url, so replacing is what keeps a second run
-     * from doubling the index. It is also what makes a replay idempotent, and what lets the same
-     * page arrive twice from two nodes without becoming two documents.
+     * Writes one page's fields, replacing whatever was under the same id. {@code updateDocument},
+     * never {@code addDocument}: the id comes from the url, so replacing is what keeps a re-crawl,
+     * a replay, or the same page arriving from two nodes from doubling the index.
      */
     public static void write(LuceneIndexes indexes, String indexName, Map<String, Object> fields)
             throws Exception {

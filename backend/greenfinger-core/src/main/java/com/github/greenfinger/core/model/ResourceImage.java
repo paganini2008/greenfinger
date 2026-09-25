@@ -32,14 +32,10 @@ import lombok.ToString;
  * A page referencing an image: the many to many link between {@link Resource} and {@link Image}.
  *
  * <p>
- * The three text columns describe how <em>this</em> page used the image, which is why they belong
- * here rather than on the image: the same picture carries different alt text on different pages.
- * {@code context_text} is the wording around the tag, and it is what lets an image with no alt
- * attribute still be found by a text search -- the same principle image search has always run on.
- *
- * <p>
- * This row's id is also the point id of the image's vector, because the two express the same
- * thing: one page-image reference.
+ * The three text columns describe how <em>this</em> page used the image -- the same picture carries
+ * different alt text on different pages. {@code context_text} is the wording around the tag, which
+ * is what lets an image with no alt attribute be found by a text search. This row's id is also the
+ * point id of the image's vector, since both express one page-image reference.
  * 
  * @Description: ResourceImage
  * @Author: Fred Feng

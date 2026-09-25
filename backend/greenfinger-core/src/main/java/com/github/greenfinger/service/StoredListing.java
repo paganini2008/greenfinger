@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.greenfinger.api.web;
+package com.github.greenfinger.service;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -24,24 +24,17 @@ import com.github.greenfinger.core.model.Catalog;
 import com.github.greenfinger.core.record.ResourceRecord;
 import com.github.greenfinger.core.record.ResourceRecordStore;
 import com.github.greenfinger.output.vector.VectorHit;
-import com.github.greenfinger.service.CatalogAdminService;
 import lombok.RequiredArgsConstructor;
 
 /**
- * What "everything" is, when the question is blank.
+ * What "everything" is, when the question is blank. In core rather than beside the http api
+ * because both faces ask it.
  *
  * <p>
- * Words already answered a blank box: an empty keyword is a match-all, and the index has always
- * understood it. The two vector modes did not, because similarity has no match-all -- "things
- * like this" needs a this. That left a box behaving one way under one tab and another way under
- * the next, which is the sort of inconsistency somebody has to learn rather than notice.
- *
- * <p>
- * So a blank box is answered from the table instead of from the vector store. It is the same set
- * -- every page, every picture, of the versions search is serving -- shaped as the hits the two
- * modes already return, so the page renders it with the cards it already has. The score is zero
- * and means nothing, because nothing was compared; the front end leaves the similarity off when
- * it did not ask a question.
+ * Words already treats an empty keyword as match-all; the vector modes cannot, since similarity
+ * needs a "this". So a blank box is answered from the table -- every page and picture of the
+ * versions search is serving -- shaped as the hits those modes return. The score is zero and means
+ * nothing, and the front end leaves similarity off when no question was asked.
  *
  * @Description: StoredListing
  * @Author: Fred Feng
@@ -78,19 +71,10 @@ public class StoredListing {
     }
 
     /**
-     * Walks the versions in order until {@code size} hits have been collected.
-     *
-     * <p>
-     * Counted in hits rather than in rows, because a row is one hit under Meaning and a dozen
-     * under Pictures, and what the caller asked for is a page of what it is looking at.
-     *
-     * <p>
-     * Read a page of rows at a time rather than all of them: a catalog can hold hundreds of
-     * thousands, and "show me everything" is a request for the first page of everything. The page
-     * index restarts for each version, which is the detail the first cut got wrong -- the store
-     * turns an offset into a page by dividing by the limit, so carrying a running offset across
-     * versions asked the second one for a page that was never going to exist, and everything
-     * after the first catalog quietly returned nothing.
+     * Walks the versions in order until {@code size} hits are collected -- hits, not rows, since a
+     * row is one hit under Meaning and a dozen under Pictures. Rows are read a page at a time, and
+     * the page index restarts per version: the store divides offset by limit, so a running offset
+     * would ask the second version for a page that cannot exist.
      */
     private void walk(List<String> catalogVersions, int size, int offset, List<VectorHit> hits,
             Visitor visitor) {

@@ -17,19 +17,11 @@
 package com.github.greenfinger.cluster;
 
 /**
- * The channels this application talks on.
- *
- * <p>
- * A channel is a subscription filter: a listener registered on one never sees traffic from
- * another. Splitting by purpose rather than sharing one matters here because the traffic shapes
- * are opposite. A crawl task is unicast to exactly one node and must never be handled twice; a
- * replication record is multicast to every node and must reach all of them; a control message is a
- * handful of bytes that has to be acted on immediately rather than queued behind ten thousand
- * urls.
- *
- * <p>
- * One shared channel would put all three in the same inbound buffer, where a burst of urls delays
- * the stop signal that is trying to end that very burst.
+ * The channels this application talks on. A channel is a subscription filter, and these three are
+ * split because their traffic shapes are opposite: a crawl task is unicast to one node and must not
+ * be handled twice, a replication record is multicast and must reach everybody, and a control
+ * message is a few bytes that must be acted on at once. Sharing one buffer would let a burst of
+ * urls delay the stop signal trying to end that burst.
  * 
  * @Description: Channels
  * @Author: Fred Feng

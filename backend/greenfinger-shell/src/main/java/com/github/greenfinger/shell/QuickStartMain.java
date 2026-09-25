@@ -24,6 +24,7 @@ import com.github.greenfinger.core.model.Catalog;
 import com.github.greenfinger.core.model.OutputType;
 import com.github.greenfinger.service.CatalogAdminService;
 import com.github.greenfinger.service.CrawlerLauncher;
+import java.util.Set;
 
 /**
  * An entry point for running a crawl from an IDE, without the shell in the way.
@@ -57,7 +58,7 @@ public class QuickStartMain {
             Catalog catalog = new Catalog();
             catalog.setUrl(url);
             catalog.setMaxFetchSize(maxSize);
-            catalog.setOutputTypes(java.util.Set.of(OutputType.FILE));
+            catalog.setOutputTypes(Set.of(OutputType.FILE));
             catalog = catalogAdminService.save(catalog);
 
             var result = launcher.crawl(catalog.getId(), null);

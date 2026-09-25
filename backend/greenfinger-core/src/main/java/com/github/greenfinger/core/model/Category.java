@@ -23,26 +23,15 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * What a crawled site is about.
+ * What a crawled site is about. A facet, not free text: it appears in the index, narrows a query and
+ * groups the catalog list, and a facet only works when everyone spells it the same -- free text
+ * splits {@code News}, {@code news} and {@code 新闻} into three.
  *
  * <p>
- * It was free text, and free text is the wrong shape for the job it does. The category is a search
- * facet: it appears in the index, it narrows a query, and it groups the catalog list. A facet only
- * works when everyone spells it the same, and a free-text column guarantees that sooner or later
- * somebody types {@code News}, {@code news} and {@code 新闻} for the same three sites and the facet
- * silently splits into three.
- *
- * <h2>Why these eight</h2>
- * Broad enough that most sites land somewhere without deliberation, and few enough to fit in a
- * dropdown that can be read at a glance. They are topics rather than site shapes -- what the pages
- * are about, not whether the site is a forum or a blog -- because that is the question a person
- * narrowing a search is asking.
- *
- * <h2>Why OTHER rather than a rejection</h2>
- * A closed list with no escape makes the crawler refuse work that is otherwise perfectly fine, and
- * whoever hits that will pick whichever value is nearest rather than the right one, which corrupts
- * the facet far worse than an honest {@code other} would. Anything unrecognised -- including every
- * value a 1.x catalog may be carrying -- becomes {@link #OTHER} rather than an error.
+ * Eight topics, broad enough that most sites land somewhere and few enough to read at a glance;
+ * topics rather than site shapes, because that is what somebody narrowing a search asks. Anything
+ * unrecognised, including 1.x values, becomes {@link #OTHER} rather than an error -- a refusal just
+ * makes people pick the nearest value, which corrupts the facet worse.
  * 
  * @Description: Category
  * @Author: Fred Feng

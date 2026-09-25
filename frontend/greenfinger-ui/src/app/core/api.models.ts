@@ -1,11 +1,6 @@
 /**
- * The shapes the api actually returns.
- *
- * Written by hand against the controllers rather than generated, because there are twenty of them
- * and a generator would drag a build step into a project that does not otherwise need one. The
- * field names match the Java exactly; where the backend serialises an enum as something other than
- * its name -- countingType is an int, outputTypes are lower case strings -- that is spelled out
- * here so a form never has to guess.
+ * The shapes the api returns. Hand written against the controllers; field names match the Java,
+ * and enums that serialise as something other than their name are spelled out.
  */
 
 /** Every endpoint answers in this envelope, success and failure alike. */
@@ -26,12 +21,7 @@ export interface Session {
 export type OutputType = 'file' | 'index' | 'vector';
 export type ContentMode = 'text' | 'text+image';
 
-/**
- * One picture per output, used everywhere an output is named: the cards, the editor. Outputs are a
- * fixed set of three that appear on every card, so once the shape is known the word is read past
- * rather than read -- and a card then says where its pages went without a line of text on it. The
- * name stays in the tooltip, which is where somebody meeting the mark for the first time looks.
- */
+/** One picture per output, so a card says where its pages went without a line of text. */
 export const OUTPUT_MARKS: Record<OutputType, { icon: string; label: string; hint: string }> = {
   file: { icon: 'folder', label: 'Files', hint: 'Files -- pages and images kept on disk or in MinIO' },
   index: { icon: 'manage_search', label: 'Index', hint: 'Index -- searchable by words' },
@@ -41,14 +31,10 @@ export const OUTPUT_MARKS: Record<OutputType, { icon: string; label: string; hin
 export type RunningState = 'none' | 'crawl' | 'update' | 'rebuild';
 export type DeleteLayer = 'db' | 'file' | 'index' | 'vector' | 'all';
 
-/** What a crawl counts towards maxFetchSize. Serialised as the int, so the value is the wire form. */
 /**
- * Which counter `maxFetchSize` is compared against.
- *
- * The hints matter more than they look. `maxFetchSize` reads like "how many pages to keep", and
- * it only means that under `Pages saved` -- the default. Under `Urls seen` the same number is a
- * budget for links *discovered*, and one listing page can link to more than the whole budget, at
- * which point the crawl stops having saved almost nothing.
+ * Which counter `maxFetchSize` is compared against. It reads like "pages to keep" and only means
+ * that under `Pages saved`; under `Urls seen` one listing page can spend the whole budget.
+ * Serialised as the int, so the value is the wire form.
  */
 export const COUNTING_TYPES = [
   {
@@ -135,17 +121,8 @@ export interface Catalog {
   maxVersions?: number;
   lastIndexed?: string | null;
   /**
-   * When the row was made and when it was last written.
-   *
-   * <p>
-   * `updatedAt` is stamped by whichever store performed the write, including when it writes a
-   * copy that arrived from another node, which is what lets the catalog list wait for the node it
-   * is reading from to have caught up with an edit that was just made.
-   *
-   * <p>
-   * There used to be a `lastModified` here instead. This api has never sent one, so it was null
-   * on every row, and the dashboard sorted by it -- which sorts nothing and says nothing about
-   * it. A field that cannot be filled in is worse than a field that is not there.
+   * `updatedAt` is stamped by whichever store performed the write, including a copy arriving from
+   * another node -- which is what lets the catalog list wait for a node to catch up with an edit.
    */
   createdAt?: string | null;
   updatedAt?: string | null;
@@ -195,11 +172,8 @@ export interface CatalogSummary {
   filteredUrlCount: number;
   invalidUrlCount: number;
   /**
-   * Failed fetches in a row, right now, and what the last one answered.
-   *
-   * Reset by the first page that arrives, so it is the length of the run happening at this moment
-   * rather than a total: a hundred failures spread over a long crawl is ordinary, and twenty in a
-   * row is a door that has been closed.
+   * Failed fetches in a row, reset by the first page that arrives: twenty in a row is a closed
+   * door, where a hundred spread over a long crawl is ordinary.
    */
   consecutiveFailures: number;
   lastFailure: string;
@@ -237,12 +211,7 @@ export interface CrawlStatus {
   handledUrlCount?: number;
 }
 
-/**
- * One row of what a crawl stored.
- *
- * Metadata only, deliberately. The page is on the site it came from and `url` points at it;
- * carrying the text here would make every list request read a file per row.
- */
+/** One row of what a crawl stored. Metadata only: carrying the text would read a file per row. */
 export interface ResourceRow {
   id: string;
   catalogId: string;
@@ -256,13 +225,8 @@ export interface ResourceRow {
   referer: string | null;
   contentHash: string | null;
   /**
-   * Where the page itself was written in the blob store: the html as fetched, and the readable
-   * text pulled out of it. Relative to the store's root, the same shape as an image's `filePath`
-   * -- the catalog, the version, then a two level fan-out on the id.
-   *
-   * Null on a row whose files have been deleted while the row was kept, which is a state the
-   * delete panel can produce on purpose: the metadata is small and worth keeping, the files are
-   * not, and `replay --file` can fetch them back from `url`.
+   * Where the page was written in the blob store, relative to its root. Null on a row whose files
+   * were deleted while the row was kept -- a state the delete panel can produce on purpose.
    */
   htmlFilePath: string | null;
   htmlContentFilePath: string | null;
@@ -277,11 +241,8 @@ export interface ResourceRow {
 }
 
 /**
- * One picture on one page.
- *
- * `sourceUrl` is what this page pointed at; `firstSourceUrl` is where the bytes were first found.
- * They differ when another page got to the same image first -- an image is stored once per catalog
- * and version however many pages carry it.
+ * One picture on one page. `sourceUrl` is what this page pointed at, `firstSourceUrl` where the
+ * bytes were first found: an image is stored once per version however many pages carry it.
  */
 export interface ResourceImageView {
   imageId: string;
@@ -384,6 +345,26 @@ export interface VectorHit {
 }
 
 /** What the running server says it is. Read from the build, never from a constant in this app. */
+/**
+ * Which store is behind each output. Provider names -- `local`/`minio`, `lucene`/`elasticsearch`,
+ * `qdrant`/`weaviate` -- which the Outputs cards turn into words rather than stating themselves.
+ */
+/**
+ * One node's heap and cpu, read from the jvm rather than the actuator's metrics endpoint, which
+ * production does not expose. Both are -1 where the platform will not say.
+ */
+export interface NodeReading {
+  heapUsed: number;
+  heapMax: number;
+  cpu: number;
+}
+
+export interface OutputStores {
+  file: string;
+  index: string;
+  vector: string;
+}
+
 export interface ServerVersion {
   name: string;
   version: string;
@@ -400,11 +381,8 @@ export interface DeleteLine {
 }
 
 /**
- * One crawl, as it was accounted for afterwards.
- *
- * Written by every node that took part, and every copy carries the whole picture -- the totals
- * for the crawl and, in `byNode`, what each node did towards them. `node` says which node wrote
- * this copy.
+ * One crawl, accounted for afterwards. Every node that took part writes a copy, and each carries
+ * the whole picture: the totals, and what each node did towards them in `byNode`.
  */
 export interface CrawlReport {
   path: string;
@@ -444,13 +422,8 @@ export interface CrawlReport {
 }
 
 /**
- * What `/actuator/spreader` reports about this node and the traffic it is carrying.
- *
- * Written against the endpoint rather than trimmed to what one page happened to draw: the whole
- * point of the system health page is that everything the node measures is on it, and a field left
- * out of this interface is a field nobody can find out is there. Optional where the endpoint may
- * genuinely omit it -- metrics can be switched off, and a channel that has never carried anything
- * reports no latency.
+ * What `/actuator/spreader` reports. Written against the endpoint rather than against what one
+ * page draws: a field left out here is a field nobody can find out is there.
  */
 export interface ClusterStatus {
   node: {
@@ -526,12 +499,7 @@ export interface ClusterChannel {
     receiveErrorRate: number;
     retryRate: number;
   };
-  /**
-   * How long a message took, in milliseconds, going out and coming in.
-   *
-   * The percentiles are the useful half: an average hides the one request in a hundred that took
-   * a second, and that one is what somebody opened this page about.
-   */
+  /** Milliseconds out and back. The percentiles are the useful half; an average hides the outlier. */
   latencyMillis?: {
     outbound?: ChannelLatency;
     inbound?: ChannelLatency;

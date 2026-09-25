@@ -24,28 +24,16 @@ import com.github.greenfinger.core.catalog.CatalogStore;
 import com.github.greenfinger.core.model.Catalog;
 
 /**
- * Allows one crawl at a time, in this process and across the cluster.
+ * Allows one crawl at a time, in this process and across the cluster: two crawls of one catalog
+ * would fight over the frontier and dedup store, two of different catalogs just split the
+ * bandwidth.
  *
  * <p>
- * Two crawls of the same catalog would fight over one frontier and one dedup store; two of
- * different catalogs would simply divide the available bandwidth and finish no sooner. 1.x
- * enforced the same rule, in one process, which was all it had to.
- *
- * <h2>Two questions, because there are two ways to break the rule</h2>
- * A permit answers the first: is this process already crawling? It is cheap, it is exact, and it
- * is the only one that matters on a laptop.
- *
- * <p>
- * The catalog table answers the second: is another node already crawling something else? Every
- * node writes its running state there and every node can read it, which makes it the one place
- * the whole cluster already agrees on -- no lock service, no leader, nothing to keep alive. A
- * crawl that is already running on <em>this</em> catalog is not a refusal but the ordinary case
- * of a node joining it, so only a different catalog counts.
- *
- * <p>
- * It is a check rather than a lock, and two commands issued in the same instant on two nodes can
- * both pass it. What that costs is two crawls of different catalogs sharing the bandwidth, which
- * is the thing the rule exists to discourage rather than to make impossible.
+ * Two questions. A local permit answers "is this process already crawling", which is all a laptop
+ * needs. The catalog table answers "is another node crawling something else" -- every node writes
+ * its running state there, so no lock service or leader is involved; the same catalog is not a
+ * refusal but a node joining. A check, not a lock: two simultaneous commands can both pass, which
+ * costs shared bandwidth, the thing the rule discourages rather than forbids.
  * 
  * @Description: WebCrawlerSemaphore
  * @Author: Fred Feng
@@ -119,14 +107,9 @@ public final class WebCrawlerSemaphore {
     }
 
     /**
-     * Whether a crawl of this catalog could start, without taking the permit.
-     *
-     * <p>
-     * For a caller that has to answer before the crawl is handed to a background thread: the
-     * server returns "started" the moment it accepts the request, so a refusal that happens
-     * afterwards is a refusal nobody is told about. This is a look rather than a claim, so two
-     * callers can both be told yes and one of them then refused for real -- which is the ordinary
-     * shape of a pre-flight check, and better than saying nothing.
+     * Whether a crawl could start, without taking the permit -- for callers that must answer before
+     * the crawl goes to a background thread, since a later refusal reaches nobody. A look, not a
+     * claim: two callers can both be told yes and one then refused for real.
      */
     public boolean available(String catalogId) {
         return !isOccupied() && !isRunningElsewhere(catalogId);

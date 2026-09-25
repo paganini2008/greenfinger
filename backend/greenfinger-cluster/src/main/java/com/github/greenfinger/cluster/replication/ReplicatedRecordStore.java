@@ -32,25 +32,18 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * Copies rows to the other nodes, for the databases where a row written here does not exist there.
+ * SQLite and H2 in file or memory mode give every process its own; the server databases are one
+ * every node dials, where copying would write each row twice. {@code StoreType} decides, read off
+ * the jdbc url because that is where the distinction is recorded.
  *
  * <p>
- * SQLite and H2 in file or memory mode give every process its own database, so a page saved on one
- * node is invisible to a search served by another. MySQL, PostgreSQL, SQL Server, Oracle and H2 in
- * server mode are one database every node dials, and copying into them would write every row
- * twice. {@code StoreType} is what decides, and it is read off the jdbc url because that is the
- * only place the distinction is actually recorded.
+ * Three rows travel, not one: the resource, its images, and the references carrying alt text and
+ * surrounding words, because the index and vectors are built from all three.
  *
- * <h2>Three rows, not one</h2>
- * A page is a resource, its images, and the references that tie the two together with the alt text
- * and the surrounding words. All three go, because the index and the vectors are built from all
- * three and a node missing the references would produce pictures nobody can search for.
- *
- * <h2>Applied if absent or different, never blindly</h2>
- * Delivery is at least once, so the same row can arrive twice and writing it again would be
- * pointless io. But a refresh genuinely changes a row, so "skip if present" would leave the other
- * nodes on the old content -- the test is whether the row differs, not whether it exists. Which
- * is why the image rows use existence and the resource rows use a comparison: an image id is the
- * hash of its bytes and cannot change meaning, and a resource id is the hash of its url and can.
+ * <p>
+ * Applied when absent or different, never blindly -- delivery is at least once, but a refresh
+ * genuinely changes a row, so "skip if present" would strand peers on the old content. Image rows
+ * test existence (the id is the hash of the bytes) and resource rows compare (the id is the url).
  * 
  * @Description: ReplicatedRecordStore
  * @Author: Fred Feng

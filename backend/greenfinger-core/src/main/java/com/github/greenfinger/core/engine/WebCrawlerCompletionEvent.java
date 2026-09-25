@@ -20,25 +20,16 @@ import org.springframework.context.ApplicationEvent;
 import lombok.Getter;
 
 /**
- * A crawl is over, published on every node.
+ * A crawl is over, published on every node. The shared counters already carry the fact; what they
+ * do not carry is a moment, and polling a flag arrives late by the interval.
  *
  * <p>
- * The shared counters already carry the fact -- {@code completed}, the reason, whether it was cut
- * short -- and any node can read them at any time. What they do not carry is a moment. An
- * application that wants to do something when a crawl finishes had to poll for it, and polling a
- * flag arrives late by however long the interval is and gives nothing to hang the work on.
+ * The node winding the run down announces it once, and every node publishes this locally exactly
+ * once -- which is what makes {@code @EventListener} mean what a reader expects.
  *
  * <p>
- * So the node that winds the run down announces it once, over the same control channel that
- * announces a crawl starting, and every node -- the one that announced it included, and any that
- * took no part in the crawl at all -- publishes this locally. Exactly once per node, which is what
- * makes {@code @EventListener} on it mean what a reader expects.
- *
- * <p>
- * It is a notification, not a decision. Nothing in the crawler waits for a listener, and a
- * listener that throws is logged and stepped over: the run is already finished and its version
- * already published by the time this is sent. The state remains the shared counters' to answer
- * for; this only says when to go and look.
+ * A notification, not a decision: nothing waits for a listener and one that throws is logged and
+ * stepped over, because the version is already published by the time this is sent.
  * 
  * @Description: WebCrawlerCompletionEvent
  * @Author: Fred Feng

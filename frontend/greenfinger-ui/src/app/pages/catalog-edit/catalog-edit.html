@@ -73,7 +73,7 @@
         <button type="button" class="gf-output gf-output-on gf-output-locked" disabled>
           <mat-icon>folder</mat-icon>
           <span class="gf-output-name">Files</span>
-          <span class="gf-output-note">html, text and images. Always on.</span>
+          <span class="gf-output-note">{{ fileNote() }}</span>
         </button>
 
         <button
@@ -84,7 +84,7 @@
         >
           <mat-icon>manage_search</mat-icon>
           <span class="gf-output-name">Index</span>
-          <span class="gf-output-note">Elasticsearch. Search by words.</span>
+          <span class="gf-output-note">{{ indexNote() }}</span>
         </button>
 
         <button
@@ -95,7 +95,7 @@
         >
           <mat-icon>scatter_plot</mat-icon>
           <span class="gf-output-name">Vector</span>
-          <span class="gf-output-note">Qdrant or Weaviate. Meaning and pictures.</span>
+          <span class="gf-output-note">{{ vectorNote() }}</span>
         </button>
       </div>
 

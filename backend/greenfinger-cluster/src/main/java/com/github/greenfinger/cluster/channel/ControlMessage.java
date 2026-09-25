@@ -54,51 +54,27 @@ public record ControlMessage(Type type, String catalogId, String action, int ver
         STARTED,
 
         /**
-         * A crawl is over. Every node publishes a completion event locally.
-         *
-         * <p>
-         * The state of it was already shared and still is: the completion flag and the reason sit
-         * beside the counters, and any node can read them whenever it likes. This is not a second
-         * copy of that fact to be kept in step with it -- nothing acts on this message except to
-         * hand it to whatever is listening. What it adds is a moment, which a flag in a cache does
-         * not have: an application that wants to do something when a crawl finishes had to poll
-         * for it, arriving up to one interval late with nothing to hang the work on.
-         *
-         * <p>
-         * Sent once, by the node winding the run down, and heard by every node including that one.
+         * A crawl is over. Not a second copy of the shared flag -- nothing acts on this except
+         * to hand it to whatever is listening. What it adds is a moment, which a flag in a cache
+         * does not have. Sent once, by the node winding the run down, heard by every node.
          */
         COMPLETED,
 
         /**
-         * Put back any file of this version that is missing here.
-         *
-         * <p>
-         * Unlike everything else a replay rebuilds, files are not one shared thing: every node
-         * keeps its own full copy, so "what is missing" has a different answer on each of them.
-         * That makes slicing the work across nodes wrong -- a node handed a slice would check its
-         * own files, which are fine, and report nothing to do while the node that actually lost
-         * them was never asked. So this goes to everybody, and each node repairs itself. A node
-         * with nothing missing sends no requests at all, which is what makes asking all of them
-         * cheap.
+         * Put back any file of this version that is missing here. Files are not one shared
+         * thing -- each node has its own gaps -- so slicing is wrong and everybody repairs
+         * itself. A node with nothing missing sends no requests, which makes asking all cheap.
          */
         RESTORE_FILES,
 
         /**
-         * Remove your own copy of the layers a delete cannot replicate.
+         * Remove your own copy of the layers a delete cannot replicate: the embedded index and
+         * the three RocksDB directories, which are plain local files. Without this, two nodes out
+         * of three keep a frontier for a version whose rows have gone -- invisible until the next
+         * crawl finds a frontier it did not write.
          *
          * <p>
-         * Rows, blobs and vectors go through stores that copy their own writes, so a delete of
-         * those removes them everywhere it is run. The embedded index and the three RocksDB
-         * directories do not: the index is handed out undecorated, and the directories are plain
-         * files under this node's data directory. A delete used to take them here and nowhere
-         * else, which left two nodes out of three holding a Lucene directory and a frontier for a
-         * version whose rows had gone -- invisible until the next crawl of the same catalog found
-         * a frontier it did not write.
-         *
-         * <p>
-         * The instruction travels rather than the removal, because "the frontier of v3" is a
-         * different set of paths on every node. Everyone hears it, the sender included, and the
-         * sender has already done its own and says so.
+         * The instruction travels rather than the removal, because the paths differ per node.
          */
         PURGE_LOCAL
     }

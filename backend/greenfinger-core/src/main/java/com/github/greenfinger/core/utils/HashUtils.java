@@ -22,6 +22,7 @@ import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import lombok.experimental.UtilityClass;
+import java.io.IOException;
 
 /**
  * Content addressing helpers. Every artifact this crawler writes -- page, image, dedup key -- is
@@ -45,7 +46,7 @@ public class HashUtils {
         return toHex(newDigest().digest(bytes));
     }
 
-    public String sha256(InputStream in) throws java.io.IOException {
+    public String sha256(InputStream in) throws IOException {
         MessageDigest digest = newDigest();
         byte[] buffer = new byte[8192];
         try (DigestInputStream dis = new DigestInputStream(in, digest)) {

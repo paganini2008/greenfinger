@@ -52,6 +52,8 @@ import com.github.greenfinger.output.vector.WeaviateVectorStore;
 import com.github.greenfinger.core.utils.BeanLifeCycleUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.github.greenfinger.output.vector.VectorSearcher;
+import com.github.greenfinger.output.vector.LocalEmbeddingClient;
 
 /**
  * Assembles the outputs a catalog asked for.
@@ -248,7 +250,7 @@ public class OutputFactory implements DisposableBean {
      */
     public EmbeddingClient getEmbeddingClient() {
         return switch (embeddingProperties.getProvider().toLowerCase(Locale.ROOT)) {
-            case "local" -> new com.github.greenfinger.output.vector.LocalEmbeddingClient(
+            case "local" -> new LocalEmbeddingClient(
                     embeddingProperties);
             case "ollama" -> new OllamaEmbeddingClient(embeddingProperties);
             case "openai" -> new OpenAiEmbeddingClient(embeddingProperties);
@@ -257,9 +259,9 @@ public class OutputFactory implements DisposableBean {
         };
     }
 
-    public com.github.greenfinger.output.vector.VectorSearcher getVectorSearcher(
+    public VectorSearcher getVectorSearcher(
             EmbeddingClient embeddingClient) {
-        return new com.github.greenfinger.output.vector.VectorSearcher(
+        return new VectorSearcher(
                 outputProperties.getVector(), embeddingClient, getVectorStore());
     }
 

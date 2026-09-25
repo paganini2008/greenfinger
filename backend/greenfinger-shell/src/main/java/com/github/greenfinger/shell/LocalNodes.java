@@ -30,28 +30,15 @@ import org.springframework.stereotype.Component;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * The extra nodes a session runs on this machine.
- *
- * <h2>Why the prompt forks and the one-shot launcher does not</h2>
- * {@code greenfinger-cli.sh catalog-crawl --node=3} is handled entirely in the launcher: it starts
- * two workers, runs the command, and its trap stops them when the command returns. The prompt
- * cannot work that way -- it was started long before anybody typed {@code --node=3}, and by then
- * the launcher has been replaced by the jvm.
+ * The extra nodes a session runs on this machine. A one-shot {@code --node=3} is handled by the
+ * launcher's own trap, but the prompt was started long before anybody typed it, so it forks them
+ * itself: this process is already the leader, so three means two more. They are stopped when the
+ * crawl that asked for them ends, so crawling twice runs three nodes twice, not three then five.
  *
  * <p>
- * So the session forks them itself. This process is already a node and already the cluster's
- * leader -- it holds the cluster port and it started first -- so asking for three means starting
- * two more. They join by cluster name, take their share of the urls, and are stopped when the
- * crawl that asked for them finishes. A session that crawls twice with {@code --node=3} therefore
- * runs three nodes twice, not three and then five.
- *
- * <h2>The launcher starts them, not this class</h2>
- * A worker needs its own data directory, its own database when the database is a file, and the
- * cluster name this session joined. All of that is decided by {@code worker_env} in
- * {@code greenfinger-cli.sh}, and it stays decided there: this runs
- * {@code greenfinger-cli.sh --as-worker} with {@code GREENFINGER_WORKER_DIR} set, so a worker the
- * prompt forked and a worker the launcher forked are the same process with the same environment.
- * Writing it again in Java would be two implementations of one rule, and they would drift.
+ * The workers are started through {@code greenfinger-cli.sh --as-worker} with
+ * {@code GREENFINGER_WORKER_DIR} set, so the data directory, database and cluster name stay decided
+ * by {@code worker_env} in one place rather than by two implementations that would drift.
  *
  * @Description: LocalNodes
  * @Author: Fred Feng

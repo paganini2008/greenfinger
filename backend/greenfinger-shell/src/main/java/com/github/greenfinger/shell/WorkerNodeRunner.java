@@ -26,20 +26,14 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 /**
- * A process that is a member of the cluster and nothing else.
+ * A process that is a member of the cluster and nothing else: {@code greenfinger-cli.sh -n 3}
+ * starts the one you type into and two of these, which have no prompt and exist to be dispatched
+ * to -- two more fetchers and two more copies of everything.
  *
  * <p>
- * {@code greenfinger-cli.sh -n 3} starts three processes on this machine: the one you type into,
- * and two of these. They have no prompt and run no command -- they exist to be dispatched to. A
- * url found by any node is fetched by whichever node the round robin picks, so what these add is
- * two more fetchers and two more copies of everything.
- *
- * <p>
- * It stays up by blocking here, which is exactly how the interactive shell stays up: an
- * {@link ApplicationRunner} that does not return keeps {@code SpringApplication.run} from
- * returning, and the process lives until something closes the context. Keeping a non-daemon thread
- * alive instead would not work -- {@code SpringApplication.exit} closes the context the moment
- * main gets to it.
+ * It stays up by blocking here, as the interactive shell does: an {@link ApplicationRunner} that
+ * does not return keeps the context open. A non-daemon thread would not do -- 
+ * {@code SpringApplication.exit} closes the context as soon as main reaches it.
  *
  * @Description: WorkerNodeRunner
  * @Author: Fred Feng

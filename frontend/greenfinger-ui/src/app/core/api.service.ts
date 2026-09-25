@@ -13,6 +13,8 @@ import {
   DeleteLayer,
   DeleteLine,
   HealthReport,
+  NodeReading,
+  OutputStores,
   ProxyNode,
   ResourcePage,
   RocksDbUsage,
@@ -23,12 +25,8 @@ import {
 } from './api.models';
 
 /**
- * Every call the front end makes, in one place.
- *
- * Each method unwraps the {@link ApiResult} envelope, so a component works with the payload and
- * never with success/message/data. A response whose {@code success} is false is turned into an
- * error here rather than handed on looking like a result -- a search that found nothing and a
- * search that could not run are different things, and only one of them belongs in a result list.
+ * Every call the front end makes. Each unwraps the {@link ApiResult} envelope, and a response
+ * whose {@code success} is false becomes an error rather than a result that looks empty.
  */
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -38,6 +36,11 @@ export class ApiService {
    * What is running. Open without signing in, so the login page can show it too: being told which
    * version refused your password is how you find out you are pointed at the wrong server.
    */
+  /** Which store each output writes to, for the page that names them. */
+  outputs(): Observable<OutputStores> {
+    return this.unwrap(this.http.get<ApiResult<OutputStores>>(`${API_PREFIX}/outputs`));
+  }
+
   version(): Observable<ServerVersion> {
     return this.unwrap(this.http.get<ApiResult<ServerVersion>>(`${API_PREFIX}/version`));
   }
@@ -108,10 +111,8 @@ export class ApiService {
   }
 
   /**
-   * Removes crawled versions from whichever stores are named.
-   *
-   * {@code dryRun} defaults to true on the server for a reason, and the page keeps it that way:
-   * this is the one call that cannot be undone, so the operator sees the report before it happens.
+   * Removes crawled versions from the stores named. {@code dryRun} defaults to true on both
+   * sides: this is the one call that cannot be undone.
    */
   deleteVersions(
     ref: string,
@@ -166,55 +167,35 @@ export class ApiService {
   // ---- the cluster ------------------------------------------------------------------------
 
   /**
-   * This node's view of the cluster.
-   *
-   * Not under the api prefix and not in the envelope: it is Spring's actuator, which has its own
-   * shape. Every node answers for itself alone, which is the point -- a page that showed one
-   * node's numbers as the cluster's would hide exactly the node that had stopped working.
+   * This node's view of the cluster. Spring's actuator, so neither the prefix nor the envelope.
+   * Every node answers for itself alone, which is the point.
    */
   clusterStatus(node?: number | null): Observable<ClusterStatus> {
     return this.http.get<ClusterStatus>('/actuator/spreader', { params: pin(node) });
   }
 
   /**
-   * One actuator metric, as its single value.
-   *
-   * Micrometer answers with a list of measurements and a list of the tags it could be sliced by;
-   * everything this application asks for has exactly one measurement, so the shape is unwrapped
-   * here rather than in the three places that would otherwise each do it slightly differently.
-   * Missing or unreadable is 0 rather than an error: a memory reading that did not arrive should
-   * leave a gap in a table, not empty the page around it.
+   * One node's heap and cpu. Under the api prefix rather than the actuator's metrics endpoint,
+   * which production does not expose -- so this column used to be empty exactly where it matters.
    */
-  metric(name: string, node?: number | null, tag?: string): Observable<number> {
-    let params = pin(node);
-    if (tag) {
-      params = params.set('tag', tag);
-    }
-    return this.http
-      .get<{ measurements?: { value?: number }[] }>(`/actuator/metrics/${name}`, { params })
-      .pipe(map((answer) => answer?.measurements?.[0]?.value ?? 0));
+  node(node?: number | null): Observable<NodeReading> {
+    return this.unwrap(
+      this.http.get<ApiResult<NodeReading>>(`${API_PREFIX}/node`, { params: pin(node) }),
+    );
   }
 
+
   /**
-   * The nodes this front end is in front of, as it can reach them.
-   *
-   * Served by the front end's own proxy, not by the api: a node knows who is in its cluster but
-   * not which of them a browser was pointed at, and it is the front end's list of upstreams that
-   * decides who can be asked. Absent -- 404, or a dev server, or the app served from somewhere
-   * that is not the proxy -- and the System health page simply drops its picker and takes
-   * whichever node answers, which is what it did before there was one.
+   * The nodes this front end is in front of. Served by the proxy, not the api: a node knows its
+   * cluster but not which members a browser can reach. Absent, and the picker simply disappears.
    */
   proxyNodes(): Observable<ProxyNode[]> {
     return this.http.get<ProxyNode[]>('/__nodes');
   }
 
   /**
-   * Up or down, from the same endpoint a container orchestrator asks -- and, when the deployment
-   * lets it, what each of the checks behind that word said.
-   *
-   * The components are flattened into a list here rather than in the template. `show-details` may
-   * be off, in which case the map is simply absent and the page has the one word, which is still
-   * the answer to the question it was asked.
+   * Up or down, from the endpoint an orchestrator asks, with the checks behind it where
+   * `show-details` is on. Flattened here rather than in the template.
    */
   health(node?: number | null): Observable<HealthReport> {
     return this.http.get<RawHealth>('/actuator/health', { params: pin(node) }).pipe(
@@ -240,11 +221,8 @@ export class ApiService {
   // ---- what a crawl stored ----------------------------------------------------------------
 
   /**
-   * A page of rows from the resource table, filtered.
-   *
-   * Not the search index: this reads the database, in crawl order, and can therefore show a
-   * version that was never published -- which is exactly the version somebody wants to look at
-   * when a crawl came back wrong.
+   * Rows from the resource table, in crawl order. Not the index: this can show a version that was
+   * never published, which is the one somebody looks at when a crawl came back wrong.
    */
   resources(options: {
     catalogId: string;
@@ -279,12 +257,7 @@ export class ApiService {
     );
   }
 
-  /**
-   * How much of the blob store the crawls have taken.
-   *
-   * Asked on demand and never polled: on local disk it is a directory walk and on MinIO a paged
-   * list, and neither is something to pay for every few seconds because a page is open.
-   */
+  /** On demand, never polled: a directory walk on disk and a paged list on MinIO. */
   storageUsage(catalogId?: string): Observable<StorageUsage> {
     let params = new HttpParams();
     if (catalogId) params = params.set('catalogId', catalogId);
@@ -294,10 +267,8 @@ export class ApiService {
   }
 
   /**
-   * The crawl's own state rather than its output: the frontier and the two dedup filters.
-   *
-   * Also on demand. The size is a file walk; the key counts mean opening each store, which is
-   * why they come back missing while that catalog is being crawled.
+   * The crawl's own state: the frontier and the two dedup filters. The key counts mean opening
+   * each store, which is why they are missing while that catalog is being crawled.
    */
   rocksDbUsage(catalogId: string, version?: number | null): Observable<RocksDbUsage> {
     let params = new HttpParams().set('catalogId', catalogId);
@@ -332,13 +303,8 @@ export class ApiService {
   }
 
   /**
-   * The bytes of a picture the crawl saved.
-   *
-   * The vector store carries a blob store path, which no browser can fetch, so the server turns
-   * the path back into bytes. Fetched rather than pointed at with an `<img src>`: the endpoint
-   * needs a bearer token and an `<img>` sends none, so the tag would get a 401 and draw a broken
-   * box. Going through HttpClient puts the request through the same interceptor as every other
-   * call, and the caller wraps the blob in an object url for the tag.
+   * The bytes of a saved picture. Fetched rather than given to `<img src>`, which sends no bearer
+   * token and would draw a broken box; the caller wraps the blob in an object url.
    */
   imageBytes(imageFilePath: string): Observable<Blob> {
     const params = new HttpParams().set('path', imageFilePath);
@@ -396,11 +362,8 @@ interface RawHealth {
 }
 
 /**
- * The query parameter that pins a request to one node, or nothing at all.
- *
- * Read by the front end's proxy and stripped there, so it never reaches a node. Only System health
- * sends it: every other page asks a question any node can answer, and spreading those is the whole
- * reason there is one address in front of the cluster.
+ * Pins a request to one node. Read and stripped by the proxy, so it never reaches a node, and only
+ * System health sends it -- every other page asks something any node can answer.
  */
 function pin(node?: number | null): HttpParams {
   return node === null || node === undefined

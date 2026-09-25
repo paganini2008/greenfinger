@@ -40,14 +40,19 @@
   gap: 0.5rem;
 }
 
+// White on the paper, like every other card. It was the page's own tinted surface with a
+// hairline around it, which on a white ground was a row and on this one is a faint blob: a
+// hundred and eighty-nine of them, each the colour of what they are lying on.
 .gf-row {
-  border: 1px solid var(--gf-outline);
-  border-radius: 0.75rem;
-  background: var(--gf-surface-container);
+  border: 0;
+  border-radius: var(--gf-r-md);
+  background: var(--gf-surface);
+  box-shadow: var(--gf-shadow);
   overflow: hidden;
 
+  // Open, it is the thing being read rather than one of a list.
   &.gf-row-open {
-    border-color: var(--mat-sys-on-surface);
+    box-shadow: var(--gf-shadow-lg);
   }
 }
 
@@ -66,8 +71,9 @@
   cursor: pointer;
   font: inherit;
 
+  // A warm tint rather than the page's surface, which the row is no longer made of.
   &:hover {
-    background: var(--gf-surface-container);
+    background: color-mix(in srgb, var(--gf-wheat-soft) 45%, var(--gf-surface));
   }
 }
 
@@ -106,11 +112,15 @@
   font: var(--mat-sys-body-medium);
 }
 
+// Three of these on every row, and the rows go on for as long as the crawl did. Solid green
+// made a column of green down the page for facts -- how many images, which version, how deep --
+// that are ordinary. Tinted, they are still readable and the page keeps its green for what is
+// actually worth looking at.
 .gf-chip {
   padding: 0.1rem 0.5rem;
-  border-radius: 999px;
-  background: var(--gf-green);
-  color: var(--mat-sys-on-primary-container);
+  border-radius: var(--gf-r-pill);
+  background: color-mix(in srgb, var(--gf-green) 13%, var(--gf-surface));
+  color: var(--gf-chrome-deep);
   font: var(--mat-sys-label-large);
 }
 

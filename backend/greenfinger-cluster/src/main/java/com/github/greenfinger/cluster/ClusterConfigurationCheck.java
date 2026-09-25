@@ -28,15 +28,10 @@ import lombok.extern.slf4j.Slf4j;
  * Says so when a node has joined a cluster but will not actually share any work.
  *
  * <p>
- * The wiring is conditional on the replicated cache, because the counters live in it and
- * completion is decided by comparing two of them. Conditional means that with the cache switched
- * off nothing is wired, the crawl coordinator falls back to the local one, and the node runs every
- * crawl entirely by itself -- while sitting in a cluster, gossiping, and answering as a member.
- *
- * <p>
- * That combination is correct for a test slice and almost certainly a mistake anywhere else, and
- * it produces no error of its own: the crawl works, it is just alone. Which is exactly the kind of
- * thing that goes unnoticed for a month.
+ * The wiring is conditional on the replicated cache, since the counters live in it. With the cache
+ * off nothing is wired, the coordinator falls back to the local one, and the node runs every crawl
+ * by itself while still gossiping and answering as a member -- right for a test slice, a mistake
+ * anywhere else, and silent either way, because the crawl works and is merely alone.
  * 
  * @Description: ClusterConfigurationCheck
  * @Author: Fred Feng

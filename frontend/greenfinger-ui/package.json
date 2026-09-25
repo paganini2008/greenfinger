@@ -1,14 +1,16 @@
 {
   "name": "greenfinger-ui",
-  "version": "2.0.0",
+  "version": "2.0.0-SNAPSHOT",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
+    "start": "node tools/dev.mjs",
+    "version:sync": "node tools/sync-version.mjs",
+    "build": "npm run version:sync && ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "test:server": "node --test docker/server.test.js",
     "lint": "ng lint",
-    "build:deploy": "ng build && rm -rf ../../deploy/docker/static && mkdir -p ../../deploy/docker && cp -R dist/greenfinger-ui/browser ../../deploy/docker/static && cp docker/Dockerfile.web docker/server.js ../../deploy/docker/",
+    "build:deploy": "npm run version:sync && ng build && rm -rf ../../deploy/docker/static && mkdir -p ../../deploy/docker && cp -R dist/greenfinger-ui/browser ../../deploy/docker/static && cp docker/Dockerfile.web docker/server.js ../../deploy/docker/",
     "icons": "node tools/make-icons.mjs",
     "e2e": "playwright test"
   },

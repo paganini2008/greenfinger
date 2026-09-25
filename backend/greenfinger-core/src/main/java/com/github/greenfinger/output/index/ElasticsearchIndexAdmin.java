@@ -24,6 +24,7 @@ import com.github.greenfinger.core.output.IndexAdmin;
 import com.github.greenfinger.output.OutputProperties;
 import com.github.greenfinger.output.RestJsonClient;
 import lombok.extern.slf4j.Slf4j;
+import java.util.stream.StreamSupport;
 
 /**
  * Index housekeeping: counting, deleting a version, and reclaiming the space afterwards.
@@ -165,7 +166,7 @@ public class ElasticsearchIndexAdmin implements IndexAdmin {
         JsonNode response =
                 client.get(baseUrl + "/_cat/indices/" + config.getPrefix()
                         + "-*?format=json&h=index");
-        return java.util.stream.StreamSupport.stream(response.spliterator(), false)
+        return StreamSupport.stream(response.spliterator(), false)
                 .map(node -> node.path("index").asText()).filter(StringUtils::isNotBlank).sorted()
                 .toList();
     }

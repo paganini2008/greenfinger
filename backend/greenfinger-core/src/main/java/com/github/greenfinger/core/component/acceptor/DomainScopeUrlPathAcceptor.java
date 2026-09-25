@@ -25,16 +25,14 @@ import com.github.greenfinger.core.utils.UrlUtils;
  * The boundary a crawl can never cross: a run started on www.a.com must not end up on www.b.com.
  *
  * <p>
- * This one is not configurable and cannot be removed. Every other acceptor narrows what is already
- * inside the boundary; this one draws the boundary, and it runs first so that nothing downstream
- * has to be trusted to hold the line. A single stray link on a page -- an advert, a syndication
- * widget, a "powered by" footer -- is all it takes for an unbounded crawler to wander off into the
- * rest of the web and never come back.
+ * Not configurable and not removable. Every other acceptor narrows what is already inside the
+ * boundary; this one draws it, and runs first so nothing downstream has to hold the line -- one
+ * advert or "powered by" footer is enough for an unbounded crawler to wander off for good.
  *
  * <p>
- * Sibling subdomains are inside the boundary: the registrable domain is compared, so
- * {@code books.toscrape.com} and {@code quotes.toscrape.com} are the same site. Narrowing further
- * than that is what {@link StartUrlPrefixUrlPathAcceptor} and the path patterns are for.
+ * Sibling subdomains are inside it: the registrable domain is compared, so
+ * {@code books.toscrape.com} and {@code quotes.toscrape.com} are one site. Narrowing further is
+ * {@link StartUrlPrefixUrlPathAcceptor} and the path patterns.
  * 
  * @Description: DomainScopeUrlPathAcceptor
  * @Author: Fred Feng

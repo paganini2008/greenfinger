@@ -29,15 +29,11 @@ import lombok.extern.slf4j.Slf4j;
  * Writes every setting that is actually in force into the log at startup.
  *
  * <p>
- * Configuration reaches this application from four places -- the packaged yaml, the copy beside
- * the launcher, {@code .env}, and the command line -- and which of them won is the first question
- * of most support conversations. Reading the yaml answers it wrongly whenever something overrode
- * it. This prints the objects the code will actually read, after everything has been merged, which
- * is the only version of the answer worth having. 1.x did the same thing and for the same reason.
- *
- * <p>
- * Only greenfinger's own properties: Spring's are numerous, unchanged, and would bury the ones
- * that matter.
+ * Configuration arrives from four places -- the packaged yaml, the copy beside the launcher,
+ * {@code .env} and the command line -- and which won is the first question of most support
+ * conversations; reading the yaml answers it wrongly whenever something overrode it. This prints
+ * the merged objects the code will actually read. Greenfinger's own properties only, since
+ * Spring's would bury them.
  *
  * @Description: ConfigurationReport
  * @Author: Fred Feng

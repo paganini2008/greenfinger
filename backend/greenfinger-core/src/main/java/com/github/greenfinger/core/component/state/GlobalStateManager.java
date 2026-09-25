@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 import com.github.greenfinger.core.ManagedBeanLifeCycle;
 import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.core.component.WebCrawlerComponent;
+import java.util.Map;
 
 /**
  * Owns the counters and the completion flag for one crawl. The standalone edition keeps them in
@@ -43,14 +44,9 @@ public interface GlobalStateManager extends WebCrawlerComponent, ManagedBeanLife
     boolean isCompleted();
 
     /**
-     * Ends the crawl, everywhere.
-     *
-     * <p>
-     * There is no local half of this decision. The flag and the reason live wherever the counters
-     * live -- in this process for a single node, in the shared cache for a cluster -- so whichever
-     * node notices first is simply the one that writes, and every other node reads the same
-     * answer. The reason is written once: the first writer wins, because a crawl that stopped at
-     * {@code maxFetchSize} and is then wound down should report the limit, not the wind-down.
+     * Ends the crawl, everywhere. The flag and the reason live where the counters live, so the
+     * node that notices first writes and the rest read the same answer. The first reason wins: a
+     * crawl that stopped at a limit should report the limit, not whatever wound it down.
      *
      * @param reason in the words of whoever ended it; it is what the run report shows.
      * @param interrupted false when a {@code CompletionChecker} decided this -- the crawl reached
@@ -71,25 +67,17 @@ public interface GlobalStateManager extends WebCrawlerComponent, ManagedBeanLife
     }
 
     /**
-     * Overwrites a reason already written, and only for the one fact that outranks every other:
-     * the crawl read nothing.
-     *
-     * <p>
-     * {@link #setCompleted} keeps the first reason on purpose, so a crawl that stopped at a limit
-     * is not relabelled by whatever wound it down afterwards. This is the exception, because it
-     * does not describe how the crawl ended but what it ended with. A site behind a challenge
-     * refuses the one url there is to ask for; the frontier drains, the counters agree, and the
-     * watchdog quite correctly reports a site that ran out of urls -- and an empty version is
-     * published over a good one. What was read has to win over how it stopped.
+     * Overwrites a reason already written, for the one fact that outranks every other: the crawl
+     * read nothing. A site behind a challenge drains the frontier with the counters agreeing, so
+     * the watchdog correctly reports a site that ran out of urls -- and an empty version is
+     * published over a good one. What was read wins over how it stopped.
      *
      * @param reason replaces whatever is recorded, and the crawl becomes an intervention.
      */
     /**
-     * Record a fetch that came back with nothing, and what it answered.
-     *
-     * Shared rather than per node, because a site refusing this crawler refuses all of it: a run
-     * counted separately on each node would need every node to reach the limit before anything
-     * said so, and would show a page nothing that is happening on the other two.
+     * Record a fetch that came back with nothing. Shared rather than per node: a site refusing
+     * this crawler refuses all of it, and per-node counting would need every node to reach the
+     * limit before anything said so.
      */
     void noteFetchFailure(String reason);
 
@@ -126,8 +114,8 @@ public interface GlobalStateManager extends WebCrawlerComponent, ManagedBeanLife
      * crawl saved 44 pages, and only this says whether one node did forty of them because the
      * other two were unreachable.
      */
-    default java.util.Map<String, java.util.Map<String, Long>> perNodeCounters() {
-        return java.util.Map.of();
+    default Map<String, Map<String, Long>> perNodeCounters() {
+        return Map.of();
     }
 
     Dashboard getDashboard();

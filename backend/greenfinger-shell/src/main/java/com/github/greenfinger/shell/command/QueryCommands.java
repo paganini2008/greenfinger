@@ -40,8 +40,11 @@ import com.github.greenfinger.output.OutputProperties;
 import com.github.greenfinger.output.vector.EmbeddingClient;
 import com.github.greenfinger.output.vector.VectorHit;
 import com.github.greenfinger.output.vector.VectorStore;
+import com.github.greenfinger.core.record.ResourceRecordStore;
 import com.github.greenfinger.service.CatalogAdminService;
+import com.github.greenfinger.service.StoredListing;
 import lombok.RequiredArgsConstructor;
+import java.util.Locale;
 
 /**
  * Searching what was crawled.
@@ -62,42 +65,61 @@ import lombok.RequiredArgsConstructor;
 public class QueryCommands {
 
     private final CatalogAdminService catalogAdminService;
+    private final ResourceRecordStore recordStore;
     private final CatalogDetailsService catalogDetailsService;
     private final OutputProperties outputProperties;
     private final OutputFactory outputFactory;
 
     /**
-     * Words by default, pictures when asked for.
+     * The same three questions the page asks: words to the index, meaning to the text vectors,
+     * pictures to the image vectors. Every table is titled with the mode that produced it, which
+     * is the answer to "two searches under one name have to be read twice".
      *
      * <p>
-     * There is no {@code --semantic} any more. Two search commands wearing one name, told apart by
-     * a flag, meant every result table had to be read twice -- once for what it said and once for
-     * which engine had produced it. Text is the index, which is what somebody typing words means;
-     * pictures are the one genuinely different question, and they get the flag.
+     * An empty query lists everything, in every mode, exactly as the empty box on the page does.
      */
     @Command(name = "search", group = "Search", description = "Search crawled pages")
     public void search(
-            @Option(longName = "query", description = "Words to look for") String query,
+            @Option(longName = "query",
+                    description = "Words to look for; leave it out to list everything") String query,
             @Option(longName = "id",
                     description = "A catalog id to search within; omit for all of them")
                     String id,
             @Option(longName = "size",
                     description = "How many results, 1 or more; default 10") Integer size,
+            @Option(longName = "mode",
+                    description = "words | meaning | pictures. Default words") String mode,
             @Option(longName = "image",
-                    description = "true | false; true finds pictures by describing them and shows"
-                            + " where they are. Default false") Boolean image)
+                    description = "Deprecated; the same as --mode=pictures") Boolean image)
             throws Exception {
-        if (StringUtils.isBlank(query)) {
-            throw new UsageException("Give something to search for: search --query=<words>");
+        String wanted = StringUtils.isNotBlank(mode) ? mode.trim().toLowerCase()
+                : Boolean.TRUE.equals(image) ? "pictures" : "words";
+        if (!List.of("words", "meaning", "pictures").contains(wanted)) {
+            throw new UsageException(
+                    "No such mode: '" + wanted + "'. Use words, meaning or pictures.");
         }
         int pageSize = size != null && size > 0 ? size : 10;
-        if (Boolean.TRUE.equals(image)) {
-            searchImages(query, id, pageSize);
-            return;
-        }
         List<String> versions = searchableVersions(id);
         if (versions.isEmpty()) {
             print(Ansi.dim("Nothing has finished crawling yet."));
+            return;
+        }
+
+        // Nothing typed is a question in itself -- "what is in here" -- and it is answered from
+        // the table rather than from an engine: similarity has no match-all, so the two vector
+        // modes could not answer it at all and the page would have listed one thing under Words
+        // and nothing under the other two.
+        if (StringUtils.isBlank(query)) {
+            listEverything(wanted, versions, pageSize);
+            return;
+        }
+
+        if ("pictures".equals(wanted)) {
+            searchImages(query, id, pageSize);
+            return;
+        }
+        if ("meaning".equals(wanted)) {
+            searchByMeaning(query, versions, pageSize);
             return;
         }
         Searcher searcher = outputFactory.getSearcher();
@@ -115,6 +137,39 @@ public class QueryCommands {
                     result.getUrl(), result.getCatalog());
         }
         print(table.render());
+    }
+
+    /**
+     * Pages that are about something, whether or not they say it: the vector store, asked in
+     * words. The table says which engine answered, because the same query under words and under
+     * meaning is two different results and a reader has to know which one they have.
+     */
+    private void searchByMeaning(String keyword, List<String> versions, int size)
+            throws Exception {
+        EmbeddingClient embeddingClient = outputFactory.sharedEmbeddingClient();
+        try {
+            List<VectorHit> hits = outputFactory.getVectorSearcher(embeddingClient)
+                    .searchText(keyword, versions, size, true);
+            renderHits(hits, "Pages about '" + keyword + "' (meaning)", false);
+        } catch (UnsupportedOperationException e) {
+            throw new WebCrawlerException(e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Everything that was kept, for an empty query, read from the table the crawl wrote.
+     *
+     * <p>
+     * The same {@code StoredListing} the http api uses, which is why it lives in core: two
+     * implementations of "list it all" is two answers to the same question a release apart.
+     */
+    private void listEverything(String mode, List<String> versions, int size) {
+        StoredListing listing = new StoredListing(recordStore, catalogAdminService);
+        if ("pictures".equals(mode)) {
+            renderHits(listing.images(versions, size, 0), "Every picture kept", true);
+            return;
+        }
+        renderHits(listing.pages(versions, size, 0), "Every page kept", false);
     }
 
     /**
@@ -138,19 +193,35 @@ public class QueryCommands {
         }
     }
 
+    /**
+     * The score column is dropped when nothing was compared. A listing carries a score of zero on
+     * every row -- it is a table read in order, not a ranking -- and a column of 0.0000 invites
+     * somebody to wonder what they did wrong. The page leaves the similarity off for the same
+     * reason.
+     */
     private void renderHits(List<VectorHit> hits, String title, boolean images) {
         if (hits.isEmpty()) {
             print(Ansi.dim("No matches."));
             return;
         }
-        TextTable table = images
-                ? TextTable.of("Score", "Image", "From page").maxWidth(1, 46).maxWidth(2, 46)
-                : TextTable.of("Score", "Title", "Url").maxWidth(1, 42).maxWidth(2, 46);
+        boolean ranked = hits.stream().anyMatch(hit -> hit.score() > 0d);
+        TextTable table;
+        if (ranked) {
+            table = images
+                    ? TextTable.of("Score", "Image", "From page").maxWidth(1, 46).maxWidth(2, 46)
+                    : TextTable.of("Score", "Title", "Url").maxWidth(1, 42).maxWidth(2, 46);
+        } else {
+            table = images ? TextTable.of("Image", "From page").maxWidth(0, 52).maxWidth(1, 52)
+                    : TextTable.of("Title", "Url").maxWidth(0, 48).maxWidth(1, 52);
+        }
         table.title(title);
         for (VectorHit hit : hits) {
-            table.row(String.format("%.4f", hit.score()),
-                    images ? hit.text("imageFilePath") : Ansi.cyan(hit.text("title")),
-                    hit.text("url"));
+            String first = images ? hit.text("imageFilePath") : Ansi.cyan(hit.text("title"));
+            if (ranked) {
+                table.row(String.format("%.4f", hit.score()), first, hit.text("url"));
+            } else {
+                table.row(first, hit.text("url"));
+            }
         }
         print(table.render());
     }
@@ -175,13 +246,9 @@ public class QueryCommands {
 
     /**
      * The full text index: where it is, what it is called, and how many documents each version
-     * put in it.
-     *
-     * <p>
-     * One command rather than the two there were. "How many documents" and "which indices exist"
-     * are the same question asked at two zoom levels, and answering them separately meant running
-     * both and reading them side by side to find out that the count was zero because the crawl had
-     * written to a different index than the one being counted.
+     * put in it. One command, because "how many" and "which exist" are the same question at two
+     * zoom levels -- answered apart, a count of zero looks like an empty index rather than the
+     * wrong one.
      */
     @Command(name = "index-info", group = "Search",
             description = "The full text index: where it is, and what is in it")
@@ -243,7 +310,7 @@ public class QueryCommands {
         OutputProperties.Vector config = outputProperties.getVector();
         TextTable about = TextTable.of("Setting", "Value").maxWidth(1, 70).title("Vector store");
         about.row("Store", config.getStore());
-        about.row("Where", switch (config.getStore().toLowerCase(java.util.Locale.ROOT)) {
+        about.row("Where", switch (config.getStore().toLowerCase(Locale.ROOT)) {
             case "lucene" -> config.getLucene().getDirectory();
             case "qdrant" -> config.getQdrant().getUrl();
             default -> config.getWeaviate().getUrl();
@@ -262,7 +329,7 @@ public class QueryCommands {
             // is appended when they are written -- greenfinger_text_384 -- because it is a
             // property of the embedding model, and counting the bare name counts a collection
             // that has never existed and reports zero
-            List<String> collections = new java.util.ArrayList<>();
+            List<String> collections = new ArrayList<>();
             collections.addAll(vectorStore.collectionsMatching(config.getTextCollection()));
             collections.addAll(vectorStore.collectionsMatching(config.getImageCollection()));
 

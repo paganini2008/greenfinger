@@ -34,3 +34,7 @@ logs/
 # Other
 change_logs
 
+
+# What flatten-maven-plugin writes beside each pom so the installed one carries the resolved
+# ${revision} rather than the literal. A build artefact, regenerated every run.
+.flattened-pom.xml

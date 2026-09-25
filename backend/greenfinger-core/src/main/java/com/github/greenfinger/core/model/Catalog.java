@@ -34,22 +34,14 @@ import lombok.Setter;
 import lombok.ToString;
 
 /**
- * A crawl task: what to fetch, how to fetch it, and where the result goes. The largest unit in the
- * system -- crawl, update, rebuild and delete all take a catalog, never a single url.
+ * A crawl task: what to fetch, how to fetch it, and where the result goes. The largest unit in
+ * the system -- every verb takes a catalog, never a single url.
  *
  * <p>
- * Differences from 1.x worth knowing:
- *
- * <ul>
- * <li>{@code crawler_catalog_index} is folded in, as {@code index_version}.</li>
- * <li>{@code indexed} became {@code output_types}, since a crawl now feeds any combination of
- * file, index and vector rather than merely indexing or not.</li>
- * <li>{@code search_version} is new. 1.x incremented the version at the start of a rebuild while
- * search took the maximum version, so search went blank for the whole rebuild.</li>
- * <li>{@code interval} was renamed {@code fetch_interval}: INTERVAL is a reserved word, and the
- * 1.x name only survived because it ran on PostgreSQL alone.</li>
- * <li>{@code credential_handler} is gone with the rest of the login support.</li>
- * </ul>
+ * Against 1.x: {@code crawler_catalog_index} is folded in as {@code index_version};
+ * {@code indexed} became {@code output_types}; {@code search_version} is new, so a rebuild no
+ * longer blanks search; {@code interval} is {@code fetch_interval}, because INTERVAL is reserved
+ * outside PostgreSQL; {@code credential_handler} is gone with the login support.
  * 
  * @Description: Catalog
  * @Author: Fred Feng
@@ -87,25 +79,16 @@ public class Catalog implements Serializable {
     private String sitemapUrl;
 
     /**
-     * What the site is about, as one of {@link Category}'s values.
-     *
-     * <p>
-     * Stored as the lower case name rather than as an enum-typed column, for the same reason
-     * {@link #extractorValue} is: Hibernate infers a check constraint for an enum-typed column and
-     * the one it generates rejects every value on H2. Normalised on the way in by
-     * {@link #setCat(String)}, so the column only ever holds one of the nine.
+     * What the site is about, as one of {@link Category}'s values. A lower case name rather than
+     * an enum column: Hibernate infers a check constraint for those, and its version rejects
+     * every value on H2. Normalised on the way in.
      */
     @Column(name = "cat", nullable = false, length = 45)
     private String cat;
 
     /**
-     * Anything unrecognised becomes {@code other} rather than being refused.
-     *
-     * <p>
-     * The category is a search facet, and a facet works only when everyone spells it the same --
-     * so it is narrowed here, once, at the only place a value enters. Refusing instead would mean
-     * a catalog carried over from 1.x could not be loaded at all, and would make whoever hit it
-     * pick the nearest listed value rather than the honest one.
+     * Anything unrecognised becomes {@code other} rather than being refused: a facet works only
+     * when everyone spells it the same, and refusing would make a 1.x catalog unloadable.
      */
     public void setCat(String cat) {
         this.cat = Category.of(cat).getRepr();
@@ -139,13 +122,9 @@ public class Catalog implements Serializable {
     private Long duration;
 
     /**
-     * Stored as the small integer 1.x used.
-     *
-     * <p>
-     * Held as a plain column rather than as an enum field: Hibernate infers a check constraint for
-     * an enum-typed column, and the constraint it generates rejects every value on H2. The enum is
-     * exposed through {@link #getCountingType()} instead, which keeps the type safety where it is
-     * useful without letting the mapping generate DDL of its own.
+     * Stored as the small integer 1.x used, as a plain column: an enum column makes Hibernate
+     * infer a check constraint that rejects every value on H2. The enum is exposed through
+     * {@link #getCountingType()} instead.
      */
     @JsonIgnore
     @Column(name = "counting_type")

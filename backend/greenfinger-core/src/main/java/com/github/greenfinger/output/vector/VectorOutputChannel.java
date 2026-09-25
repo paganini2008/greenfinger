@@ -35,19 +35,14 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Semantic and cross modal search.
+ * Semantic and cross modal search. Two collections, because text and image vectors come from
+ * different models in different spaces and usually different widths; the name carries the width, so
+ * a new model gets a collection of its own instead of failing against one that cannot hold it.
  *
  * <p>
- * Two collections, because the text vectors and the image vectors are not comparable: they come
- * from different models, in different spaces, and usually of different widths. The collection name
- * carries its width, so pointing the crawler at a different model puts the new vectors somewhere of
- * their own instead of failing against a collection that cannot hold them.
- *
- * <p>
- * Images are stored per page-image reference rather than per image. The same picture on twenty
- * pages is embedded once and written twenty times, which costs storage but no compute, and buys
- * self-sufficiency: a hit in the image collection already knows which page the picture came from,
- * so search never has to consult the database.
+ * Images are stored per page-image reference, not per image: one picture on twenty pages is
+ * embedded once and written twenty times -- storage, no compute -- so a hit already knows its page
+ * and search never consults the database.
  * 
  * @Description: VectorOutputChannel
  * @Author: Fred Feng
@@ -103,13 +98,9 @@ public class VectorOutputChannel implements OutputChannel {
         this.textCollection = config.getTextCollection() + "_" + textDimensions;
         vectorStore.ensureCollection(textCollection, textDimensions);
 
-        // Three things have to be true before an image model is worth loading, and the first of
-        // them used to be missing: the crawl has to be fetching images at all. A catalog with
-        // images switched off and the default content mode -- which is text and images -- asked
-        // for a model that then had nothing to embed. That is not merely waste: the local image
-        // model is around 360 MB of onnx, and loading it is what takes a node past the 1g a
-        // container is given by default, where the kernel kills it and leaves exit code 137 and
-        // no explanation.
+        // The crawl must actually be fetching images before an image model is worth loading: the
+        // local one is ~360 MB of onnx, enough to take a node past a container's default 1g and
+        // get it killed with exit code 137 and no explanation.
         boolean imagesWanted =
                 catalogDetails.isImageEnabled() && catalogDetails.getContentMode().includesImages();
         this.imagesSupported = imagesWanted && embeddingClient.supportsImages();

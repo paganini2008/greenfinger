@@ -18,15 +18,10 @@ import { Catalog, ResourceImageView, ResourceRow } from '../../core/api.models';
 import { NotifyService } from '../../core/notify.service';
 
 /**
- * What a crawl actually stored, to be looked through.
+ * What a crawl stored, in crawl order, for any version -- including one never published, which is
+ * what somebody wants when a crawl came back wrong. Search ranks; this lists.
  *
- * The Search page and this one answer different questions and neither replaces the other. Search
- * ranks pages by what they are about, from the version being served. This lists rows from the
- * table in crawl order, for any version -- including one that was never published, which is the
- * version somebody wants when a crawl came back wrong and they are trying to see what it got.
- *
- * A catalog has to be chosen before anything is fetched. "Every resource in the database" is not
- * a question anybody asks and is a table scan for whoever tries.
+ * A catalog has to be chosen first: "every resource in the database" is a table scan.
  */
 @Component({
   selector: 'gf-resources',
@@ -73,12 +68,8 @@ export class ResourcesPage {
   protected readonly expanded = signal<string | null>(null);
 
   /**
-   * Thumbnails, by image id.
-   *
-   * The image endpoint wants the bearer token and an `<img src>` sends none, so the bytes are
-   * fetched through the interceptor that holds it and handed to the tag as an object url. Only
-   * for the row that is open: a page of twenty five rows with a dozen pictures each is three
-   * hundred requests nobody asked for.
+   * Thumbnails by image id. `<img src>` sends no bearer token, so the bytes come through the
+   * interceptor as an object url -- and only for the open row, or a page is three hundred requests.
    */
   protected readonly thumbnails = signal<Map<string, string>>(new Map());
   protected readonly missingThumbnails = signal<Set<string>>(new Set());

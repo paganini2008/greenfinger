@@ -26,34 +26,15 @@ import com.github.greenfinger.core.model.Image;
 import com.github.greenfinger.core.model.ResourceImage;
 
 /**
- * Writes the shared image rows, each in a transaction of its own.
+ * Writes the shared image rows, each in a transaction of its own. Two pages can reference one
+ * picture at the same moment, and since the id comes from the bytes both threads insert the same
+ * row; checking first finds nothing, because the other transaction has not committed.
  *
  * <p>
- * Two pages fetched at the same moment can reference the same picture, and because the id is
- * derived from the bytes both threads compute the same one and both try to insert it. Checking
- * first does not help: the other transaction has not committed yet, so there is nothing to find.
- *
- * <p>
- * Three details make this work, and each of them was learned the hard way:
- *
- * <ul>
- * <li>The insert runs in its <b>own</b> transaction, so a violation does not roll back the page
- * that was in the middle of being saved.</li>
- * <li>The retry runs in <b>another</b> transaction rather than the failed one. PostgreSQL aborts a
- * transaction outright on a constraint violation and refuses every later statement in it, so
- * catching the exception and reading again inside the same transaction fails a second time --
- * which H2 tolerates and PostgreSQL does not.</li>
- * <li>Transactions are opened through a template rather than annotations, because a method calling
- * another method on the same bean bypasses the proxy that annotations rely on.</li>
- * </ul>
- *
- * <p>
- * SQLite is the exception, and joins the page's transaction instead. It locks the whole file to
- * write and gives each connection its own snapshot, so a second transaction writing while the page
- * transaction is still open makes the page fail with {@code SQLITE_BUSY_SNAPSHOT} -- on a single
- * crawl thread as readily as on sixteen, because the two transactions belong to the same thread.
- * Joining is safe there for the same reason separating was needed elsewhere: SQLite lets a
- * transaction carry on after a failed statement, so a duplicate image does not poison the page.
+ * So the insert gets its own transaction and the retry another -- PostgreSQL aborts a transaction
+ * on a constraint violation and refuses every later statement in it -- both opened through a
+ * template, since a self-call bypasses the annotation proxy. SQLite instead joins the page's
+ * transaction, which would otherwise fail with {@code SQLITE_BUSY_SNAPSHOT}.
  * 
  * @Description: ImageWriter
  * @Author: Fred Feng

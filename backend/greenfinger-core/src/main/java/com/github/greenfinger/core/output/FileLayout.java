@@ -33,21 +33,14 @@ import com.github.greenfinger.core.catalog.CatalogDetails;
  * </pre>
  *
  * <p>
- * The catalog is addressed by its id and not by its name, which is what the index directories and
- * the vector payloads use as well: a rename then moves nothing on disk, and no two catalogs can
- * collide through a name that only differs in a character the file system will not take.
+ * Addressed by catalog id rather than name, as the index directories and vector payloads are: a
+ * rename moves nothing, and names cannot collide through characters a file system refuses. The
+ * version is in the path, so deleting a version is deleting one directory or one prefix.
  *
  * <p>
- * The version is part of the path, so deleting one version is deleting one directory, or one
- * prefix in MinIO. Sites are not separated into subdirectories: file names are ids and carry no
- * readability anyway, and which site a page came from is recorded in the database and in the
- * search metadata.
- *
- * <p>
- * Sharding takes characters from the <em>front</em> of the id, which is safe only because resource
- * and image ids are UUID v5 -- a SHA-1 digest, so uniformly distributed. Were they v7 the leading
- * characters would be a timestamp, near identical across one crawl, and every file of a run would
- * land in a single directory; that variant would have to shard on the tail instead.
+ * Sharding takes characters from the <em>front</em> of the id, safe only because resource and image
+ * ids are UUID v5 (a SHA-1 digest, uniformly distributed). With v7 the leading characters would be
+ * a timestamp and a whole run would land in one directory -- that would have to shard on the tail.
  * 
  * @Description: FileLayout
  * @Author: Fred Feng

@@ -23,19 +23,13 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.io.ByteArrayInputStream;
 
 /**
- * Several writes in one datagram.
- *
- * <p>
- * Replication is a stream of small writes -- a url fingerprint is forty bytes, a database row a
- * few hundred -- and one message each would spend more time framing and acknowledging than
- * writing. Packing them costs nothing in latency that matters, because nothing is waiting on a
- * replica.
- *
- * <h2>Why a binary frame and not json</h2>
- * The same frame carries image bytes. Base64 in json would inflate every picture by a third, and
- * an image is the largest thing this ever sends.
+ * Several writes in one datagram. Replication is a stream of small writes -- a url fingerprint is
+ * forty bytes -- and one message each would spend more time framing and acknowledging than writing;
+ * packing them costs no latency that matters, since nothing waits on a replica. Binary rather than
+ * json because the same frame carries image bytes, which base64 would inflate by a third.
  *
  * @param op    what to do with it, defined by whoever owns the channel
  * @param scope which crawl it belongs to. Carried on every entry because the stores being
@@ -93,7 +87,7 @@ public record ReplicationBatch(List<Entry> entries) {
 
     public static ReplicationBatch decode(byte[] content) {
         try (DataInputStream in =
-                new DataInputStream(new java.io.ByteArrayInputStream(content))) {
+                new DataInputStream(new ByteArrayInputStream(content))) {
             int count = in.readInt();
             List<Entry> entries = new ArrayList<>(Math.max(0, Math.min(count, 4096)));
             for (int i = 0; i < count; i++) {

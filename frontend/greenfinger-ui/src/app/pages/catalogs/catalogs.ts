@@ -25,12 +25,8 @@ const RELOAD_RETRIES = 4;
 const RELOAD_RETRY_MILLIS = 500;
 
 /**
- * The catalog list: what exists, what is running, and every verb that acts on one.
- *
- * Progress comes from polling /crawl/status rather than from a socket. A crawl reports in seconds
- * and often runs for hours, so a three second poll of one small endpoint costs nothing and removes
- * a whole class of reconnect handling. The poll only runs while something is actually crawling --
- * a page of finished catalogs sits still.
+ * The catalog list, and every verb that acts on one. Progress is polled rather than pushed: a
+ * crawl reports in seconds and runs for hours, and the poll stops when nothing is crawling.
  */
 @Component({
   selector: 'gf-catalogs',
@@ -120,13 +116,8 @@ export class CatalogsPage {
   }
 
   /**
-   * How many catalogs the Search page can actually find anything in.
-   *
-   * Both halves are needed and neither is enough. `searchVersion` is the version that finished and
-   * was published, and it is set whatever the outputs were -- so counting it alone promised search
-   * on catalogs written to files and nothing else, and the search page then had to explain a
-   * result of zero as though the query were at fault. The index output is what puts words
-   * anywhere they can be looked up.
+   * Both halves are needed: `searchVersion` is set whatever the outputs were, so counting it alone
+   * promises search on catalogs that only ever wrote files.
    */
   protected readonly searchableCount = computed(
     () =>
@@ -163,15 +154,8 @@ export class CatalogsPage {
   }
 
   /**
-   * Whether the list being shown already has the write that was just made.
-   *
-   * <p>
-   * Presence alone is not enough for an edit: the row existed before it and exists after it, so
-   * "the id is in the list" is true of the stale copy as well. With the write stamp it is: every
-   * store stamps `updatedAt` as it writes, including when it writes a copy that arrived from
-   * somewhere else, so a node that has applied this edit carries a stamp at least as new as the
-   * one the write came back with. Without a stamp -- a create, or an older link -- presence is
-   * the right question.
+   * Whether the list already has the write that was just made. Presence alone is true of the stale
+   * copy too, so an edit is checked by `updatedAt`, which every store stamps as it writes.
    */
   private static settledWith(rows: Catalog[], saved: string, at: number): boolean {
     const row = rows.find((one) => one.id === saved || one.name === saved);
@@ -186,13 +170,8 @@ export class CatalogsPage {
   }
 
   /**
-   * Read the list again.
-   *
-   * `settled` is what makes this safe to call straight after a write. The front end spreads /v2
-   * across every node and replication between them is asynchronous, so a delete answered by one
-   * node and a list served by another can genuinely disagree for a moment -- which showed up as a
-   * deleted catalog still sitting on the page. Given a predicate, this retries a few times until
-   * the list agrees with what was just done, rather than painting a stale answer and stopping.
+   * Read the list again. `settled` makes it safe straight after a write: requests spread across
+   * nodes and replication is asynchronous, so this retries until the list agrees.
    */
   protected reload(settled?: (catalogs: Catalog[]) => boolean, attempt = 0): void {
     this.loading.set(true);

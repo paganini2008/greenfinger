@@ -34,11 +34,8 @@ function matchesNarrow(): boolean {
 }
 
 /**
- * The frame every page sits in: a green bar, a nav rail, and who is signed in.
- *
- * The login page is deliberately outside it. A form that appears inside a shell offering Catalogs
- * and Search invites the visitor to click things that will only bounce them back here, so while
- * signed out there is nothing but the form.
+ * The frame every page sits in: the rail, and who is signed in. The login page is outside it --
+ * a form inside a shell offering Catalogs invites clicks that only bounce back to it.
  */
 @Component({
   selector: 'app-root',
@@ -65,12 +62,8 @@ export class App {
   protected readonly auth = inject(AuthService);
 
   /**
-   * A phone is not a small desktop.
-   *
-   * The rail was {@code mode="side"} and open at every width, so at 430px it took a third of the
-   * screen and pushed the form off the right edge -- a page that could only be read by scrolling
-   * sideways. Narrow, it becomes an overlay that starts closed and is opened by the button that
-   * was already in the bar; wide, nothing changes.
+   * A phone is not a small desktop: open at every width the rail took a third of a 430px screen
+   * and pushed the page off the edge. Narrow, it is an overlay that starts closed.
    */
   private readonly narrow = signal(matchesNarrow());
 
@@ -84,15 +77,9 @@ export class App {
   protected readonly sidenavOpened = computed(() => this.sidenavOpen());
 
   /**
-   * What is crawling, anywhere in the cluster.
-   *
-   * In the shell rather than on a page because it is true of the whole application, not of
-   * whatever is on screen: only one crawl runs at a time across every node, so a crawl started
-   * from the Catalogs page is the reason the Crawl button will not respond on any other page,
-   * and being told that once, at the top, beats discovering it one disabled button at a time.
-   *
-   * Polled slowly. It is a banner, not a progress bar; the Monitor page is where a number is
-   * watched closely and it does its own polling.
+   * What is crawling anywhere in the cluster. In the shell because it is true of the whole
+   * application: one crawl at a time across every node, which is why a button elsewhere will not
+   * respond. Polled slowly -- it is a banner, not a progress bar.
    */
   protected readonly running = signal<CrawlStatus[]>([]);
 

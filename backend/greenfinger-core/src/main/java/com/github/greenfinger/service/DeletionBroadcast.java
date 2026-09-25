@@ -23,22 +23,15 @@ import com.github.greenfinger.core.model.DeleteLayer;
  * Tells the other nodes to repeat the half of a deletion that only removed this node's own copy.
  *
  * <p>
- * Most of a delete replicates itself: rows, blobs and vectors all go through a store that copies
- * its writes, so removing them here removes them everywhere. Two things do not, and they are the
- * two that are not behind a store at all -- the embedded index, which
- * {@code ClusterOutputFactory} hands out undecorated, and the three RocksDB directories under the
- * data directory, which are plain files that {@code DeletionService} walks itself.
+ * Rows, blobs and vectors go through replicating stores, so removing them here removes them
+ * everywhere. Two layers are not behind a store: the embedded index, handed out undecorated by
+ * {@code ClusterOutputFactory}, and the RocksDB directories that {@code DeletionService} walks as
+ * plain files. Without this, peers keep a Lucene directory and a frontier for a version whose rows
+ * are gone.
  *
  * <p>
- * Both were written as though every node would get round to its own copy. Nothing made that
- * happen: a delete ran where it was asked and nowhere else, so two nodes out of three kept a
- * Lucene directory and a frontier for a version whose rows had gone. That is what this exists to
- * say out loud.
- *
- * <p>
- * Deliberately not a "replicate" sink. What travels is not the write -- there is no write, only a
- * removal each node has to perform against its own paths -- so what is sent is the instruction,
- * and each node carries it out locally.
+ * Not a "replicate" sink: there is no write to copy, only a removal each node performs against its
+ * own paths, so what travels is the instruction.
  *
  * @Description: DeletionBroadcast
  * @Author: Fred Feng
@@ -49,12 +42,9 @@ import com.github.greenfinger.core.model.DeleteLayer;
 public interface DeletionBroadcast {
 
     /**
-     * Asks every other node to remove its own copy of the layers that are not replicated.
-     *
-     * <p>
-     * Never throws and never blocks the delete that prompted it: a version removed here is removed
-     * whether or not the others have heard yet, and the alternative -- failing a delete because a
-     * peer is slow -- would leave the caller with no idea what did happen.
+     * Asks every other node to remove its own copy of the unreplicated layers. Never throws and
+     * never blocks the delete that prompted it -- failing a delete because a peer is slow would
+     * leave the caller with no idea what actually happened.
      *
      * @param catalogId the catalog
      * @param version   the version, or null for every version of it

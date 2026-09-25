@@ -1,17 +1,9 @@
 import { Component, ChangeDetectionStrategy, computed, input } from '@angular/core';
 
 /**
- * A line over a filled area, drawn as inline svg from a list of numbers.
- *
- * Hand drawn rather than pulled from a charting library, and for the same reason the run bars on
- * the monitor page are: every library that would draw this is larger than the whole application,
- * and the things they add -- axes, legends, tooltips, animation -- are the things a sparkline is
- * defined by not having. It is a shape that says "rising", "flat" or "it stopped", beside the
- * number that says how much.
- *
- * The viewBox is fixed and the svg is stretched to whatever box it is put in, so nothing here has
- * to know how wide it ended up. `preserveAspectRatio="none"` is what allows that; it distorts the
- * stroke slightly on very wide boxes, which for a 2px line nobody can see.
+ * A line over a filled area, as inline svg. Hand drawn: every library that would do this is bigger
+ * than the application, and what they add -- axes, legends, tooltips -- is what a sparkline is
+ * defined by not having. The viewBox is fixed and stretched, so nothing here knows its width.
  */
 @Component({
   selector: 'gf-sparkline',
@@ -68,11 +60,8 @@ export class Sparkline {
   readonly stroke = input('var(--gf-green)');
 
   /**
-   * The top of the scale.
-   *
-   * Left at 0 the chart scales to its own peak, which is what makes a flat line of 4s and a flat
-   * line of 400s look identical -- right for "is it moving", wrong for "how much". Give it a
-   * number and the same height always means the same value.
+   * The top of the scale. At 0 the chart scales to its own peak, which makes a flat line of 4s
+   * and one of 400s identical; give it a number and the same height means the same value.
    */
   readonly max = input(0);
 

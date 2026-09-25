@@ -18,15 +18,10 @@ type Mode = 'words' | 'meaning' | 'pictures';
 const MAX_VECTOR_OFFSET = 1000;
 
 /**
- * Searching what was crawled, three ways.
+ * Searching what was crawled, three ways: words go to the index, meaning to the text vectors,
+ * pictures to the image vectors. One box with a mode switch, so the choice is the operator's.
  *
- * The three are genuinely different queries against different stores, not one query with a filter:
- * words go to Elasticsearch, meaning to the text vectors, pictures to the image vectors through a
- * model that puts words and images in one space. Presenting them as one box with a mode switch is
- * what makes that a choice the operator can make rather than a decision buried in the backend.
- *
- * Paging is by cursor, not by page number. Elasticsearch refuses from+size beyond ten thousand,
- * and the cursor keeps the cost of the ten-thousandth page the same as the first.
+ * Paging is by cursor: Elasticsearch refuses from+size beyond ten thousand.
  */
 @Component({
   selector: 'gf-search',
@@ -57,11 +52,8 @@ export class SearchPage {
   protected readonly catalogs = signal<Catalog[]>([]);
 
   /**
-   * Whether anything on this installation is indexed at all.
-   *
-   * Without it "nothing matched" is the only thing an empty result can say, and it blames the
-   * query for a catalog that was never asked to write an index. The file output is always on and
-   * the index one is not, so a perfectly successful crawl can leave search with nothing to read.
+   * Whether anything here is indexed at all -- otherwise "nothing matched" blames the query for a
+   * catalog that was never asked to write an index.
    */
   protected readonly nothingIndexed = computed(
     () =>
@@ -129,17 +121,9 @@ export class SearchPage {
   }
 
   /**
-   * Search, including with nothing typed, in every mode.
-   *
-   * An empty box used to return early, so pressing Search did nothing and gave no reason. Blank
-   * means everything now: "show me what is in here" is a reasonable first thing to ask of a
-   * crawler you have just pointed at a site.
-   *
-   * The two vector modes kept a guard for a while, on the grounds that there is no match-all for
-   * "things like this". True of similarity, and beside the point for the person typing: a box
-   * that answers under one tab and does nothing under the next is a rule to learn rather than a
-   * distinction to notice. The server answers a blank one from the table instead -- every page,
-   * every picture -- and the results carry no similarity because nothing was compared.
+   * Search, including with nothing typed, in every mode. Blank means everything: similarity has no
+   * match-all, so the server answers a blank one from the table, and the results carry no
+   * similarity because nothing was compared.
    */
   protected search(): void {
     this.reset();
@@ -147,12 +131,8 @@ export class SearchPage {
   }
 
   /**
-   * Whether what is on screen was ranked against something.
-   *
-   * <p>
-   * A blank box lists rather than ranks, and a similarity beside a row nobody compared would be
-   * a number that means nothing. It is the keyword the results came back for, not the one in the
-   * box: the box can be typed in while the previous answer is still shown.
+   * Whether what is on screen was ranked against anything. The keyword the results came back for,
+   * not the one in the box -- which can be typed in while the previous answer is still shown.
    */
   protected readonly ranked = computed(() => this.asked().length > 0);
 

@@ -43,31 +43,19 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Puts back the files a version's pages were saved as, by fetching their urls again.
+ * Puts back the files a version's pages were saved as, by fetching their urls again. The other
+ * layers rebuild from the database; files cannot, because it keeps the path the bytes went to and
+ * never the bytes -- only the {@code url} they came from.
  *
  * <p>
- * The other layers are rebuilt from the database, which holds everything they need. Files are not:
- * the database keeps a page's metadata and the path its bytes were written to, but never the bytes
- * themselves. What it does keep is the {@code url} each page came from, and the {@code source_url}
- * of every image on it -- which is enough to go and get them again.
+ * A crawl in the narrow sense: it fetches but discovers nothing, and the set of urls is fixed
+ * before the first request, which makes it a repair rather than a second crawl.
  *
  * <p>
- * So this is a crawl in the narrow sense and not in the wide one: it fetches, but it discovers
- * nothing. No links are followed, no rows are written, no page is visited that is not already in
- * the table. The set of urls is fixed before the first request, which is what makes it a repair
- * rather than a second crawl.
- *
- * <p>
- * <b>What comes back is the site as it is today.</b> A page that has changed since the crawl will
- * be restored with today's text, which no longer matches the index and the vectors that were built
- * from the old text -- so replaying the file layer is usually followed by replaying the other two.
- * A page that has been taken down cannot be restored at all. Both are counted and reported rather
- * than passed over in silence, because a restore that quietly left holes would be worse than one
- * that failed.
- *
- * <p>
- * A page whose files are all present is skipped without a request. That is what makes the operation
- * safe to run twice, and cheap the second time.
+ * <b>What comes back is the site as it is today</b>, so a changed page no longer matches the index
+ * built from the old text -- replaying files is usually followed by replaying the rest. Pages taken
+ * down cannot be restored; both cases are counted, and a page whose files are all present is
+ * skipped without a request.
  *
  * @Description: FileRestorer
  * @Author: Fred Feng

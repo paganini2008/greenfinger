@@ -109,13 +109,9 @@ public class ClusterProperties {
         private long retryIntervalMs = 2000L;
 
         /**
-         * How many times a frame is offered again before it is given up on and counted as lost.
-         *
-         * <p>
-         * This sits on top of the transport's own acknowledgement and retry -- spreader has
-         * already tried {@code payloadRetries} times by the moment a short delivery is reported
-         * here. Three passes at two seconds is therefore about six seconds of a node being
-         * unreachable, which covers a restart but does not hold a frame for a node that has gone.
+         * How many times a frame is offered again before it is counted as lost. On top of the
+         * transport's own retries, so three passes at two seconds covers a restart without
+         * holding frames for a node that has gone.
          */
         private int maxRetries = 3;
 
@@ -142,36 +138,21 @@ public class ClusterProperties {
     public static class Leader {
 
         /**
-         * How long to wait for the leader to perform one operation and answer.
-         *
-         * <p>
-         * Generous, because what is behind it is a database write and, for a delete, a walk over
-         * an index and three directory trees. Short enough that a node which has stopped
-         * answering does not hold the caller for ever: after this the leader is read again and
-         * the operation is offered to whoever holds the port now.
+         * How long to wait for the leader to perform one operation. Generous, because behind it
+         * is a database write and, for a delete, a walk over an index and three directory trees.
          */
         private long timeoutMs = 30_000L;
 
         /**
-         * How many times an operation is offered again when the leader could not be reached, did
-         * not answer, or replied that it is no longer the leader.
-         *
-         * <p>
-         * Not for an operation the leader refused on its own terms -- a name already taken, a
-         * version being crawled. Asking the same question again would get the same answer, and
-         * the caller wants the answer rather than the delay.
+         * How many times an operation is offered again when the leader could not be reached or
+         * has moved. Not for one the leader refused on its own terms: the same question would
+         * get the same answer.
          */
         private int maxAttempts = 3;
 
         /**
-         * How often a node checks its catalog table against the leader's, on top of doing it
-         * whenever the membership or the leadership changes.
-         *
-         * <p>
-         * A backstop rather than the mechanism: a write reaches the other nodes as it happens, and
-         * this is for the one whose broadcast was lost. A minute is soon enough for a stale row to
-         * be a curiosity rather than an incident, and one small request per node per minute is
-         * nothing.
+         * How often a node checks its catalog table against the leader's, besides on every
+         * membership change. A backstop for a lost broadcast, not the mechanism.
          */
         private long catchUpIntervalMs = 60_000L;
     }
@@ -189,14 +170,9 @@ public class ClusterProperties {
     public static class Counters {
 
         /**
-         * How long increments accumulate locally before one write carries the total.
-         *
-         * <p>
-         * A cache write from a follower is a round trip to the leader -- measured at roughly two
-         * thousand a second, which a fast crawl would saturate on its own with two counters per
-         * page. Batching makes the cost a fixed handful of writes per second per node, whatever
-         * the crawl rate, at the price of a dashboard that is half a second behind. It is a
-         * dashboard.
+         * How long increments accumulate before one write carries the total. A follower's cache
+         * write is a round trip to the leader, which a fast crawl would saturate; batching costs
+         * a dashboard half a second of lag.
          */
         private long flushIntervalMs = 500L;
     }

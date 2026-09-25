@@ -1,4 +1,8 @@
-// Green above, white below: the same split the rest of the product uses, turned into a backdrop.
+// The paper the rest of the product is printed on, and nothing else on it but the card.
+//
+// It was a green wash fading into white, which was the old split used as a backdrop; against the
+// warm ground everything else now stands on, a cold green gradient read as a different product's
+// login page. One surface, one card, and the only colour is the button that does the thing.
 .gf-login-page {
   min-height: 100vh;
   display: flex;
@@ -7,7 +11,7 @@
   justify-content: center;
   gap: 1.5rem;
   padding: 2rem 1rem;
-  background: linear-gradient(160deg, var(--gf-green-container) 0%, var(--gf-surface) 55%);
+  background: var(--mat-sys-surface);
 }
 
 .gf-login-brand {
@@ -22,7 +26,8 @@
   }
 }
 
-// Full colour here: the page behind it is white, which is what the mark was drawn for.
+// Full colour here: the page behind it is the paper, which is light enough for the mark to read
+// as it was drawn rather than as a shape knocked out of a bar.
 .gf-login-logo {
   width: min(17rem, 70vw);
   height: auto;
@@ -42,8 +47,16 @@
 
 .gf-login-card {
   width: min(24rem, 100%);
-  border-radius: 1rem;
+  border-radius: var(--gf-r-lg);
   overflow: hidden;
+  // Both, because the card is Material's: the token is what it actually paints with, and the
+  // plain background covers a future version that stops reading it. Without either it took the
+  // page's own surface -- cream on cream, a card that had dissolved into the paper.
+  --mdc-outlined-card-container-color: var(--gf-surface);
+  --mat-sys-surface: var(--gf-surface);
+  background: var(--gf-surface);
+  border: 0;
+  box-shadow: var(--gf-shadow-lg);
 }
 
 .gf-login-title {

@@ -26,6 +26,8 @@ import com.github.greenfinger.core.catalog.CatalogDetailsService;
 import com.github.greenfinger.core.catalog.CatalogStore;
 import com.github.greenfinger.core.record.ResourceRecordStore;
 import com.github.greenfinger.core.report.CrawlReportStore;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.core.env.Environment;
 
 /**
  * Persistence, which 2.0 always needs.
@@ -73,8 +75,8 @@ public class GreenfingerRecordConfiguration {
     @Bean
     public ImageWriter imageWriter(ImageRepository imageRepository,
             ResourceImageRepository resourceImageRepository,
-            org.springframework.transaction.PlatformTransactionManager transactionManager,
-            org.springframework.core.env.Environment environment) {
+            PlatformTransactionManager transactionManager,
+            Environment environment) {
         return new ImageWriter(imageRepository, resourceImageRepository, transactionManager,
                 !isSqlite(environment));
     }
@@ -84,7 +86,7 @@ public class GreenfingerRecordConfiguration {
      * how beans are wired. An application that builds its own data source leaves the property
      * empty and gets the default, which is right for every database but one.
      */
-    private static boolean isSqlite(org.springframework.core.env.Environment environment) {
+    private static boolean isSqlite(Environment environment) {
         String url = environment.getProperty("spring.datasource.url", "");
         return url.startsWith("jdbc:sqlite:");
     }

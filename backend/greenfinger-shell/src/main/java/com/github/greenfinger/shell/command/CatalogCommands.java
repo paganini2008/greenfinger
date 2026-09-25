@@ -42,6 +42,9 @@ import com.github.greenfinger.service.CatalogAdminService;
 import com.github.greenfinger.service.CrawlReportService;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import java.util.function.BiConsumer;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 
 /**
  * Looking after the crawl definitions themselves.
@@ -72,12 +75,12 @@ public class CatalogCommands {
      * cycle, and this is the direction that is genuinely optional.
      */
     @Setter
-    private java.util.function.BiConsumer<String, String> starter;
+    private BiConsumer<String, String> starter;
 
     /** The same mapper shape the api uses, so one json works against both. */
-    private static final com.fasterxml.jackson.databind.ObjectMapper OBJECT_MAPPER =
-            new com.fasterxml.jackson.databind.ObjectMapper()
-                    .configure(com.fasterxml.jackson.databind.DeserializationFeature
+    private static final ObjectMapper OBJECT_MAPPER =
+            new ObjectMapper()
+                    .configure(DeserializationFeature
                             .FAIL_ON_UNKNOWN_PROPERTIES, true);
 
 
@@ -155,12 +158,8 @@ public class CatalogCommands {
     }
 
     /**
-     * The crawl in progress, when the command was given no id.
-     *
-     * <p>
-     * A prompt watching a crawl asks about that crawl, and having to paste its id to do so is a
-     * step nobody wants. 1.x had no other way of asking -- its whole execution context was built
-     * around "the catalog that is running" -- and the question is still worth having an answer to.
+     * The crawl in progress, when the command was given no id: a prompt watching a crawl is
+     * asking about that crawl, and pasting its id to do so is a step nobody wants.
      */
     private CatalogDetails running() {
         CatalogDetails details = catalogDetailsService.loadRunningCatalogDetails();
@@ -171,14 +170,9 @@ public class CatalogCommands {
     }
 
     /**
-     * Create or update a catalog, one question at a time.
-     *
-     * <p>
-     * The one command here that asks rather than reads. Seventeen settings do not fit on a line
-     * anybody types twice, and as flags they came with the failure mode that gives command lines a
-     * bad name: mistype one and the crawl starts anyway, with a default nobody chose. Asked in
-     * order, each with what it accepts and what it currently says, the whole thing is return
-     * pressed seventeen times and the two that matter typed in the middle.
+     * Create or update a catalog, one question at a time -- the one command here that asks
+     * rather than reads. Seventeen settings as flags is a line nobody types twice, and a mistyped
+     * one starts the crawl anyway with a default nobody chose.
      *
      * @param id an existing catalog to change. Without it, a new one.
      */
@@ -225,19 +219,12 @@ public class CatalogCommands {
      * then how far to go, then where it goes afterwards.
      */
     /**
-     * The whole catalog in one argument, for anything that is not a person at a keyboard.
+     * The whole catalog in one argument, for anything that is not a person at a keyboard. Exactly
+     * the body {@code POST /v2/catalog} takes, so a script written against the server works here.
      *
      * <p>
-     * Twenty settings is a good interview and a terrible command line: as flags it is a line
-     * nobody types twice and the failure mode is the one that gives command lines a bad name --
-     * mistype one and the crawl starts anyway, with a default nobody chose. As json it is one
-     * argument, it can be built by whatever is calling, and it is exactly the body
-     * {@code POST /v2/catalog} takes, so a script that works against the server works here.
-     *
-     * <p>
-     * Only the keys that are present are touched. With {@code --id} that makes this an edit of one
-     * field rather than a re-statement of all twenty; without it, every key left out takes its
-     * default, which is the same thing pressing return does in the interview.
+     * Only the keys present are touched: with {@code --id} that is an edit of one field, and
+     * without it every key left out takes its default.
      */
     private void saveJson(String id, String json) {
         Catalog catalog = StringUtils.isNotBlank(id) ? catalogAdminService.requireById(id)

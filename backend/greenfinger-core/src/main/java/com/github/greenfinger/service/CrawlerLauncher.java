@@ -54,24 +54,16 @@ import com.github.greenfinger.output.blob.FileOutputChannel;
 import com.github.greenfinger.output.vector.EmbeddingClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.github.greenfinger.core.model.Catalog;
 
 /**
- * Runs one catalog.
+ * Runs one catalog. The definition always comes from {@link CatalogDetailsService}, never from
+ * request parameters, so a crawl from the command line and one from the page are the same crawl.
  *
  * <p>
- * The definition always comes from {@link CatalogDetailsService}, never from request parameters, so
- * a crawl launched from the command line and one launched from a web front end are the same crawl.
- *
- * <p>
- * The three verbs differ only in what they do to the version and where they start:
- *
- * <ul>
- * <li><b>crawl</b> -- the current version, from the start url.</li>
- * <li><b>update</b> (and its other name, <b>resume</b>) -- the current version, picking up where the
- * last run stopped, with the url filter left populated so only newly appeared urls are taken.</li>
- * <li><b>rebuild</b> -- a new version, which gives an empty url filter and an empty frontier, so
- * the whole site is fetched again while the previous version stays intact and searchable.</li>
- * </ul>
+ * The verbs differ only in the version and where they start: <b>crawl</b> from the start url,
+ * <b>update</b> (and <b>resume</b>) from where the last run stopped with the url filter left
+ * populated, <b>rebuild</b> into a new version with both empty, leaving the old one searchable.
  * 
  * @Description: CrawlerLauncher
  * @Author: Fred Feng
@@ -166,10 +158,8 @@ public class CrawlerLauncher {
     }
 
     /**
-     * A merge has to revisit every page it already has, so a limit smaller than what is already
-     * stored cannot possibly finish -- and a merge that stops halfway is worse than one that
-     * refuses, because the pages it never reached silently keep their old content while the ones
-     * it did reach are up to date, and nothing says which is which.
+     * A merge revisits every page it has, so a limit below what is stored cannot finish -- and
+     * stopping halfway leaves some pages current and some stale with nothing to say which.
      */
     private void guardMergeLimits(CatalogDetails catalogDetails) {
         long known = recordStore.countByCatalog(catalogDetails.getId(),
@@ -217,13 +207,9 @@ public class CrawlerLauncher {
     }
 
     /**
-     * Opens this node's half of a crawl that some other node started.
-     *
-     * <p>
-     * The same run in every respect but three, and all three are things exactly one node may do:
-     * seed the entry point, mark the catalog as running, and publish the version when it is over.
-     * Everything else -- the components, the output channels, the worker loop -- is identical,
-     * because a node that joined is not a lesser participant; it is another one.
+     * Opens this node's half of a crawl another node started. The same run but for the three
+     * things exactly one node may do: seed the entry point, mark the catalog running, publish the
+     * version. A node that joined is not a lesser participant.
      */
     public CrawlerEngine.Result join(String catalogId, String action, boolean refresh)
             throws Exception {
@@ -247,7 +233,7 @@ public class CrawlerLauncher {
             String inTheWay = semaphore.getCatalogId();
             if (inTheWay == null) {
                 inTheWay = semaphore.running().stream()
-                        .map(com.github.greenfinger.core.model.Catalog::getName).findFirst()
+                        .map(Catalog::getName).findFirst()
                         .orElse("unknown");
             }
             throw new WebCrawlerException("Another crawl is already running (catalog " + inTheWay
@@ -320,12 +306,8 @@ public class CrawlerLauncher {
             // has it. Handing it the entry point as well would crawl that page a second time.
             CrawlerEngine.Result result =
                     engine.run(initiator ? seedOf(catalogDetails, action, from) : null);
-            // Read from the shared state rather than worked out here. A crawl that hit
-            // maxFetchSize, ran out of time, or ran out of urls has finished on its own terms:
-            // what it saved is whole and worth serving, and what it did not reach is still on a
-            // frontier for the next update. A crawl cut short from outside -- Ctrl+C, the
-            // interrupt command, or a node that stopped answering -- leaves the previous version
-            // in place. Which of the two it was, is a fact of the crawl, not of this node.
+            // Read from the shared state: whether the crawl ended on its own terms is a fact of
+            // the crawl, not of this node, and it decides whether the version is published.
             completed = result.isSelfTerminated();
             // asked now rather than at the start: across a cluster this is "am I the leader", and
             // the leader may not be who it was when the crawl began
@@ -359,17 +341,10 @@ public class CrawlerLauncher {
                     // already shutting down; the hook is doing its job
                 }
             }
-            // Everything this run still owes is done while it still holds the permit, and the
-            // signals that say it is over are the last thing to happen. Released first, the run
-            // was over as far as every other caller could see while it was still publishing:
-            // "delete this catalog" answered "it is being crawled right now" to somebody looking
-            // at a page that said the crawl had finished, and the wait for it to end was a wait
-            // for a length of time nobody could name.
-            //
-            // The version is only made visible once it is whole, so a rebuild never empties
-            // search the way 1.x did. Published by one node: every node reaching the same
-            // conclusion would publish the same version repeatedly and prune the same files at
-            // the same time. Which node that is, is the coordinator's to say
+            // The permit is held until everything this run owes is done, so "delete this
+            // catalog" cannot be answered with "it is being crawled" by a page that says the
+            // crawl finished. The version is made visible only once it is whole, and by one node:
+            // every node publishing the same conclusion would prune the same files at once.
             if (completed && publisher) {
                 catalogStore.publishSearchVersion(catalogDetails.getId(),
                         catalogDetails.getVersion());
@@ -397,26 +372,18 @@ public class CrawlerLauncher {
     }
 
     /**
-     * Tells the cluster, or this process alone, that the run is over.
-     *
-     * <p>
-     * Not part of finishing it: the version is published and the stores are closed before this is
-     * reached, and a listener that throws changes none of that. It is the moment a shared flag
-     * does not have, for an application that wants to act on a crawl finishing rather than poll
-     * to find out that it did.
+     * Tells the cluster, or this process alone, that the run is over. Not part of finishing it --
+     * everything is published and closed before this -- but the moment a shared flag does not
+     * have, for an application that would otherwise poll.
      */
     private void announceCompletion(CatalogDetails catalogDetails, CrawlCoordinator coordinator,
             boolean completed) {
         Dashboard dashboard = crawlRegistry.getDashboard(catalogDetails.getId())
                 .orElse(null);
         boolean interrupted = dashboard != null ? dashboard.isInterrupted() : !completed;
-        // Never announced blank. Every place that ends a run on purpose writes a sentence saying
-        // why, but a run can also get here with its dashboard already gone -- an exception on the
-        // way out, a node unregistering first -- and then there is nothing to quote. That
-        // travelled as null, was stored as an empty string, and left the page saying
-        // "interrupted" and nothing else, which tells somebody that something went wrong and
-        // refuses to say what. Saying that the reason was not recorded is at least true, and it
-        // is the difference between a page that looks broken and one that can be acted on.
+        // Never announced blank. A run can get here with its dashboard already gone and nothing
+        // to quote, which left the page saying "interrupted" and refusing to say what happened.
+        // That the reason was not recorded is at least something to act on.
         String reason = dashboard != null ? dashboard.getCompletionReason() : null;
         if (StringUtils.isBlank(reason)) {
             reason = interrupted ? "the run ended without recording why" : "finished";
@@ -435,13 +402,9 @@ public class CrawlerLauncher {
     }
 
     /**
-     * Where a run begins.
-     *
-     * <p>
-     * For an update the frontier is consulted first -- it holds exactly what was queued when the
-     * last run stopped, so nothing is lost -- and only if it is empty does the 1.x fallback apply,
-     * carrying on from the most recently saved url. The url filter is untouched either way, so
-     * already crawled pages are skipped and only newly appeared ones are taken.
+     * Where a run begins. An update consults the frontier first -- it holds what was queued when
+     * the last run stopped -- and falls back to the most recently saved url only if it is empty.
+     * The url filter is untouched either way, so only newly appeared pages are taken.
      */
     private CrawlTask seedOf(CatalogDetails catalogDetails, String action, String from) {
         String startUrl = StringUtils.isNotBlank(catalogDetails.getStartUrl())

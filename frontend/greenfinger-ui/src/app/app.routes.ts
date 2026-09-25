@@ -63,10 +63,8 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./pages/cluster/cluster').then((m) => m.ClusterPage),
   },
-  {
-    path: 'about',
-    title: 'About - Greenfinger',
-    loadComponent: () => import('./pages/about/about').then((m) => m.AboutPage),
-  },
+  // No About. It was a glossary of four verbs the catalog menu already explains a line at a
+  // time, plus two paragraphs about the cli and the two roles that belong in the readme rather
+  // than in a page of the application. An old link lands on the catalogs by the rule below.
   { path: '**', redirectTo: 'catalogs' },
 ];

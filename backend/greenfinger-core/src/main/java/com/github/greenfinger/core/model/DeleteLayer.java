@@ -32,10 +32,9 @@ import java.util.Set;
  * is to delete.
  *
  * <p>
- * The crawl's working state -- the frontier and the two dedup filters, under the system data
- * directory -- is not a layer of its own. It goes with {@link #DB}: those stores exist to answer
- * "have I already fetched this", and the rows are what that question is asked about, so removing
- * the rows and keeping the filters would leave a version that nothing can crawl again.
+ * The crawl's working state -- the frontier and the two dedup filters -- is not a layer of its own
+ * but goes with {@link #DB}: those stores answer "have I already fetched this" about the rows, so
+ * dropping the rows and keeping the filters leaves a version nothing can crawl again.
  * 
  * @Description: DeleteLayer
  * @Author: Fred Feng

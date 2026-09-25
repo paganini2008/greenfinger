@@ -14,17 +14,30 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
-import { COUNTING_TYPES, Catalog, EXTRACTORS, OutputType } from '../../core/api.models';
+import { COUNTING_TYPES, Catalog, EXTRACTORS, OutputStores, OutputType } from '../../core/api.models';
 import { NotifyService } from '../../core/notify.service';
 
 /**
- * Creating and editing a crawl task.
- *
- * Everything but the url is optional, and the form says so rather than pre-filling guesses: the
- * server fills in a name, a start url, a path pattern and every limit from one url, and showing
- * invented values here would make the operator responsible for numbers they never chose. The
- * advanced sections start collapsed for the same reason -- a first catalog is a url and a Save.
+ * Creating and editing a crawl task. Everything but the url is optional and stays empty rather
+ * than pre-filled: the server derives the rest, and a first catalog is a url and a Save.
  */
+/**
+ * The provider names as somebody would say them. Anything unknown is shown as it came: a store
+ * this page has not heard of is still better named by the server than by a guess here.
+ */
+const STORE_NAMES: Record<string, string> = {
+  local: 'A local directory',
+  minio: 'MinIO',
+  lucene: 'Lucene, in this process',
+  elasticsearch: 'Elasticsearch',
+  qdrant: 'Qdrant',
+  weaviate: 'Weaviate',
+};
+
+function storeName(value: string): string {
+  return STORE_NAMES[(value ?? '').toLowerCase()] ?? value;
+}
+
 @Component({
   selector: 'gf-catalog-edit',
   imports: [
@@ -65,11 +78,8 @@ export class CatalogEditPage {
   protected readonly extractors = EXTRACTORS;
 
   /**
-   * The nine the server accepts, asked of the server rather than repeated here.
-   *
-   * A list written into the front end is a list that goes stale the first time one is added, and
-   * the failure is silent: the form offers a value the server has never heard of, or omits one it
-   * has. Falling back to the single safe value keeps the form usable if the call fails.
+   * Asked of the server: a list written here goes stale the first time one is added, silently.
+   * Falls back to the one safe value if the call fails.
    */
   protected readonly categories = signal<string[]>(['other']);
 
@@ -77,6 +87,26 @@ export class CatalogEditPage {
   protected readonly saving = signal(false);
   protected readonly editing = signal(false);
   protected readonly outputs = signal<OutputType[]>(['file']);
+
+  /**
+   * What each output card says. Asked of the server -- written here, an installation on the
+   * embedded index was told it was Elasticsearch. The defaults are what a fresh install runs.
+   */
+  protected readonly stores = signal<OutputStores>({
+    file: 'local',
+    index: 'lucene',
+    vector: 'lucene',
+  });
+
+  protected readonly indexNote = computed(() => `${storeName(this.stores().index)}. Search by words.`);
+
+  protected readonly vectorNote = computed(
+    () => `${storeName(this.stores().vector)}. Meaning and pictures.`,
+  );
+
+  protected readonly fileNote = computed(
+    () => `${storeName(this.stores().file)}. html, text and images. Always on.`,
+  );
 
   protected readonly form = this.formBuilder.group({
     id: this.formBuilder.control<string | null>(null),
@@ -113,6 +143,11 @@ export class CatalogEditPage {
   });
 
   constructor() {
+    this.api.outputs().subscribe({
+      next: (stores) => this.stores.set(stores),
+      // the defaults stand; a card with the wrong word on it is not worth a red banner
+      error: () => undefined,
+    });
     this.api.listCategories().subscribe({
       next: (categories) => this.categories.set(categories.length ? categories : ['other']),
       error: () => undefined,
@@ -185,13 +220,8 @@ export class CatalogEditPage {
       next: (saved) => {
         this.saving.set(false);
         this.notify.ok(`'${saved.name}' saved`);
-        // The list is served by whichever node answers next, and replication between them is
-        // asynchronous, so it may not know about this catalog yet. Naming it in the url lets that
-        // page wait for its own write instead of opening on a list that is a moment out of date.
-        // The write stamp travels with the id. The list is served by whichever node the proxy
-        // picks, and that node may not have applied this write yet -- an edit then landed on a
-        // page still showing the old values, because "is the row there" was already true of the
-        // copy that had not changed. The stamp is what makes the difference visible.
+        // The id and the write stamp travel to the list, which may be served by a node that has
+        // not applied this write yet. Presence alone is true of the stale copy; the stamp is not.
         this.router.navigate(['/catalogs'], {
           queryParams: {
             saved: saved.id ?? saved.name,

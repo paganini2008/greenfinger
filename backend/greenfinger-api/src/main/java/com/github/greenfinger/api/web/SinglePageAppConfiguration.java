@@ -30,15 +30,12 @@ import lombok.extern.slf4j.Slf4j;
  * Serves the front end, when there is one beside the jar.
  *
  * <p>
- * The Angular build is a single page application: /catalogs and /search are routes it handles in
- * the browser, not files on disk. A reload on either would be a 404 without this, so anything that
- * is not a real file and not an api call is answered with index.html and the router takes it from
- * there.
+ * /catalogs and /search are routes the browser handles, not files, so a reload would 404: anything
+ * that is not a real file and not an api call is answered with index.html.
  *
  * <p>
  * The build is looked for in {@code ./static} beside the launcher as well as on the classpath, so
- * the ui can be replaced without rebuilding the jar -- the same reason the configuration lives in
- * {@code deploy/config} rather than inside it.
+ * the ui can be replaced without rebuilding the jar -- as with {@code deploy/config}.
  *
  * @Description: SinglePageAppConfiguration
  * @Author: Fred Feng

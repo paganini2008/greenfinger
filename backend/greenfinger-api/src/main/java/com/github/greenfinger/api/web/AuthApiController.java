@@ -35,6 +35,7 @@ import com.github.greenfinger.api.security.TokenStore;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import java.util.Collection;
 
 /**
  * Signing in and out.
@@ -93,7 +94,7 @@ public class AuthApiController {
     }
 
     private static List<String> authorities(
-            java.util.Collection<? extends GrantedAuthority> granted) {
+            Collection<? extends GrantedAuthority> granted) {
         return granted.stream().map(GrantedAuthority::getAuthority).sorted().toList();
     }
 

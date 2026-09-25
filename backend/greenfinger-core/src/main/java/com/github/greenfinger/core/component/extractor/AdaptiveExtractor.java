@@ -28,23 +28,14 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Fetches cheaply, and pays for a browser only when the cheap fetch came back empty.
+ * Fetches cheaply and pays for a browser only when the cheap fetch came back empty -- the blunt
+ * alternative, a browser engine for the whole catalog, is an order of magnitude slower on the pages
+ * that never needed one. Which browser is the caller's choice; this only decides <em>when</em>, and
+ * creates it on first use, so an entirely static site never starts one.
  *
  * <p>
- * Configuring a browser engine for a whole catalog is the blunt alternative: correct, and an order
- * of magnitude slower on the great majority of pages that never needed one. This tries plain http
- * first, looks at what came back, and re-fetches through the configured browser when the html looks
- * like an unrendered shell.
- *
- * <p>
- * The browser is created on first use and not before, so a site that turns out to be entirely
- * static never starts one. Which browser it is -- HtmlUnit, Playwright or Selenium -- is the
- * caller's choice; this class only decides <em>when</em>.
- *
- * <p>
- * It keeps count of how often it was right. A crawl that renders nearly every page is a crawl that
- * should have been configured with the browser engine outright, and the numbers in the log are what
- * say so.
+ * It counts how often it was right: a crawl that renders nearly every page should have been
+ * configured with the browser engine outright, and the log is what says so.
  * 
  * @Description: AdaptiveExtractor
  * @Author: Fred Feng

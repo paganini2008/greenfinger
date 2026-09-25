@@ -11,6 +11,9 @@ import { Catalog, CatalogSummary, CrawlStatus, StorageUsage } from '../../core/a
 import { AuthService } from '../../core/auth.service';
 
 /** How often the counters are read while something is crawling, and while nothing is. */
+/** The ring's radius in its own viewBox. Everything else about it is drawn from this. */
+const RING_RADIUS = 52;
+
 const LIVE_POLL_MILLIS = 2000;
 const IDLE_POLL_MILLIS = 15000;
 
@@ -18,15 +21,9 @@ const IDLE_POLL_MILLIS = 15000;
 const FEATURED_CANDIDATES = 8;
 
 /**
- * The installation at a glance: what it is doing now, what it kept, and what it threw away.
- *
- * The page is built around the one picture that belongs to a crawler and to nothing else on a
- * dashboard: the **sieve**. A crawl touches far more of the web than it keeps -- it goes out of
- * scope, it has been seen before, it is over the limit -- and the ratio between what was seen and
- * what survived is the single most useful thing an operator can be told. A crawl that filtered out
- * nine urls in ten has a scope problem, and no column of counters ever says so.
- *
- * Everything else here is deliberately quiet. One number is the headline; the rest is a ledger.
+ * The installation at a glance, built around the **sieve**: a crawl touches far more of the web
+ * than it keeps, and the ratio is the most useful thing an operator can be told. One number is the
+ * headline; the rest is a ledger.
  */
 @Component({
   selector: 'gf-dashboard',
@@ -120,6 +117,104 @@ export class DashboardPage {
       ).length,
   );
 
+  /**
+   * Columns rather than one stacked ribbon, where the two bands that matter were slivers at either
+   * end. Heights are shares of the largest band, not of the total, or everything but the biggest
+   * is a stub; the value is printed above each.
+   */
+  protected readonly bars = computed(() => {
+    const bands = this.sieve();
+    const tallest = bands.reduce((high, band) => Math.max(high, band.value), 0) || 1;
+    return bands.map((band) => ({
+      ...band,
+      height: Math.max(5, Math.round((band.value / tallest) * 100)),
+    }));
+  });
+
+  /** The catalogs across the top, newest first: what somebody came to the page to look at. */
+  protected readonly cards = computed(() =>
+    [...this.catalogs()]
+      .sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''))
+      .slice(0, 4)
+      .map((catalog) => ({
+        name: catalog.name,
+        cat: catalog.cat,
+        initial: (catalog.name ?? '?').trim().charAt(0).toUpperCase(),
+        published: (catalog.searchVersion ?? -1) >= 0,
+        version: catalog.searchVersion ?? -1,
+        running: this.running().some((one) => one.name === catalog.name),
+      })),
+  );
+
+  /**
+   * How much of this installation can be searched: a catalog crawled and never published is disk
+   * used by something nobody can find. Of every catalog, including those never set up to index.
+   */
+  protected readonly searchableShare = computed(() => {
+    const all = this.catalogs().length;
+    return all ? Math.round((this.searchable() / all) * 100) : 0;
+  });
+
+  /** The ring, as the length of arc to draw out of its circumference. */
+  protected readonly ringDash = computed(() => {
+    const circumference = 2 * Math.PI * RING_RADIUS;
+    const drawn = (this.searchableShare() / 100) * circumference;
+    return `${drawn.toFixed(1)} ${(circumference - drawn).toFixed(1)}`;
+  });
+
+  /**
+   * The four facts under the ring: when this installation last did something, and what it has to
+   * show for it. Dates come from the catalogs themselves rather than from a log, so a fresh
+   * installation says "not yet" instead of printing the epoch.
+   */
+  protected readonly facts = computed(() => {
+    const catalogs = this.catalogs();
+    const crawled = catalogs
+      .filter((one) => !!one.lastIndexed)
+      .sort((a, b) => (b.lastIndexed ?? '').localeCompare(a.lastIndexed ?? ''))[0];
+    const changed = [...catalogs].sort((a, b) =>
+      (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''),
+    )[0];
+    return [
+      {
+        icon: 'travel_explore',
+        value: crawled ? this.when(crawled.lastIndexed) : 'Not yet',
+        label: crawled ? `Last crawl -- ${crawled.name}` : 'Nothing crawled yet',
+      },
+      {
+        icon: 'edit_calendar',
+        value: changed ? this.when(changed.updatedAt) : '--',
+        label: changed ? `Last change -- ${changed.name}` : 'Nothing set up yet',
+      },
+      {
+        icon: 'manage_search',
+        value: `${this.searchable()} of ${catalogs.length}`,
+        label: 'Catalogs answering a search',
+      },
+      {
+        icon: 'storage',
+        value: this.bytes(this.storage()?.bytes),
+        label: `Kept ${this.where()}`,
+      },
+    ];
+  });
+
+  /** A date somebody can read at a glance, in the browser's own locale. */
+  protected when(value: string | null | undefined): string {
+    if (!value) {
+      return '--';
+    }
+    const at = new Date(value);
+    return Number.isNaN(at.getTime())
+      ? '--'
+      : at.toLocaleString(undefined, {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+  }
+
   constructor() {
     inject(DestroyRef).onDestroy(() => this.poll?.unsubscribe());
     queueMicrotask(() => this.start(IDLE_POLL_MILLIS));
@@ -154,15 +249,9 @@ export class DashboardPage {
   }
 
   /**
-   * The summary behind the sieve: the running catalog, else the last one that actually ran.
-   *
-   * Ordered by when each run *ended*, which the summary reports, rather than by the catalog's
-   * `lastModified` -- a field this api has never sent, so sorting by it left the
-   * order untouched and the sieve showed whichever catalog happened to be created first. A field
-   * that is always null sorts everything equally and silently.
-   *
-   * A catalog with no pages is skipped rather than featured: the empty state belongs to an
-   * installation that has never crawled, not to one whose newest catalog is untouched.
+   * The running catalog, else the last one that ran -- ordered by when each run ended, which the
+   * summary reports. A catalog with no pages is skipped: the empty state belongs to an
+   * installation that has never crawled.
    */
   private readFeatured(catalogs: Catalog[], statuses: CrawlStatus[]): void {
     const running = statuses.find((one) => one.running);

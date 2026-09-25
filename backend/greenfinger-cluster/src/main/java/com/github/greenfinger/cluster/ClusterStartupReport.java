@@ -23,6 +23,7 @@ import com.github.greenfinger.core.output.BlobStore;
 import com.github.greenfinger.output.OutputFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jctools.queues.MpscArrayQueue;
 
 /**
  * Says at startup what this node actually is, because three of the things that decide how a
@@ -90,7 +91,7 @@ public class ClusterStartupReport implements SmartInitializingSingleton {
 
     private boolean jcToolsPresent() {
         try {
-            Class.forName("org.jctools.queues.MpscArrayQueue", false,
+            Class.forName("MpscArrayQueue", false,
                     getClass().getClassLoader());
             return true;
         } catch (ClassNotFoundException e) {

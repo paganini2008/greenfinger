@@ -31,18 +31,13 @@ import com.github.greenfinger.core.model.ExtractorType;
 import com.github.greenfinger.core.model.OutputType;
 
 /**
- * One question per field, each with what it accepts and what it already says.
+ * One question per field, each carrying what it accepts and what it already says. A catalog has
+ * seventeen settings: as flags that is a command line nobody types twice, asked one at a time it is
+ * seventeen presses of return with the two that matter typed in the middle.
  *
  * <p>
- * A catalog has seventeen settings. As flags that is a command line nobody types twice and a
- * reference page open beside it; asked one at a time, with the current value in the brackets, the
- * whole thing is seventeen presses of return and the two that matter typed in the middle. The
- * accepted range travels with the question, so nothing has to be looked up to answer it.
- *
- * <p>
- * {@code cancel} at any question abandons the whole thing, which is the reason this exists rather
- * than a chain of reads: half a catalog written because somebody changed their mind at question
- * twelve is worse than no catalog.
+ * {@code cancel} at any question abandons the whole thing -- half a catalog written because
+ * somebody changed their mind at question twelve is worse than no catalog.
  * 
  * @Description: Interview
  * @Author: Fred Feng
@@ -168,14 +163,9 @@ public class Interview {
     }
 
     /**
-     * How urls already seen are remembered.
-     *
-     * <p>
-     * rocksdb is what ships: exact, durable, and it grows with the site. It is not the only name
-     * this takes, which is why the answer is not checked against a list -- a deployment that has
-     * supplied its own component factory has its own filter and its own name for it, and being
-     * told here that the name is invalid would be wrong. An unknown name is refused when the crawl
-     * starts, by the factory that was asked for it, which is the only thing that knows.
+     * How urls already seen are remembered. rocksdb is what ships, but the answer is not checked
+     * against a list: a deployment with its own component factory has its own filter and its own
+     * name for it. An unknown name is refused at crawl start, by the factory that knows.
      */
     public String urlPathFilter(String current) {
         return oneOf("url-dedup", WebCrawlerConstants.URL_PATH_FILTER_ROCKSDB + " (built in)",

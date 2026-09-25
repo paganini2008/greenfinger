@@ -30,11 +30,8 @@ import com.github.greenfinger.cluster.replication.ClusterReplication;
 import java.util.function.Supplier;
 
 /**
- * The standard components, with one substitution: the counters.
- *
- * <p>
- * Three substitutions, and each is a thing that stops being this process's own the moment a second
- * node joins the same crawl.
+ * The standard components, with three substitutions -- each a thing that stops being this process's
+ * own the moment a second node joins the crawl.
  *
  * <ul>
  * <li><b>The counters.</b> "1,200 pages saved" has to mean the crawl saved 1,200, not that this

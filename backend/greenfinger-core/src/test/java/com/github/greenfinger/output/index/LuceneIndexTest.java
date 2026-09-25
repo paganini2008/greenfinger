@@ -17,6 +17,7 @@
 package com.github.greenfinger.output.index;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -24,6 +25,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.apache.lucene.search.IndexSearcher;
+import com.github.greenfinger.core.WebCrawlerException;
 import com.github.greenfinger.core.output.IndexAdmin;
 import com.github.greenfinger.core.output.SearchRequest;
 import com.github.greenfinger.core.output.SearchResponse;
@@ -96,6 +99,49 @@ class LuceneIndexTest {
         assertThat(response.getResults().get(0).getTitle()).isEqualTo("Page A");
         assertThat(response.getResults().get(0).getHighlights())
                 .anyMatch(fragment -> fragment.contains("<em>"));
+    }
+
+    @Test
+    @DisplayName("a second process can read an index the first one is writing")
+    void readsWhileAnotherProcessWrites() throws Exception {
+        crawl();
+
+        // a second LuceneIndexes over the same directory is what the command line is next to a
+        // running node: the write lock is already held, and "how many documents are in here" must
+        // not need it
+        LuceneIndexes second =
+                new LuceneIndexes(directory.toString(), LuceneAnalyzers.of("standard"));
+        try {
+            IndexSearcher searcher = second.acquire(indexName());
+
+            assertThat(searcher).isNotNull();
+            assertThat(searcher.getIndexReader().numDocs()).isEqualTo(2);
+            second.release(indexName(), searcher);
+
+            // and it says which of the two it can do, rather than handing back a writer it has
+            // not got
+            assertThatThrownBy(() -> second.writer(indexName()))
+                    .isInstanceOf(WebCrawlerException.class)
+                    .hasMessageContaining("another process");
+        } finally {
+            second.close();
+        }
+    }
+
+    @Test
+    @DisplayName("an index being written but not yet committed reads as empty, not as a failure")
+    void anUncommittedIndexIsNotAFailure() throws Exception {
+        // the first process opens it and has written nothing yet: the lock is taken and there is
+        // no commit to read. A node that has just started is exactly this.
+        indexes.writer("greenfinger-never-written");
+
+        LuceneIndexes second =
+                new LuceneIndexes(directory.toString(), LuceneAnalyzers.of("standard"));
+        try {
+            assertThat(second.acquire("greenfinger-never-written")).isNull();
+        } finally {
+            second.close();
+        }
     }
 
     @Test

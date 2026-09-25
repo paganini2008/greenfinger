@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Comparator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,11 +29,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
+import com.github.greenfinger.core.WebCrawlerException;
 import com.github.greenfinger.shell.ConsoleCapture;
 import com.github.greenfinger.shell.CrawlOptions;
-import com.github.greenfinger.shell.UsageException;
 import com.github.greenfinger.shell.GreenfingerShellMain;
 import com.github.greenfinger.shell.TestHttpServer;
+import com.github.greenfinger.shell.UsageException;
 import com.github.greenfinger.core.model.Catalog;
 import com.github.greenfinger.core.model.OutputType;
 import com.github.greenfinger.output.OutputFactory;
@@ -136,7 +138,7 @@ class SearchAndReplayCommandsTest {
     void searchesTheIndex() throws Exception {
         crawl("cli-search");
         try (ConsoleCapture console = new ConsoleCapture()) {
-            queryCommands.search("alpha", null, 5, null);
+            queryCommands.search("alpha", null, 5, null, null);
             String output = console.output();
             assertThat(output).contains("Page A").contains("match");
         }
@@ -146,8 +148,42 @@ class SearchAndReplayCommandsTest {
     void searchCanBeNarrowedToOneCatalog() throws Exception {
         String id = crawl("cli-search-one");
         try (ConsoleCapture console = new ConsoleCapture()) {
-            queryCommands.search("alpha", id, 3, null);
+            queryCommands.search("alpha", id, 3, null, null);
             assertThat(console.output()).contains("Page A");
+        }
+    }
+
+    @Test
+    @DisplayName("no query lists everything, the way the empty box on the page does")
+    void anEmptyQueryListsEverything() throws Exception {
+        crawl("cli-search-all");
+        try (ConsoleCapture console = new ConsoleCapture()) {
+            queryCommands.search(null, null, 10, null, null);
+            String output = console.output();
+
+            assertThat(output).contains("Every page kept").contains("Page A");
+            // nothing was compared, so there is no score column to wonder about
+            assertThat(output).doesNotContain("0.0000");
+        }
+    }
+
+    @Test
+    @DisplayName("a mode nobody has is refused by name rather than ignored")
+    void anUnknownModeIsRefused() {
+        assertThatThrownBy(() -> queryCommands.search("alpha", null, 5, "semantic", null))
+                .isInstanceOf(UsageException.class)
+                .hasMessageContaining("words, meaning or pictures");
+    }
+
+    @Test
+    @DisplayName("--image is still the pictures mode, so anything scripted against it keeps working")
+    void theOldImageFlagStillMeansPictures() throws Exception {
+        crawl("cli-search-image");
+        try (ConsoleCapture console = new ConsoleCapture()) {
+            // no vector output on this catalog, so the interesting part is that it asked the
+            // picture engine at all rather than the index
+            queryCommands.search("alpha", null, 5, null, true);
+            assertThat(console.output()).doesNotContain("match(es) for");
         }
     }
 
@@ -213,44 +249,74 @@ class SearchAndReplayCommandsTest {
     @Test
     void testUrlReportsWhatItIsAbout() throws Exception {
         try (ConsoleCapture console = new ConsoleCapture()) {
-            crawlCommands.dispatch("test-url", null,
-                    new CrawlOptions().override("url", site.url()));
+            crawlCommands.testUrl(site.url(), null);
             assertThat(console.output()).contains("Fetching");
         }
-        assertThatThrownBy(() -> crawlCommands.dispatch("test-url", null, new CrawlOptions()))
+        assertThatThrownBy(() -> crawlCommands.testUrl(null, null))
                 .isInstanceOf(UsageException.class).hasMessageContaining("Give a url");
     }
 
     @Test
-    void theDispatcherRoutesToTheOtherCommandClasses() throws Exception {
+    @DisplayName("the one-line form runs the crawl verbs and refuses the rest by name")
+    void theOneLineFormIsOnlyTheCrawlVerbs() throws Exception {
         crawl("cli-route");
-        try (ConsoleCapture console = new ConsoleCapture()) {
-            crawlCommands.dispatch("catalogs", null, new CrawlOptions());
-            assertThat(console.output()).contains("cli-route");
+
+        // what the prompt and the page are for, asked of the one-liner
+        for (String elsewhere : List.of("catalogs", "cats", "index-info", "search", "status",
+                "versions", "delete")) {
+            assertThatThrownBy(
+                    () -> crawlCommands.dispatch(elsewhere, null, new CrawlOptions()))
+                            .as(elsewhere)
+                            .isInstanceOf(UsageException.class)
+                            .hasMessageContaining("greenfinger-face.sh");
         }
+
+        // and something that is not a command anywhere is told it is unknown, which is a
+        // different problem with a different next step
+        assertThatThrownBy(
+                () -> crawlCommands.dispatch("frobnicate", null, new CrawlOptions()))
+                        .isInstanceOf(UsageException.class)
+                        .hasMessageContaining("Unknown command");
+    }
+
+    @Test
+    @DisplayName("merge is update with the pages already held revisited")
+    void mergeIsUpdateWithARefresh() throws Exception {
+        String id = crawl("cli-merge");
         try (ConsoleCapture console = new ConsoleCapture()) {
-            crawlCommands.dispatch("cats", null, new CrawlOptions());
-            assertThat(console.output()).contains("other");
-        }
-        try (ConsoleCapture console = new ConsoleCapture()) {
-            crawlCommands.dispatch("index-info", null, new CrawlOptions());
-            assertThat(console.output()).contains("cli-route");
-        }
-        try (ConsoleCapture console = new ConsoleCapture()) {
-            crawlCommands.dispatch("search", null,
-                    new CrawlOptions().override("query", "alpha").override("size", 3));
-            assertThat(console.output()).contains("Page A");
+            crawlCommands.dispatch("merge", null, new CrawlOptions().override("id", id));
+            // the same run report an update prints; what matters is that it ran at all
+            assertThat(console.output()).contains("cli-merge");
         }
     }
 
     @Test
-    @DisplayName("a primary command carries when the joined two-word form matches nothing")
-    void fallsBackToThePrimaryCommand() throws Exception {
-        String id = crawl("cli-primary");
+    @DisplayName("crawl is the same verb as catalog-crawl, for whoever types the shorter one")
+    void crawlIsAnAliasOfCatalogCrawl() throws Exception {
+        String id = crawl("cli-alias");
         try (ConsoleCapture console = new ConsoleCapture()) {
-            crawlCommands.dispatch("versions-nonsense", "versions",
-                    new CrawlOptions().override("id", id));
-            assertThat(console.output()).contains("v0");
+            crawlCommands.dispatch("crawl", null, new CrawlOptions().override("id", id));
+            assertThat(console.output()).contains("cli-alias");
+        }
+    }
+
+    @Test
+    @DisplayName("a catalog that is not there stops the command rather than carrying on")
+    void anUnknownCatalogStopsIt() {
+        assertThatThrownBy(() -> crawlCommands.dispatch("catalog-crawl", null,
+                new CrawlOptions().override("id", "00000000-0000-0000-0000-000000000000")))
+                        .isInstanceOf(WebCrawlerException.class);
+    }
+
+    @Test
+    @DisplayName("help on the one-line form lists the verbs it runs, not the twenty it does not")
+    void helpListsOnlyTheVerbs() throws Exception {
+        try (ConsoleCapture console = new ConsoleCapture()) {
+            crawlCommands.dispatch("help", null, new CrawlOptions());
+            String output = console.output();
+            assertThat(output).contains("merge").contains("rebuild").contains("replay")
+                    .contains("greenfinger-face.sh");
+            assertThat(output).doesNotContain("vector-info").doesNotContain("catalog-save");
         }
     }
 

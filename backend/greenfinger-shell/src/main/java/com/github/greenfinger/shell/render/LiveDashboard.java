@@ -39,10 +39,9 @@ import com.github.greenfinger.core.engine.CrawlFrontier;
  * at a slower cadence and the log stays readable.
  *
  * <p>
- * How many lines to move back over is counted from what was actually printed rather than worked
- * out in advance. The block changes height while it is up -- a node joins and the per-node table
- * grows a row -- and a redraw that moves back by yesterday's height leaves a trail of half-erased
- * tables behind it.
+ * How far to move back is counted from what was actually printed, not worked out in advance: the
+ * block changes height while it is up -- a node joins and the table grows a row -- and moving back
+ * by the old height leaves a trail of half-erased tables.
  * 
  * @Description: LiveDashboard
  * @Author: Fred Feng

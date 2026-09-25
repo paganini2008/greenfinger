@@ -120,6 +120,27 @@ class WebApiIntegrationTest {
     }
 
     @Test
+    @DisplayName("the outputs endpoint names the stores this server actually runs")
+    void namesTheStores() throws Exception {
+        // the page used to state them from its own template, so an installation on the embedded
+        // index told everybody it was Elasticsearch
+        mockMvc.perform(get("/v2/outputs")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.file").exists())
+                .andExpect(jsonPath("$.data.index").exists())
+                .andExpect(jsonPath("$.data.vector").exists());
+    }
+
+    @Test
+    @DisplayName("a node reports its own heap and cpu, without the actuator being open")
+    void reportsItsOwnHeap() throws Exception {
+        mockMvc.perform(get("/v2/node")).andExpect(status().isOk())
+                // a running jvm has used some heap; the maximum is -1 only where none was set
+                .andExpect(jsonPath("$.data.heapUsed").isNumber())
+                .andExpect(jsonPath("$.data.heapMax").isNumber())
+                .andExpect(jsonPath("$.data.cpu").isNumber());
+    }
+
+    @Test
     void listsCategories() throws Exception {
         saved("epsilon");
 

@@ -33,6 +33,7 @@ import com.github.greenfinger.output.OutputProperties;
 import com.github.greenfinger.core.output.Searcher;
 import com.github.greenfinger.output.vector.VectorHit;
 import com.github.greenfinger.service.CatalogAdminService;
+import com.github.greenfinger.service.StoredListing;
 import lombok.RequiredArgsConstructor;
 
 /**

@@ -102,7 +102,8 @@ class OneShotCommandRunnerTest {
             error = console.errorOutput();
         }
 
-        assertThat(error).contains("catalogs");
+        // the hint points at the prompt, which is where the ids are listed now
+        assertThat(error).contains("greenfinger-face.sh");
     }
 
     @Test

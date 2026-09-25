@@ -49,20 +49,14 @@ import com.github.greenfinger.output.index.LuceneIndexes;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Semantic and cross modal search, embedded. The default, and the other half of what a fresh clone
- * gets without installing anything.
+ * Semantic and cross modal search, embedded -- the same HNSW implementation Elasticsearch's knn
+ * search is built on, in one process instead of a cluster. A collection is a directory, the vectors
+ * are one field, and the payload rides along as json since nothing filters on its interior.
  *
  * <p>
- * Lucene's HNSW is the implementation Elasticsearch's own knn search is built on, so this is not a
- * lesser engine standing in for a real one -- it is the same engine, in one process instead of a
- * cluster. A collection is a directory, the vectors are one field, and the payload rides along as
- * json because nothing filters on its interior.
- *
- * <p>
- * Widths are carried in the collection name, {@code greenfinger_text_384}, exactly as they are for
- * Qdrant. Lucene requires every vector in a field to be the same width, so a model change that
- * would corrupt a collection instead lands in a new one, and {@link #ensureCollection} refuses the
- * mismatch out loud rather than letting the writer discover it mid-crawl.
+ * Widths live in the collection name ({@code greenfinger_text_384}), as with Qdrant: Lucene needs
+ * one width per field, so a model change lands in a new collection and
+ * {@link #ensureCollection} refuses a mismatch up front rather than mid-crawl.
  * 
  * @Description: LuceneVectorStore
  * @Author: Fred Feng
@@ -111,14 +105,9 @@ public class LuceneVectorStore implements VectorStore {
     }
 
     /**
-     * Deliberately does not close anything.
-     *
-     * <p>
-     * Every caller of a vector store initialises it and destroys it around its own work -- a
-     * crawl, a replay, one search -- which is right for Qdrant, where each of those is a client
-     * over http. Here they are all the same open directory, and a search that ran during a crawl
-     * would otherwise close the index the crawl is still writing to. The directories are released
-     * once, by {@link LuceneIndexes#closeShared()}, when the process ends.
+     * Deliberately closes nothing. Callers create and destroy a vector store around their own work,
+     * which is right for an http client but here they all share one open directory -- a search
+     * would close the index a crawl is writing. {@link LuceneIndexes#closeShared()} releases them.
      */
     @Override
     public void destroy() {
@@ -126,18 +115,10 @@ public class LuceneVectorStore implements VectorStore {
     }
 
     /**
-     * The directories, opened on first use rather than only by {@code afterPropertiesSet}.
-     *
-     * <p>
-     * Because not every caller opens one. A vector store used to be an http client, so the two
-     * places that build one -- the output channel and the searcher -- reasonably assumed
-     * constructing it was enough, and the channel calls {@code ensureCollection} before anything
-     * has initialised it. Failing there would be correct and useless: the crawl skips the vector
-     * output for the whole run and says so afterwards.
-     *
-     * <p>
-     * A keyword analyzer, because nothing in these documents is prose: the ids and the
-     * catalogVersion are matched whole, and the chunk text rides in the payload unindexed.
+     * Opened on first use, not only by {@code afterPropertiesSet}: callers built for an http client
+     * assume constructing is enough, and the output channel calls {@code ensureCollection} before
+     * anything initialises it. A keyword analyzer -- ids and versions are matched whole, and the
+     * chunk text rides in the payload unindexed.
      */
     private LuceneIndexes indexes() {
         LuceneIndexes open = indexes;

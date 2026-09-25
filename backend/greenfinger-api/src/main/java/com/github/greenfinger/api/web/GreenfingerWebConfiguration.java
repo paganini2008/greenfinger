@@ -44,6 +44,7 @@ import com.github.greenfinger.api.security.WebSecurityConfiguration;
 import com.github.greenfinger.core.record.ResourceRecordStore;
 import com.github.greenfinger.output.OutputFactory;
 import com.github.greenfinger.service.CatalogAdminService;
+import com.github.greenfinger.service.StoredListing;
 import com.github.greenfinger.core.WebCrawlerException;
 import com.github.greenfinger.core.catalog.CatalogDetailsNotFoundException;
 import lombok.extern.slf4j.Slf4j;

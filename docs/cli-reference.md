@@ -33,8 +33,8 @@ jar, not four programs: the same crawler, the same configuration, the same data 
 
 | | What it is | Runs until |
 |---|---|---|
-| `./greenfinger-cli.sh <command>` | One command, printed, done. | the command finishes |
-| `./greenfinger-face.sh` | A prompt. Type commands, watch a crawl live. | you type `exit` |
+| `./greenfinger-cli.sh <verb>` | One crawl verb, run and done. | the crawl finishes |
+| `./greenfinger-face.sh` | A prompt. Everything the page has, at a terminal. | you type `exit` |
 | `./run-local.sh` | The server -- the REST api and the web app -- as background processes here. | `./run-local.sh stop` |
 | `./run-docker.sh` | The same server, one container per node, plus the front end container. | `./run-docker.sh down` |
 
@@ -50,16 +50,44 @@ therefore one installation, and each sees what the other crawled.
 ./greenfinger-face.sh                          # a session, and stay in it
 ```
 
-**Two launchers, one program.** `greenfinger-cli.sh` runs the command on the line and exits.
-`greenfinger-face.sh` opens a session: one jvm, one prompt -- `greenfinger:>` -- and every command
-available inside it without the script name. They are the same implementation behind two entry
-points, so the jar, the configuration, the `.env` file and the data store are found identically
-whichever you typed; what differs is how long the process lives.
+**Two launchers, one program, two jobs.** They are the same implementation behind two entry
+points -- same jar, same configuration, same `.env`, same data store -- and what differs is not
+only how long the process lives but what it is for.
 
-`./greenfinger-cli.sh` with nothing on the line prints `help` rather than opening a prompt: the
-prompt has its own launcher now, so an empty line here is a question, not a session.
+`greenfinger-cli.sh` runs **the crawl verbs**, and only those:
 
-`help` lists the commands, `help <command>` explains one, and tab completes.
+| Verb | What it does |
+|---|---|
+| `catalog-crawl --id=<id>` | Crawl from the start url. `crawl` is the same verb |
+| `update --id=<id>` | Take the urls that have appeared since |
+| `merge --id=<id>` | Update, and revisit the pages already held |
+| `rebuild --id=<id>` | A new version, the whole site again |
+| `replay --id=<id> --layers=index` | Rebuild an output from the database |
+| `resume --id=<id>` | Continue after a pause |
+| `pause --id=<id>` | Stop a running crawl where it is |
+
+That is what a cron entry, a deploy script or somebody's runbook asks for: a verb, an exit code,
+no questions. Everything else the shell can do -- catalogs, versions, reports, search, the state
+of the index and the vectors, deleting things -- is *looking at* the installation rather than
+working it, and lives in the prompt, which has everything the page has.
+
+Asking the one-line form for one of those is refused by name and points at the prompt, rather
+than quietly doing nothing: a script that asked for something is entitled to know it did not
+happen. Anything that goes wrong stops the command and exits non-zero -- an id that is not there,
+a crawl already running, an option that makes no sense. There is nobody to ask, so there is
+nothing to carry on with.
+
+```
+$ ./greenfinger-cli.sh search --query=rust
+'search' is not a crawl verb, so the one-line form does not run it.
+It lives in the prompt, beside the rest of what this can show you:  ./greenfinger-face.sh
+$ echo $?
+1
+```
+
+`./greenfinger-cli.sh` with nothing on the line prints its own help -- the verbs above, not the
+twenty commands the prompt has. In the prompt, `help` lists everything, `help <command>` explains
+one, and tab completes.
 
 The difference between the two forms is what happens while a crawl runs. At the prompt the crawl
 runs behind it: the live view is shown, `q` then return leaves the view without touching the crawl,
@@ -620,19 +648,48 @@ comes from each catalog's `search_version`, so a rebuild in progress is invisibl
 
 | Option | Accepts |
 |---|---|
-| `--query` | Words to look for |
+| `--query` | Words to look for. Leave it out and everything kept is listed |
 | `--id` | A catalog id to search within; omit for all of them |
 | `--size` | How many results, 1 or more; default 10 |
-| `--image` | true \| false; true finds pictures by describing them and shows where they are. Default false |
+| `--mode` | `words` \| `meaning` \| `pictures`. Default `words` |
+| `--image` | Deprecated; the same as `--mode=pictures` |
 
-Words by default. There is no `--semantic`: two search commands wearing one name, told apart by a
-flag, meant every result table had to be read twice -- once for what it said and once for which
-engine had produced it. Pictures are the one genuinely different question, and they get the flag.
+The same three questions the page asks. **Words** is the full text index and is what somebody
+typing words usually means. **Meaning** is the vector store: it finds pages that are about
+something whether or not they say it. **Pictures** is the same store asked what an image looks
+like.
+
+```
+greenfinger:> search --query=wasm
+1 match(es) for 'wasm'
+
+greenfinger:> search --query="how do I avoid data races" --mode=meaning
+Pages about 'how do I avoid data races' (meaning)
+  0.7645  Embedded devices - Rust Programming Language
+
+greenfinger:> search
+Every page kept
+```
+
+Every table is titled with the mode that produced it, which is the answer to the old objection
+that two searches under one name have to be read twice -- once for what they say and once for
+which engine said it.
+
+An empty query lists everything, in every mode, exactly as the empty box on the page does. It is
+read from the table rather than from an engine: similarity has no match-all, so the two vector
+modes could not answer it at all. The score column is dropped when nothing was compared -- a
+listing is a table read in order, not a ranking.
 
 ### `index-info`
 
 The full text index: where it is, its analyzer, whether it exists, how many documents each catalog
 and version put in it, and every index under the prefix. No options.
+
+Works while a node is running. A Lucene index is written under a lock held by one process at a
+time, and this used to answer "Could not open the index" for any catalog belonging to a node that
+was up -- a read-only question refused because opening an index took a writer. It opens a reader
+now when the lock is somebody else's, which is the same courtesy the database has had since 1.x
+through H2's `AUTO_SERVER`.
 
 One command rather than the two there were. "How many documents" and "which indices exist" are the
 same question at two zoom levels, and answering them separately meant running both and reading them
