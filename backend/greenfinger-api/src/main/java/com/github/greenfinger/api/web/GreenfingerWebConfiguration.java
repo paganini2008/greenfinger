@@ -26,6 +26,7 @@ import org.springframework.format.FormatterRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import java.util.stream.Collectors;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -40,7 +41,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.DispatcherServlet;
 import org.springframework.context.annotation.Bean;
-import com.github.greenfinger.api.security.WebSecurityConfiguration;
 import com.github.greenfinger.core.record.ResourceRecordStore;
 import com.github.greenfinger.output.OutputFactory;
 import com.github.greenfinger.service.CatalogAdminService;
@@ -61,10 +61,10 @@ import lombok.extern.slf4j.Slf4j;
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnClass(DispatcherServlet.class)
 @ConditionalOnWebApplication
-@Import({WebSecurityConfiguration.class, SinglePageAppConfiguration.class,
-        AuthApiController.class, MetaApiController.class, CatalogApiController.class,
-        CrawlApiController.class, SearchApiController.class, ImageApiController.class,
-        GreenfingerWebConfiguration.ApiExceptionHandler.class})
+@ConditionalOnProperty(prefix = "greenfinger.api.web", name = "enabled", havingValue = "true",
+        matchIfMissing = true)
+// the controllers are component-scanned and carry the switch themselves; see ApiEndpoint
+@Import({SinglePageAppConfiguration.class, GreenfingerWebConfiguration.ApiExceptionHandler.class})
 public class GreenfingerWebConfiguration {
 
     /**

@@ -66,14 +66,29 @@ public class LeaderChannel
     private final long timeoutMs;
     private final int maxAttempts;
 
+    /** False on a terminal: it asks and never answers, so it cannot lead. */
+    private final boolean performs;
+
     private final Map<String, Handler<?>> handlers = new ConcurrentHashMap<>();
     private final Map<Long, CompletableFuture<Message>> waiting = new ConcurrentHashMap<>();
     private final AtomicLong requestIds = new AtomicLong();
 
     public LeaderChannel(GossipCluster cluster, long timeoutMs, int maxAttempts) {
+        this(cluster, timeoutMs, maxAttempts, true);
+    }
+
+    /**
+     * @param performs false for a face that only asks. Should it have taken the cluster port
+     *                 before a crawler was up, what arrives is refused as "ask somebody else"
+     *                 rather than failed, so the caller tries again -- by which time the guard has
+     *                 stood this process down
+     */
+    public LeaderChannel(GossipCluster cluster, long timeoutMs, int maxAttempts,
+            boolean performs) {
         this.cluster = cluster;
         this.timeoutMs = timeoutMs;
         this.maxAttempts = maxAttempts;
+        this.performs = performs;
     }
 
     /**
@@ -173,6 +188,9 @@ public class LeaderChannel
         if (!cluster.isLeader()) {
             // leadership moved between the sender reading it and this message arriving
             return Message.refused(request.id(), "No longer the leader", true);
+        }
+        if (!performs) {
+            return Message.refused(request.id(), "This node is a terminal, not a crawler", true);
         }
         Handler<?> handler = handlers.get(request.operation());
         if (handler == null) {

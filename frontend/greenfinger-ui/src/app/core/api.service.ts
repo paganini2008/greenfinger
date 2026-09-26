@@ -20,6 +20,7 @@ import {
   RocksDbUsage,
   SearchResponse,
   ServerVersion,
+  SettingsReport,
   StorageUsage,
   VectorHit,
 } from './api.models';
@@ -191,6 +192,14 @@ export class ApiService {
    */
   proxyNodes(): Observable<ProxyNode[]> {
     return this.http.get<ProxyNode[]>('/__nodes');
+  }
+
+  /**
+   * What this node is actually configured with, which is not what any one file says: four sources
+   * are merged and the last one wins. Secrets are masked by the endpoint, not here.
+   */
+  settings(node?: number | null): Observable<SettingsReport> {
+    return this.http.get<SettingsReport>('/actuator/settings', { params: pin(node) });
   }
 
   /**

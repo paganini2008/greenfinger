@@ -182,7 +182,6 @@
             rebuild, which is the rule greenfinger-shell's own configuration follows.
           -->
           <exclude>bin/**</exclude>
-          <exclude>config/**</exclude>
           <exclude>docker/**</exclude>
         </excludes>
       </resource>

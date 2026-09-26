@@ -88,6 +88,14 @@ export class App {
   /** Asked of the server rather than written here, so the badge cannot outlive the build it names. */
   protected readonly version = signal('');
 
+  /**
+   * Which installation this is, from the server's own active profile rather than from anything
+   * the browser was built with. Two tabs on two environments look identical otherwise, and the
+   * buttons on this page delete things.
+   */
+  protected readonly profile = signal('');
+  protected readonly isProduction = computed(() => /prod/i.test(this.profile()));
+
   private readonly url = toSignal(
     this.router.events.pipe(
       filter((event): event is NavigationEnd => event instanceof NavigationEnd),
@@ -132,7 +140,10 @@ export class App {
     }
 
     this.api.version().subscribe({
-      next: (server) => this.version.set(server.version),
+      next: (server) => {
+        this.version.set(server.version);
+        this.profile.set((server.profiles ?? []).join(', '));
+      },
       // a badge is not worth a message; the pages will report anything that actually matters
       error: () => undefined,
     });

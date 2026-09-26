@@ -53,7 +53,8 @@ test.describe('the three ways to search', () => {
 
   test('meaning goes to the text vectors and scores every hit', async ({ page }) => {
     await page.getByRole('button', { name: /meaning/i }).click();
-    await page.getByPlaceholder('anything you crawled').fill('a story about growing up');
+    // the box asks a different question in each mode, and says so in the placeholder
+    await page.getByPlaceholder('what a page is about').fill('a story about growing up');
     await page.getByRole('button', { name: 'Search', exact: true }).click();
 
     // the first call loads the embedding model, which is slower than anything else on the page

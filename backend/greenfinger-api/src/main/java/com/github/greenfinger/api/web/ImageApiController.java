@@ -25,7 +25,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 import com.github.greenfinger.core.WebCrawlerException;
 import com.github.greenfinger.core.output.BlobStore;
 import com.github.greenfinger.core.utils.BeanLifeCycleUtils;
@@ -55,7 +54,7 @@ import lombok.RequiredArgsConstructor;
  * @Date: 31/08/2026
  * @Version 2.0.0
  */
-@RestController
+@ApiEndpoint
 @RequestMapping("${greenfinger.api.prefix:/v2}/image")
 @RequiredArgsConstructor
 public class ImageApiController {

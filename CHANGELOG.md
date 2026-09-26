@@ -21,7 +21,7 @@ The whole of this section is the comparison with 1.0.0.
 | Shape | one starter jar, embedded in a host application, plus a runnable demo host (`greenfinger-ui`) | `greenfinger-core`, `greenfinger-cluster`, `greenfinger-api`, `greenfinger-shell` |
 | Runnable on its own | no | the api server and the shell, each an executable jar |
 | Web interface | a prebuilt bundle shipped under `static/ui` | Angular 21 (signals, Material, Tailwind), built from source in `frontend/` |
-| Command line | none | 20 commands at the `greenfinger:>` prompt (`greenfinger-face.sh`), which is the terminal's version of the page; `greenfinger-cli.sh` runs the crawl primitives and out |
+| Command line | none | 20 commands at the `greenfinger:>` prompt (`greenfinger-shell.sh`), a terminal that attaches to a running cluster and drives it exactly as the page does; `greenfinger-cli.sh` is a crawler that runs one verb and exits |
 | Framework | Spring Cloud, `doodler-framework-*` | Spring Boot 4.1, no framework of our own |
 | Start-up cost | Redis, PostgreSQL and Elasticsearch before the first page | nothing: H2 and an embedded Lucene index are the defaults |
 

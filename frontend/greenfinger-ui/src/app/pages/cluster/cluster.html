@@ -24,7 +24,7 @@
         type="button"
         class="gf-switch-tab"
         [class.gf-switch-on]="view() === 'health'"
-        (click)="view.set('health')"
+        (click)="show('health')"
       >
         <mat-icon>health_and_safety</mat-icon> Health
         @if (unhealthy().length) {
@@ -35,9 +35,17 @@
         type="button"
         class="gf-switch-tab"
         [class.gf-switch-on]="view() === 'cluster'"
-        (click)="view.set('cluster')"
+        (click)="show('cluster')"
       >
         <mat-icon>hub</mat-icon> Cluster
+      </button>
+      <button
+        type="button"
+        class="gf-switch-tab"
+        [class.gf-switch-on]="view() === 'settings'"
+        (click)="show('settings')"
+      >
+        <mat-icon>tune</mat-icon> Settings
       </button>
     </nav>
   </header>
@@ -421,5 +429,70 @@
         }
       </section>
     }
+  }
+
+  <!-- ============================================================================================
+       Settings: what this node is actually running on. Four sources are merged -- the packaged
+       yaml, the copy beside the launcher, .env and the command line -- so no one file answers it.
+       ========================================================================================= -->
+  @if (view() === 'settings') {
+    @if (settingsError(); as message) {
+      <div class="gf-notice gf-notice-warn">
+        <mat-icon>info</mat-icon>
+        <span>{{ message }}</span>
+      </div>
+    }
+
+    <section class="gf-panel">
+      <h2 class="gf-panel-title">
+        <mat-icon>tune</mat-icon> In force on this node
+        <span class="gf-muted gf-panel-aside gf-mono">{{ askedAddress() }}</span>
+      </h2>
+      <p class="gf-panel-hint">
+        The merged values the code reads, not what any one file says. Passwords and keys are
+        masked before they leave the node, and accounts are in config/api/users.xml rather than
+        here. A change to any of it takes a restart.
+      </p>
+
+      <label class="gf-settings-find">
+        <mat-icon>search</mat-icon>
+        <input
+          type="search"
+          placeholder="Narrow by name or value, e.g. lucene, 9200, timeout"
+          [value]="filter()"
+          (input)="filter.set($any($event.target).value)"
+          aria-label="Narrow the settings"
+        />
+        @if (settings()) {
+          <span class="gf-muted">{{ settingsCount() }}</span>
+        }
+      </label>
+
+      @if (!settings() && !settingsError()) {
+        <p class="gf-panel-note">Asking the node&hellip;</p>
+      }
+      @if (settings() && !filteredSettings().length) {
+        <p class="gf-panel-note">Nothing matches &ldquo;{{ filter() }}&rdquo;.</p>
+      }
+
+      @for (group of filteredSettings(); track group.prefix) {
+        <div class="gf-settings-group">
+          <h3 class="gf-settings-prefix">
+            {{ group.prefix }}
+            <span class="gf-muted gf-mono">{{ group.type }}</span>
+          </h3>
+          <div class="gf-settings-rows">
+            @for (row of group.rows; track row.key) {
+              <div class="gf-settings-row">
+                <span class="gf-settings-key">{{ row.key }}</span>
+                <span class="gf-settings-value" [class.gf-settings-unset]="row.unset">
+                  {{ row.value }}
+                </span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </section>
   }
 </div>

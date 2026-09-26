@@ -151,7 +151,8 @@ public class CrawlTaskChannel extends BufferedGossipListener
             // includeSelf: local dispatch costs nothing, no serialising, no network. Consistent
             // hashing rather than modulo, so a node joining moves ~1/N of the urls. Refer stays
             // out of the key -- one url found on two pages must land on one node.
-            target = cluster.unicastOn(Channels.CRAWL, null, routingKey(task), payload, true,
+            target = cluster.unicastOn(Channels.CRAWL, Channels.crawlers(cluster), routingKey(task),
+                    payload, true,
                     LoadBalancer.consistentHash());
         } catch (RuntimeException e) {
             log.warn("Could not dispatch '{}': {}", task.getUrl(), e.getMessage());

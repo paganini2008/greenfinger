@@ -369,6 +369,8 @@ export interface ServerVersion {
   name: string;
   version: string;
   builtAt?: string;
+  /** The Spring profiles in force, so the page can say which installation this is. */
+  profiles?: string[];
 }
 
 /** One line of a delete report: what would go on a dry run, or what did go on a real one. */
@@ -419,6 +421,22 @@ export interface CrawlReport {
   };
   nodes: string[];
   byNode?: Record<string, Record<string, number>>;
+}
+
+/**
+ * One `@ConfigurationProperties` class of ours, as it ended up after the yaml, `.env` and the
+ * command line had their say. Leaf keys, `minio.endpoint` rather than a tree, because that is how
+ * the yaml names them and how somebody would search for one.
+ */
+export interface SettingsGroup {
+  prefix: string;
+  type: string;
+  properties: Record<string, unknown>;
+}
+
+/** What `/actuator/settings` reports: greenfinger's own settings, secrets already masked. */
+export interface SettingsReport {
+  groups: SettingsGroup[];
 }
 
 /**

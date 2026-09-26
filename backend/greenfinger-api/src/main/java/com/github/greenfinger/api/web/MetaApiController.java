@@ -17,15 +17,16 @@
 package com.github.greenfinger.api.web;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryUsage;
+import org.springframework.core.env.Environment;
 import com.sun.management.OperatingSystemMXBean;
 import com.github.greenfinger.output.OutputProperties;
 import lombok.RequiredArgsConstructor;
@@ -40,13 +41,14 @@ import lombok.RequiredArgsConstructor;
  * @Date: 31/08/2026
  * @Version 2.0.0
  */
-@RestController
+@ApiEndpoint
 @RequestMapping("${greenfinger.api.prefix:/v2}")
 @RequiredArgsConstructor
 public class MetaApiController {
 
     private final ObjectProvider<BuildProperties> buildProperties;
     private final ObjectProvider<OutputProperties> outputProperties;
+    private final Environment environment;
 
     @GetMapping("/version")
     public ApiResult<Map<String, Object>> version() {
@@ -57,6 +59,13 @@ public class MetaApiController {
         if (build != null) {
             version.put("builtAt", build.getTime());
         }
+        // Which profile is in force, so the page can say it out loud. Somebody with two tabs open
+        // is one careless click away from running dev's delete against prod, and nothing else on
+        // the page distinguishes them. Spring reports no active profile when none was named, and
+        // what runs then is the default one.
+        String[] active = environment.getActiveProfiles();
+        version.put("profiles",
+                List.of(active.length > 0 ? active : environment.getDefaultProfiles()));
         return ApiResult.ok(version);
     }
 

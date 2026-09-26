@@ -30,6 +30,15 @@ package com.github.greenfinger.cluster;
  */
 public final class Channels {
 
+    /**
+     * The application a crawler's traffic is addressed to: its own. The terminal joins the same
+     * cluster under a name of its own and runs no engine, so a url dispatched to it is a url
+     * nothing ever handles -- the crawl then stalls with one unaccounted for.
+     */
+    public static String crawlers(com.chaconneai.spreader.GossipCluster cluster) {
+        return cluster.self().name();
+    }
+
     /** One url, unicast to whichever node the balancer picks. The recursive call itself. */
     public static final String CRAWL = "greenfinger.crawl";
 

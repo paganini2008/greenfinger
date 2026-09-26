@@ -38,7 +38,7 @@
 # negotiating a lock, and the copies are meant to be independent anyway.
 #
 # The url carries AUTO_SERVER=TRUE all the same, and that is not about the other nodes: it is what
-# lets greenfinger-cli.sh and greenfinger-face.sh open node 1's database while node 1 is running.
+# lets greenfinger-cli.sh and greenfinger-shell.sh open node 1's database while node 1 is running.
 # They are meant to be one installation -- a catalog created at the prompt is in the front end the
 # moment it is refreshed -- and without it the second process is told the file is already in use.
 #
@@ -59,35 +59,42 @@ drop_empty_gf() {
   return 0
 }
 
-# Settings, in one place and in one order.
+# Settings, in one place per reader and in one order.
 #
-#   run.conf   the run: how many nodes, which cluster, where the data and the logs go
-#   .env       the machine: passwords, api keys, the addresses of databases and stores
-#   the shell  whatever the caller already exported
+#   run.conf   the launcher: how many processes, on which ports, with how much heap, and where
+#              each one's directories go. Shell questions, answered before a jvm exists.
+#   .env       the application: everything application.yml resolves with ${GF_...}, secret or not.
+#              Spring imports this file too, so a main class started from an IDE reads the same
+#              values with no launcher in sight -- which is why nothing the application reads is
+#              allowed to live in run.conf.
+#   the shell  whatever the caller already exported, which beats both.
 #
-# Later beats earlier, so .env can override run.conf and a one-off on the command line beats both:
-#
-#     GF_NODES=3 ./run-local.sh
-#
-# `set -a` because the names in these files are the same GF_* the yaml in config/ reads -- they
-# have to be exported before the jvm starts, or ${GF_DB_URL} in application.yml resolves to
-# nothing. The caller's values are captured with `export -p`, whose output is made to be read
-# back, rather than an associative array: that is bash 4 and macOS ships 3.2.
+# `set -a` because these names are the same GF_* the yaml reads: they have to be exported before
+# the jvm starts. The caller's values are captured with `export -p`, whose output is made to be
+# read back, rather than an associative array -- that is bash 4 and macOS ships 3.2. `declare -x`
+# is what `export -p` prints, and `declare` inside a function makes a *local*, so it is rewritten
+# to `export` before being evaluated or the caller's one-off vanishes on return.
 load_settings() {
   local preset
-  # `declare -x` rather than `export` is what `export -p` prints, and `declare` inside a function
-  # makes a *local* -- so evaluating it here would set a variable that vanishes on return, and the
-  # caller's one-off would be silently ignored. Rewritten to `export`, which is global wherever it
-  # is run.
+  # Beside this launcher, which is the installation it belongs to. GREENFINGER_ENV names another
+  # one -- a second configuration on the same machine, or a file kept outside the directory
+  # because deploy/ is a build output and anything in it is replaced by the next build.
+  ENV_FILE="${GREENFINGER_ENV:-${SCRIPT_DIR}/.env}"
   preset="$(export -p | grep -E ' GF_[A-Za-z0-9_]+=' | sed 's/^declare -x /export /' || true)"
   set -a
   if [[ -f "${SCRIPT_DIR}/run.conf" ]]; then
     # shellcheck disable=SC1091
     source "${SCRIPT_DIR}/run.conf"
+    # An installation from before the split may still have the application's own settings in here.
+    # They work -- this is sourced either way -- but only a launcher will ever see them, so say so
+    # once rather than let somebody wonder why the IDE disagrees with the script.
+    if grep -qE '^\s*(GF_CLUSTER_NAME|GF_CLUSTER_PORT|GF_CLUSTER_HOSTS|GF_DATA_STORE|GF_IDLE_TIMEOUT|GF_COMPLETION_CHECK_INTERVAL|GF_MAX_CONSECUTIVE_FAILURES)=[^[:space:]]' "${SCRIPT_DIR}/run.conf"; then
+      echo "run.conf still sets values the application reads; move them to .env -- only the launchers can see them here." >&2
+    fi
   fi
-  if [[ -f "${ENV_FILE:-${SCRIPT_DIR}/.env}" ]]; then
+  if [[ -f "${ENV_FILE}" ]]; then
     # shellcheck disable=SC1090
-    source "${ENV_FILE:-${SCRIPT_DIR}/.env}"
+    source "${ENV_FILE}"
   fi
   set +a
   eval "${preset}"
@@ -116,6 +123,19 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# The rest api and the page it serves. On when the front end is, because that is who calls them;
+# off leaves a node that crawls, gossips and answers /actuator/health, and is driven from the
+# prompt instead -- which reaches it over the cluster rather than over http. GF_API_WEB in
+# run.conf forces it either way for an installation that wants the api without the page.
+API_WEB="${GF_API_WEB:-}"
+if [[ -z "${API_WEB}" ]]; then
+  API_WEB=$([[ "${WEB}" == "1" ]] && echo true || echo false)
+fi
+if [[ "${API_WEB}" != "true" && "${API_WEB}" != "false" ]]; then
+  echo "GF_API_WEB takes true or false. Got '${API_WEB}'." >&2
+  exit 1
+fi
 
 NODES="${GF_NODES:-1}"
 BASE_PORT="${GF_BASE_PORT:-50080}"
@@ -249,6 +269,46 @@ fi
 export GF_CLUSTER_NAME="${GF_CLUSTER_NAME:-greenfinger-local}"
 export GF_CLUSTER_PORT="${GF_CLUSTER_PORT:-22010}"
 
+# The port is the election, and holding one is machine-wide rather than per cluster: a second
+# cluster on the same port elects nobody, and one with the same name as well simply joins the
+# first -- where one crawl at a time is enforced. Every launcher has a port of its own for that
+# reason, and run.conf is read by all three, so a GF_CLUSTER_PORT set there points them at each
+# other. Checked before anything starts, rather than discovered as a crawl that waits.
+cluster_port_free() {
+  local port="$1"
+  # Polled rather than asked once: stopping a cluster and starting it again is the ordinary
+  # sequence, and the old nodes release the port a moment after the stop returns. Ten seconds is
+  # long enough for that and short enough that a port somebody else holds is refused promptly.
+  local waited=0
+  while (( waited < 20 )); do
+    # the whole open-and-close happens in the subshell: closing a descriptor the parent never
+    # opened is a redirection error on exec, and that ends a non-interactive shell outright --
+    # which turned this check into a launcher that exited without saying anything
+    if ! (exec 3<>"/dev/tcp/127.0.0.1/${port}" && exec 3<&-) 2>/dev/null; then
+      return 0
+    fi
+    sleep 0.5
+    (( waited += 1 ))
+  done
+  return 1
+}
+
+refuse_a_taken_port() {
+  local port="$1" mine="$2"
+  cluster_port_free "${port}" && return 0
+  echo "Cluster port ${port} is already held, so these nodes would join somebody else's" >&2
+  echo "cluster rather than run ${mine} -- and a cluster crawls one catalog at a time." >&2
+  echo >&2
+  echo "Each launcher has a port of its own: greenfinger-cli.sh 22000, run-local.sh 22010," >&2
+  echo "run-docker.sh 22020. A GF_CLUSTER_PORT in run.conf overrides all three at once." >&2
+  echo >&2
+  echo "Stop whatever holds it, or give this one a port and a name of its own:" >&2
+  echo "  GF_CLUSTER_PORT=$((port + 100)) GF_CLUSTER_NAME=mine ./$(basename "${BASH_SOURCE[0]}")" >&2
+  exit 1
+}
+
+refuse_a_taken_port "${GF_CLUSTER_PORT}" "its own"
+
 JAVA_BIN="java"
 if [[ -n "${JAVA_HOME:-}" && -x "${JAVA_HOME}/bin/java" ]]; then
   JAVA_BIN="${JAVA_HOME}/bin/java"
@@ -342,6 +402,7 @@ for ((i = 0; i < NODES; i++)); do
   nohup "${JAVA_BIN}" ${JAVA_OPTS} \
       -jar "${JAR}" \
       --server.port="${port}" \
+      --greenfinger.api.web.enabled="${API_WEB}" \
       --spring.config.additional-location="file:${SCRIPT_DIR}/config/,file:${SCRIPT_DIR}/config/api/" \
       > "${LOG_DIR}/${node}.out" 2>&1 &
 

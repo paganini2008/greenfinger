@@ -29,6 +29,7 @@ import com.chaconneai.openspreader.cluster.SelfRegisteringListener;
 import com.chaconneai.spreader.GossipCluster;
 import com.chaconneai.spreader.Node;
 import com.chaconneai.spreader.event.BufferedGossipListener;
+import com.github.greenfinger.cluster.Channels;
 import com.github.greenfinger.cluster.ClusterProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.LoggerFactory;
@@ -141,7 +142,7 @@ public class ReplicationChannel extends BufferedGossipListener
      */
     @Override
     public void replicate(ReplicationBatch.Entry entry) {
-        if (cluster.members().size() < 2) {
+        if (crawlers() < 2) {
             // alone: nobody to tell, and queuing would only grow
             return;
         }
@@ -184,12 +185,21 @@ public class ReplicationChannel extends BufferedGossipListener
      * @param attempts how many times this frame has already been offered, so a frame that keeps
      *                 falling short is given up on rather than retried for ever
      */
+    /**
+     * How many crawler nodes there are, which is not how many members there are: a terminal is a
+     * member with nowhere to put a copy, so counting it would have every frame reported as having
+     * missed somebody and retried until it was given up on.
+     */
+    private int crawlers() {
+        return cluster.membersOf(Channels.crawlers(cluster)).size();
+    }
+
     private void send(byte[] frame, int entries, int attempts) {
         // read before the send: a member that leaves between the two would otherwise make a
         // complete delivery look short
-        int expected = Math.max(0, cluster.members().size() - 1);
+        int expected = Math.max(0, crawlers() - 1);
         // never to self: this node is where the write came from
-        int delivered = cluster.multicastOn(channel, null, frame, false);
+        int delivered = cluster.multicastOn(channel, Channels.crawlers(cluster), frame, false);
         sent.addAndGet(entries);
         if (delivered >= expected) {
             return;
@@ -226,7 +236,7 @@ public class ReplicationChannel extends BufferedGossipListener
      * exhaustion inside a single pass.
      */
     void retryPending() {
-        if (retries.isEmpty() || cluster.members().size() < 2) {
+        if (retries.isEmpty() || crawlers() < 2) {
             return;
         }
         List<Pending> due = new ArrayList<>(retries.size());

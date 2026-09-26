@@ -77,6 +77,16 @@
 
           <span class="flex-1"></span>
 
+          <!-- Which installation this is. Quiet on dev, because that is where everybody spends
+               their day; wheat on prod, because that is where a click cannot be taken back. -->
+          @if (profile(); as profile) {
+            <span
+              class="gf-profile"
+              [class.gf-profile-live]="isProduction()"
+              [title]="'Spring profile in force on the server: ' + profile"
+            >{{ profile }}</span>
+          }
+
           <button type="button" class="gf-account" [matMenuTriggerFor]="accountMenu"
                   aria-label="Account">
             <div class="gf-avatar">{{ initial() }}</div>

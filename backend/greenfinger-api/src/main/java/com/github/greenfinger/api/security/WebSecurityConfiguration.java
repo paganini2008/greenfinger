@@ -87,13 +87,13 @@ public class WebSecurityConfiguration {
     }
 
     /**
-     * The user directory: whatever {@code GF_USERS} listed, and nothing else. There is no path by
-     * which an account appears at run time.
+     * The user directory: whatever {@code users.xml} lists, and nothing else. There is no path by
+     * which an account appears at run time, so a restart is what a change to that file needs.
      */
     @Bean
     public UserDetailsService userDetailsService() {
         return new InMemoryUserDetailsManager(
-                PreAllocatedUsers.parse(securityProperties.getUsers()));
+                PreAllocatedUsers.load(securityProperties.getUsersFile()));
     }
 
     @Bean

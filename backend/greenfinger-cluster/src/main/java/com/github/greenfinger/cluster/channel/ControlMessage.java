@@ -17,6 +17,7 @@
 package com.github.greenfinger.cluster.channel;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.github.greenfinger.core.model.Catalog;
 
 /**
  * What the control channel carries.
@@ -37,7 +38,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record ControlMessage(Type type, String catalogId, String action, int version,
-        boolean refresh, String reason, boolean interrupted, String layers, boolean dropIndex) {
+        boolean refresh, String reason, boolean interrupted, String layers, boolean dropIndex,
+        Catalog catalog) {
 
     /**
      * 
@@ -79,16 +81,23 @@ public record ControlMessage(Type type, String catalogId, String action, int ver
         PURGE_LOCAL
     }
 
+    /**
+     * @param catalog the row itself, so a node that has never heard of this catalog can open its
+     *                half without asking anybody. The announcement and the row travel on
+     *                different channels -- one immediate, one batched -- so the announcement
+     *                routinely arrives first, and a node that had to go and fetch the row waited
+     *                on a round trip the crawl did not wait for
+     */
     public static ControlMessage started(String catalogId, String action, int version,
-            boolean refresh) {
+            boolean refresh, Catalog catalog) {
         return new ControlMessage(Type.STARTED, catalogId, action, version, refresh, null, false,
-                null, false);
+                null, false, catalog);
     }
 
     public static ControlMessage completed(String catalogId, int version, String reason,
             boolean interrupted) {
         return new ControlMessage(Type.COMPLETED, catalogId, null, version, false, reason,
-                interrupted, null, false);
+                interrupted, null, false, null);
     }
 
     /**
@@ -99,7 +108,7 @@ public record ControlMessage(Type type, String catalogId, String action, int ver
             boolean dropIndex, String origin) {
         return new ControlMessage(Type.PURGE_LOCAL, catalogId, null,
                 version != null ? version : EVERY_VERSION, false, origin, false, layers,
-                dropIndex);
+                dropIndex, null);
     }
 
     /** What {@link #version()} reads as when a purge covers the whole catalog. */
@@ -111,7 +120,7 @@ public record ControlMessage(Type type, String catalogId, String action, int ver
      */
     public static ControlMessage restoreFiles(String catalogId, int version, String origin) {
         return new ControlMessage(Type.RESTORE_FILES, catalogId, null, version, false, origin,
-                false, null, false);
+                false, null, false, null);
     }
 
 }

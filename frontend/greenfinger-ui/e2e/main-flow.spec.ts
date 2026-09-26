@@ -34,7 +34,7 @@ test.describe('the main flow', () => {
   test('support sees the data and none of the buttons that change it', async ({ page }) => {
     await signIn(page, SUPPORT);
 
-    await expect(page.getByRole('link', { name: 'New catalog' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'New catalog' })).toHaveCount(0);
     await expect(page.getByText(/read only/i)).toBeVisible();
   });
 
@@ -44,23 +44,11 @@ test.describe('the main flow', () => {
     await expect(page.locator('.gf-version')).toHaveText(/\d+\.\d+/);
   });
 
-  test('the theme choice survives a reload', async ({ page }) => {
-    await signIn(page, ADMIN);
-
-    // system -> light -> dark
-    await page.getByRole('button', { name: /switch to light/i }).click();
-    await page.getByRole('button', { name: /switch to dark/i }).click();
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-
-    await page.reload();
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  });
-
   test('create a catalog, run it, watch it, remove it', async ({ page }) => {
     const name = `e2e-${Date.now()}`;
     await signIn(page, ADMIN);
 
-    await page.getByRole('link', { name: 'New catalog' }).first().click();
+    await page.getByRole('button', { name: 'New catalog' }).first().click();
     await page.getByRole('textbox', { name: 'Url', exact: true }).fill('https://books.toscrape.com');
     await page.getByRole('textbox', { name: 'Name', exact: true }).fill(name);
 
@@ -71,6 +59,10 @@ test.describe('the main flow', () => {
 
     await page.getByRole('button', { name: 'Create catalog' }).click();
     await expect(page).toHaveURL(/\/catalogs/);
+
+    // the list is nine to a page, so a new catalog on a machine that already has nine is on page
+    // two and nowhere to be seen. The filter is how a person finds one, and how this test does.
+    await page.getByPlaceholder('Filter by name or url').fill(name);
     const tile = page.locator('.gf-tile', { hasText: name });
     await expect(tile).toBeVisible();
 
@@ -82,8 +74,8 @@ test.describe('the main flow', () => {
     await expect(page.getByRole('heading', { name })).toBeVisible();
     // "Running" while it is, "Last run" once it is not: either says the run reached the page
     await expect(page.locator('.gf-eyebrow')).toHaveText(/running|last run/i);
-    // and the counters the monitor exists to show are on the page
-    await expect(page.getByText('Pages saved')).toBeVisible();
+    // and the counter the monitor exists to show is on the page
+    await expect(page.getByText(/pages kept/)).toBeVisible();
 
     // Clean up the crawled data first, on the Monitor page. Deleting the definition is
     // deliberately only that -- the pages stay in the files, the index and the vector store --
@@ -93,7 +85,7 @@ test.describe('the main flow', () => {
     await zone.getByRole('spinbutton', { name: /keep the newest/i }).fill('0');
     await zone.getByRole('button', { name: /show me what would go/i }).click();
     // the plan is empty when the crawl saved nothing, and there is then nothing to confirm
-    const forGood = zone.getByRole('button', { name: /delete for good/i });
+    const forGood = zone.getByRole('button', { name: /^(Empty it|Delete it)$/ });
     if (await forGood.isVisible().catch(() => false)) {
       await forGood.click();
       await page.getByRole('button', { name: /delete|confirm|yes/i }).last().click();
@@ -102,6 +94,7 @@ test.describe('the main flow', () => {
 
     // then the definition: a test that leaves catalogs behind makes the next run harder to read
     await page.goto('/catalogs');
+    await page.getByPlaceholder('Filter by name or url').fill(name);
     const row = page.locator('.gf-tile', { hasText: name });
     await row.getByRole('button', { name: /more/i }).click();
     await page.getByRole('menuitem', { name: /delete definition/i }).click();

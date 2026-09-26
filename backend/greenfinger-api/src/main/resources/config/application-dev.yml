@@ -1,27 +1,25 @@
-# The server, on a machine you are sitting at.
+# Development: open about what is wrong, because you are the one reading it.
 #
-# The default profile, and it assumes the browser is on the same laptop: the Angular dev server on
-# 4200 and the front end container on 9700 are allowed by name, an error carries its message, and
-# the actuator is open enough to see what the cluster is doing.
-#
-# Everything is still a variable, so one line in .env moves any of it without leaving the profile.
-# Switch to prod (GF_PROFILE=prod) when somebody other than you can reach the port.
+# The same keys as the other profile, different answers. What does not change between the two is
+# in application.yml beside this file, and what an installation wants to change is a GF_* in
+# .env -- these are only the defaults each profile starts from.
 
 server:
   error:
-    # the message, in the response, because the person reading it is the person who wrote the bug
-    include-message: always
+    # The message, not the stack trace
+    include-message: ${GF_ERROR_MESSAGE:always}
 
 management:
+  endpoints:
+    web:
+      exposure:
+        # spreader and spreader-report are the cluster's own: buffer water levels, dropped
+        # message counts, split brain, whether this node can still see a leader. None of that is
+        # guessable from the logs -- a full inbound buffer discards silently, by design.
+        # settings is greenfinger's own configuration as it ended up after yaml, .env and the
+        # command line had their say, secrets masked: the only correct answer to "which won".
+        include: ${GF_ACTUATOR_ENDPOINTS:health,info,metrics,settings,spreader,spreader-report}
   endpoint:
     health:
-      # what is wrong with a node, to a browser on this machine: the cluster page is worth more
-      # than the secrecy here
-      show-details: always
-
-greenfinger:
-  security:
-    # On, even here. Turning it off is a deployment decision (GF_SECURITY_ENABLED=false behind a
-    # private network) rather than a development convenience: an api that is open in development
-    # and closed in production is an api whose authorisation is only ever tested in production.
-    enabled: ${GF_SECURITY_ENABLED:true}
+      # every check by name: the cluster page is worth more than the secrecy on your own machine
+      show-details: ${GF_HEALTH_DETAILS:always}

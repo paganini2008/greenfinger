@@ -225,6 +225,22 @@ class LeaderChannelTest {
     }
 
     @Test
+    @DisplayName("a terminal holding the port says 'ask somebody else', not 'unknown operation'")
+    void aNodeWithNoHandlersIsNotALeader() {
+        // the greenfinger-shell prompt registers nothing: it asks and never answers. Should it
+        // have taken the cluster port before a crawler was up, a write arriving here has to be
+        // retried elsewhere rather than failed outright
+        leaderIsSelf();
+        LeaderChannel terminal = new LeaderChannel(cluster, 200L, 3, false);
+
+        LeaderChannel.Message reply =
+                terminal.perform(LeaderChannel.Message.request(1L, "catalog.save", "{}"));
+
+        assertThat(reply.notLeader()).isTrue();
+        assertThat(reply.error()).contains("terminal");
+    }
+
+    @Test
     @DisplayName("an unreadable message is discarded rather than thrown")
     void discardsRubbish() {
         channel.onPayload(other, "not json".getBytes(StandardCharsets.UTF_8));

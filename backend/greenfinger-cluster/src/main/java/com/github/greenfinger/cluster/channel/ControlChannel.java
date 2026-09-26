@@ -71,7 +71,7 @@ public class ControlChannel implements GossipListener, SelfRegisteringListener {
      */
     public void announce(ControlMessage message) {
         try {
-            cluster.multicastOn(Channels.CONTROL, null,
+            cluster.multicastOn(Channels.CONTROL, Channels.crawlers(cluster),
                     OBJECT_MAPPER.writeValueAsString(message).getBytes(StandardCharsets.UTF_8),
                     true);
         } catch (Exception e) {

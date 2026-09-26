@@ -200,6 +200,11 @@ public class CatalogAdminService {
     }
 
     public Catalog require(String idOrName) {
+        if (StringUtils.isBlank(idOrName)) {
+            // nothing was named at all, which is a different problem from naming something that
+            // is not there, and has a different answer
+            throw new CatalogDetailsNotFoundException("Give a catalog id.");
+        }
         return find(idOrName).orElseThrow(
                 () -> new CatalogDetailsNotFoundException("No such catalog: " + idOrName));
     }

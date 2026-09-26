@@ -246,10 +246,12 @@ class CommandsIntegrationTest {
     @DisplayName("a catalog is addressed by id, and a name is not one")
     void refusesAnythingThatIsNotAnId() {
         define("cli-by-name");
+        // three ways to name a catalog now -- an id, a name, or a url that creates one -- so
+        // naming none of them is a usage question rather than a lookup that failed
         assertThatThrownBy(
                 () -> crawlCommands.dispatch("catalog-crawl", null, new CrawlOptions()))
-                        .isInstanceOf(CatalogDetailsNotFoundException.class)
-                        .hasMessageContaining("catalog id");
+                        .isInstanceOf(com.github.greenfinger.shell.UsageException.class)
+                        .hasMessageContaining("--url");
         // the message names the id that was not found and nothing else: core is asked this by
         // the page as well, and telling a browser to run 'catalog-list' was advice it could not
         // take. Where to find the ids is the shell's hint, beside the red line.

@@ -238,6 +238,37 @@ class LuceneIndexTest {
     }
 
     @Test
+    @DisplayName("a cursor that came back through a query string still pages")
+    void pagesWithACursorThatArrivedAsText() throws Exception {
+        crawl();
+
+        SearchResponse first = new LuceneSearcher(config, indexes)
+                .search(SearchRequest.builder().keyword("content").pageSize(1).build());
+        assertThat(first.getNextCursor()).isNotNull();
+
+        // what the http layer hands back: every element of a query parameter is a string, and the
+        // score used to fall through to zero here -- which rejects every hit and empties the page
+        List<Object> asText =
+                first.getNextCursor().stream().map(value -> (Object) String.valueOf(value)).toList();
+        SearchResponse second = new LuceneSearcher(config, indexes).search(SearchRequest.builder()
+                .keyword("content").pageSize(1).cursor(asText).build());
+
+        assertThat(second.getResults()).hasSize(1);
+        assertThat(second.getResults().get(0).getId())
+                .isNotEqualTo(first.getResults().get(0).getId());
+    }
+
+    @Test
+    @DisplayName("a cursor that is not one is refused rather than quietly read as zero")
+    void refusesACursorThatIsNotOne() throws Exception {
+        crawl();
+        assertThatThrownBy(() -> new LuceneSearcher(config, indexes)
+                .search(SearchRequest.builder().keyword("content").pageSize(1)
+                        .cursor(List.of("not-a-score", "an-id")).build()))
+                                .isInstanceOf(WebCrawlerException.class);
+    }
+
+    @Test
     void analyzersAreNamed() {
         assertThat(LuceneAnalyzers.of("standard").getClass().getSimpleName())
                 .isEqualTo("StandardAnalyzer");

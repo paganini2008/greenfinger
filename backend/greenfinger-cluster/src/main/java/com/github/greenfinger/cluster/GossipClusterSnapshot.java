@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import com.chaconneai.spreader.GossipCluster;
 import com.chaconneai.spreader.Node;
+import com.github.greenfinger.cluster.Channels;
 import com.github.greenfinger.service.ClusterSnapshot;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -52,7 +53,10 @@ public class GossipClusterSnapshot implements ClusterSnapshot {
         // wonder whether a missing key means one process or a failed lookup
         snapshot.putAll(ClusterSnapshot.standalone().snapshot());
         try {
-            List<Node> members = cluster.members();
+            // the crawler nodes, not every member: a terminal joins this cluster to ask the
+            // leader for things and runs no crawl, so counting it would report a node that never
+            // fetches a page and has no share of anything
+            List<Node> members = cluster.membersOf(Channels.crawlers(cluster));
             snapshot.put("clustered", true);
             snapshot.put("name", cluster.clusterName());
             snapshot.put("self", cluster.self().label());

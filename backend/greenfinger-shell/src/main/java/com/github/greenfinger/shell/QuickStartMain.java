@@ -20,6 +20,7 @@ import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 import com.github.greenfinger.core.catalog.CatalogDetailsService;
+
 import com.github.greenfinger.core.model.Catalog;
 import com.github.greenfinger.core.model.OutputType;
 import com.github.greenfinger.service.CatalogAdminService;

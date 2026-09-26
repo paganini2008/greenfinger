@@ -24,6 +24,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import org.springframework.context.annotation.Import;
 import com.github.greenfinger.service.EnableGreenfingerCrawler;
+import com.github.greenfinger.api.actuate.GreenfingerActuatorConfiguration;
+import com.github.greenfinger.api.security.WebSecurityConfiguration;
 import com.github.greenfinger.api.web.GreenfingerWebConfiguration;
 
 /**
@@ -47,7 +49,10 @@ import com.github.greenfinger.api.web.GreenfingerWebConfiguration;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 @EnableGreenfingerCrawler
-@Import(GreenfingerWebConfiguration.class)
+// security is not part of the api switch: the http port exists either way, so what is on it --
+// health, and the actuator -- stays protected when the api is off
+@Import({WebSecurityConfiguration.class, GreenfingerActuatorConfiguration.class,
+        GreenfingerWebConfiguration.class})
 public @interface EnableGreenfingerServer {
 
 }

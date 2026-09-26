@@ -29,7 +29,6 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import com.github.greenfinger.core.model.Catalog;
 import com.github.greenfinger.core.model.Image;
@@ -53,7 +52,7 @@ import lombok.RequiredArgsConstructor;
  * @Date: 05/09/2026
  * @Version 2.0.0
  */
-@RestController
+@ApiEndpoint
 @RequestMapping("${greenfinger.api.prefix:/v2}/resource")
 @RequiredArgsConstructor
 public class ResourceApiController {

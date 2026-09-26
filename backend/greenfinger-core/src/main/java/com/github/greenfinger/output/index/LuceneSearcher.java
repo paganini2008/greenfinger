@@ -205,10 +205,30 @@ public class LuceneSearcher implements Searcher {
         if (cursor.size() < 2) {
             throw new WebCrawlerException("That cursor did not come from this search.");
         }
-        float score = cursor.get(0) instanceof Number number ? number.floatValue() : 0f;
+        float score = scoreOf(cursor.get(0));
         BytesRef id = new BytesRef(String.valueOf(cursor.get(1)));
         int highest = Math.max(0, searcher.getIndexReader().maxDoc() - 1);
         return new FieldDoc(highest, score, new Object[] {score, id});
+    }
+
+    /**
+     * The score the cursor carries, whether it arrived as a number or as text.
+     *
+     * <p>
+     * It arrives as text whenever the cursor came in on a query string, which is every call from
+     * the page. This used to fall through to zero, and zero is not a harmless default: the sort is
+     * by score descending, so every real hit counts as sorting before the cursor and the next page
+     * comes back empty. Silently, with the total still saying there are more.
+     */
+    private float scoreOf(Object value) {
+        if (value instanceof Number number) {
+            return number.floatValue();
+        }
+        try {
+            return Float.parseFloat(String.valueOf(value).trim());
+        } catch (NumberFormatException e) {
+            throw new WebCrawlerException("That cursor did not come from this search.", e);
+        }
     }
 
     private void addIfPresent(List<String> highlights, String[] fragments, int index) {

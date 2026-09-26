@@ -49,35 +49,42 @@ drop_empty_gf() {
   return 0
 }
 
-# Settings, in one place and in one order.
+# Settings, in one place per reader and in one order.
 #
-#   run.conf   the run: how many nodes, which cluster, where the data and the logs go
-#   .env       the machine: passwords, api keys, the addresses of databases and stores
-#   the shell  whatever the caller already exported
+#   run.conf   the launcher: how many processes, on which ports, with how much heap, and where
+#              each one's directories go. Shell questions, answered before a jvm exists.
+#   .env       the application: everything application.yml resolves with ${GF_...}, secret or not.
+#              Spring imports this file too, so a main class started from an IDE reads the same
+#              values with no launcher in sight -- which is why nothing the application reads is
+#              allowed to live in run.conf.
+#   the shell  whatever the caller already exported, which beats both.
 #
-# Later beats earlier, so .env can override run.conf and a one-off on the command line beats both:
-#
-#     GF_NODES=3 ./run-local.sh
-#
-# `set -a` because the names in these files are the same GF_* the yaml in config/ reads -- they
-# have to be exported before the jvm starts, or ${GF_DB_URL} in application.yml resolves to
-# nothing. The caller's values are captured with `export -p`, whose output is made to be read
-# back, rather than an associative array: that is bash 4 and macOS ships 3.2.
+# `set -a` because these names are the same GF_* the yaml reads: they have to be exported before
+# the jvm starts. The caller's values are captured with `export -p`, whose output is made to be
+# read back, rather than an associative array -- that is bash 4 and macOS ships 3.2. `declare -x`
+# is what `export -p` prints, and `declare` inside a function makes a *local*, so it is rewritten
+# to `export` before being evaluated or the caller's one-off vanishes on return.
 load_settings() {
   local preset
-  # `declare -x` rather than `export` is what `export -p` prints, and `declare` inside a function
-  # makes a *local* -- so evaluating it here would set a variable that vanishes on return, and the
-  # caller's one-off would be silently ignored. Rewritten to `export`, which is global wherever it
-  # is run.
+  # Beside this launcher, which is the installation it belongs to. GREENFINGER_ENV names another
+  # one -- a second configuration on the same machine, or a file kept outside the directory
+  # because deploy/ is a build output and anything in it is replaced by the next build.
+  ENV_FILE="${GREENFINGER_ENV:-${SCRIPT_DIR}/.env}"
   preset="$(export -p | grep -E ' GF_[A-Za-z0-9_]+=' | sed 's/^declare -x /export /' || true)"
   set -a
   if [[ -f "${SCRIPT_DIR}/run.conf" ]]; then
     # shellcheck disable=SC1091
     source "${SCRIPT_DIR}/run.conf"
+    # An installation from before the split may still have the application's own settings in here.
+    # They work -- this is sourced either way -- but only a launcher will ever see them, so say so
+    # once rather than let somebody wonder why the IDE disagrees with the script.
+    if grep -qE '^\s*(GF_CLUSTER_NAME|GF_CLUSTER_PORT|GF_CLUSTER_HOSTS|GF_DATA_STORE|GF_IDLE_TIMEOUT|GF_COMPLETION_CHECK_INTERVAL|GF_MAX_CONSECUTIVE_FAILURES)=[^[:space:]]' "${SCRIPT_DIR}/run.conf"; then
+      echo "run.conf still sets values the application reads; move them to .env -- only the launchers can see them here." >&2
+    fi
   fi
-  if [[ -f "${ENV_FILE:-${SCRIPT_DIR}/.env}" ]]; then
+  if [[ -f "${ENV_FILE}" ]]; then
     # shellcheck disable=SC1090
-    source "${ENV_FILE:-${SCRIPT_DIR}/.env}"
+    source "${ENV_FILE}"
   fi
   set +a
   eval "${preset}"
@@ -89,6 +96,10 @@ SUBNET="${GF_SUBNET:-172.28.0.0/16}"
 IP_PREFIX="${GF_IP_PREFIX:-172.28.0.}"
 IP_START="${GF_IP_START:-10}"
 PREFIX="${GF_CONTAINER_PREFIX:-greenfinger}"
+
+# Nodes are numbered from one and addressed inside the network. Defined here rather than beside
+# its first use because the verbs above are dispatched before that point.
+node_ip() { printf '%s%d' "${IP_PREFIX}" "$((IP_START + $1 - 1))"; }
 # The image definitions, put here by packaging. The build context is deploy/ itself, because that
 # is where the jar and the front end build are.
 DOCKER_DIR="${SCRIPT_DIR}/docker"
@@ -135,20 +146,31 @@ esac
 IMAGE="${GF_IMAGE:-greenfinger:local}"
 
 WEB="${GF_WEB:-1}"
+# The rest api and the page it serves, on when the front end container is. Off leaves nodes that
+# crawl, gossip and answer /actuator/health, driven from ./greenfinger-shell.sh over the cluster
+# instead of over http.
+API_WEB="${GF_API_WEB:-}"
+if [[ -z "${API_WEB}" ]]; then
+  API_WEB=$([[ "${WEB}" == "1" ]] && echo true || echo false)
+fi
 WEB_PORT="${GF_WEB_PORT:-9700}"
 WEB_IMAGE="${GF_WEB_IMAGE:-greenfinger-web:local}"
+SHELL_IMAGE="${GF_SHELL_IMAGE:-greenfinger-shell:local}"
 WEB_NAME="${PREFIX}-web"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     # down is stop: docker compose's word for it, and the one people reach for
     start|stop|down|status|build) COMMAND="$1"; shift ;;
+    # the prompt, inside the network: the cluster port is not published, so a terminal on the
+    # host would join nothing
+    shell) COMMAND="shell"; shift ;;
     logs) COMMAND="logs"; LOG_NODE="${2:-1}"; shift 2 || shift ;;
     help) sed -n '2,30p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *)
       echo "Unknown argument: $1" >&2
       echo "This script takes a verb and nothing else: start, stop (down), status, logs," >&2
-      echo "build, help." >&2
+      echo "shell, build, help." >&2
       echo "Everything else is in run.conf beside it." >&2
       exit 1
       ;;
@@ -179,6 +201,26 @@ case "${COMMAND}" in
   logs)
     docker logs -f "${PREFIX}-${LOG_NODE}"
     exit 0
+    ;;
+  shell)
+    if ! compgen -G "${SCRIPT_DIR}/lib/greenfinger-shell-*.jar" >/dev/null; then
+      echo "Cannot find lib/greenfinger-shell-<version>.jar beside this script." >&2
+      echo "Build it with 'mvn -pl greenfinger-shell -am package'." >&2
+      exit 1
+    fi
+    if ! docker network inspect "${NETWORK}" >/dev/null 2>&1; then
+      echo "There is no '${NETWORK}' network, so there is nothing running to attach to." >&2
+      echo "Start the nodes first:  ./run-docker.sh" >&2
+      exit 1
+    fi
+    echo "Building ${SHELL_IMAGE} ..."
+    docker build -q -f "${DOCKER_DIR}/Dockerfile.shell" -t "${SHELL_IMAGE}" \
+        "${SCRIPT_DIR}" >/dev/null
+    # -it because it is a prompt, --rm because it keeps nothing
+    exec docker run --rm -it --network "${NETWORK}" "${SHELL_IMAGE}" \
+        --spring.spreader.name="${CLUSTER_NAME}" \
+        --spring.spreader.port="${CLUSTER_PORT}" \
+        --spring.spreader.ip-addresses="$(node_ip 1)"
     ;;
   stop|down)
     # not mapfile: it is bash 4 and macOS ships 3.2, where this whole branch was a "command
@@ -226,7 +268,6 @@ fi
 # listing all of them means no node depends on a particular other one being up first.
 # Addresses, assigned before anything starts: every node is told the whole list including itself,
 # which is what lets them be started in any order.
-node_ip() { printf '%s%d' "${IP_PREFIX}" "$((IP_START + $1 - 1))"; }
 
 peers=""
 for ((i = 1; i <= NODES; i++)); do
@@ -248,7 +289,7 @@ PASS_THROUGH=(
   GF_OLLAMA_URL GF_OLLAMA_MODEL GF_OPENAI_BASE_URL GF_OPENAI_API_KEY GF_OPENAI_MODEL
   GF_WORK_THREADS GF_MAX_FETCH_SIZE GF_LOG_LEVEL
   GF_COMPLETION_CHECK_INTERVAL GF_IDLE_TIMEOUT GF_MAX_CONSECUTIVE_FAILURES GF_API_BASE_URL
-  GF_CORS_ORIGINS GF_USERS GF_TOKEN_SECRET GF_TOKEN_VALIDITY
+  GF_CORS_ORIGINS GF_USERS_FILE GF_TOKEN_SECRET GF_TOKEN_VALIDITY
 )
 
 # The browser loads the app from the front end container and its requests are proxied to a node
@@ -301,6 +342,7 @@ for ((i = 1; i <= NODES; i++)); do
     -e GF_CLUSTER_HOSTS="${peers}" \
     -e GF_CLUSTER_ADVERTISE_HOST="$(node_ip "${i}")" \
     -e GF_PROFILE="${GF_PROFILE:-dev}" \
+    -e GF_API_WEB="${API_WEB}" \
     ${env_args[@]+"${env_args[@]}"} \
     "${IMAGE}" >/dev/null
   echo "  ${name}  http://localhost:${port}  cluster $(node_ip "${i}")"

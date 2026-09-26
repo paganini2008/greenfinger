@@ -1,0 +1,9 @@
+
+  ${AnsiColor.BRIGHT_GREEN}▄▀▀▀▄ █▀▀▀▄ █▀▀▀▀ █▀▀▀▀ █▄  █ █▀▀▀▀ ▀▀█▀▀ █▄  █ ▄▀▀▀▄ █▀▀▀▀ █▀▀▀▄${AnsiColor.DEFAULT}
+  ${AnsiColor.GREEN}█ ▄▄▄ █▄▄▄▀ █▀▀▀  █▀▀▀  █▀▄ █ █▀▀▀    █   █▀▄ █ █ ▄▄▄ █▀▀▀  █▄▄▄▀${AnsiColor.DEFAULT}
+  ${AnsiColor.GREEN}▀▄▄▄▀ █  ▀▄ █▄▄▄▄ █▄▄▄▄ █  ▀█ █     ▄▄█▄▄ █  ▀█ ▀▄▄▄▀ █▄▄▄▄ █  ▀▄${AnsiColor.DEFAULT}
+                                      ${AnsiColor.GREEN}▄▀▀▀▀ █   █ █▀▀▀▀ █     █${AnsiColor.DEFAULT}
+                                      ${AnsiColor.GREEN} ▀▀▀▄ █▀▀▀█ █▀▀▀  █     █${AnsiColor.DEFAULT}
+                                      ${AnsiColor.GREEN}▄▄▄▄▀ █   █ █▄▄▄▄ █▄▄▄▄ █▄▄▄▄${AnsiColor.DEFAULT}
+  ${AnsiStyle.FAINT}a terminal on a crawler cluster${AnsiStyle.NORMAL}  ${AnsiColor.GREEN}•${AnsiColor.DEFAULT}  ${AnsiStyle.FAINT}${application.version:2.0.0-SNAPSHOT}${AnsiStyle.NORMAL}
+  ${AnsiStyle.FAINT}watch it, drive it, crawl nothing here${AnsiStyle.NORMAL}

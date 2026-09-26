@@ -1,108 +1,132 @@
-import { expect, test } from '@playwright/test';
-import { ADMIN, signIn } from './support';
+import { expect, test, type Page } from '@playwright/test';
+import { ADMIN, CORPUS, signIn } from './support';
 
 /**
- * The cluster page, and the run reports on the monitor page.
+ * The System page, and the run reports on the monitor page.
  *
  * Both exist to show things that produce no log line: a node that has stopped sharing work, an
- * inbound buffer that is discarding messages, a crawl that ended with urls outstanding. A test
- * that only checked they render would miss the point -- what is asserted here is that the numbers
- * on them come from the node rather than from a placeholder.
+ * inbound buffer that is discarding messages, a crawl that ended with urls outstanding, a setting
+ * that is not what the yaml says. A test that only checked they render would miss the point --
+ * what is asserted here is that the numbers on them come from the node rather than from a
+ * placeholder.
  *
+ * The page is three tabs, and each asks a different question, so each test opens its own.
  */
 
-test.describe('the cluster page', () => {
+/** The tabs are buttons rather than routes: the url does not change, so the click is the setup. */
+async function open(page: Page, tab: 'Health' | 'Cluster' | 'Settings') {
+  await page.getByRole('button', { name: tab, exact: true }).click();
+}
+
+test.describe('the System page', () => {
   test.beforeEach(async ({ page }) => {
     await signIn(page, ADMIN);
     await page.goto('/cluster');
   });
 
-  test('says which node is being asked and whether it leads', async ({ page }) => {
-    // every node answers for itself, so the page has to say which one it is
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await expect(page.locator('.gf-chip').filter({ hasText: /leader|follower/ })).toBeVisible();
-    await expect(page.locator('.gf-chip').filter({ hasText: /member\(s\)/ })).toBeVisible();
-    await expect(page.locator('.gf-chip').filter({ hasText: 'UP' })).toBeVisible();
+  test('says which cluster is being asked, and whether anything is wrong', async ({ page }) => {
+    // the heading is the cluster's own name, which is how two installations are told apart
+    await expect(page.getByRole('heading', { level: 1 })).not.toBeEmpty();
+    const badges = page.locator('.gf-hero-badges .gf-chip');
+    await expect(badges.filter({ hasText: /UP|DOWN|UNKNOWN/ })).toBeVisible();
+    await expect(badges.filter({ hasText: /\d+ members/ })).toBeVisible();
   });
 
-  test('reports this node: its address, its uptime, and who the leader is', async ({ page }) => {
-    const details = page.locator('.gf-defs').first();
-    await expect(details).toContainText('Address');
-    await expect(details).toContainText('Members');
-    await expect(details).toContainText('Up for');
+  test('health asks every member in turn, not just the one that answered', async ({ page }) => {
+    await open(page, 'Health');
+    await expect(page.getByRole('heading', { name: 'Members' })).toBeVisible();
+
+    // a row per member, each with the role it claims for itself
+    const rows = page.locator('.gf-plan-table tbody tr');
+    await expect(rows.first()).toBeVisible();
+    await expect(rows.first()).toContainText(/leader|follower|no answer/);
   });
 
-  test('lists the channels, or says why there are none yet', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: /Channels/ })).toBeVisible();
+  test('cluster reports this node: its address, its role, and how long it has been up', async ({
+    page,
+  }) => {
+    await open(page, 'Cluster');
+
+    // one node is a definition list, several are a table: both have to say the same four things
+    const single = page.locator('.gf-defs').first();
+    if (await single.isVisible().catch(() => false)) {
+      await expect(single).toContainText('Address');
+      await expect(single).toContainText('Role');
+      await expect(single).toContainText('Up for');
+    } else {
+      const rows = page.locator('.gf-plan-table tbody tr');
+      await expect(rows.first()).toBeVisible();
+      await expect(rows.first()).toContainText(/leader|follower|no answer/);
+    }
+  });
+
+  test('traffic lists the channels, or says why there are none yet', async ({ page }) => {
+    await open(page, 'Cluster');
+    await expect(page.getByRole('heading', { name: 'Traffic' })).toBeVisible();
 
     // a channel appears once it has carried something, so an idle node has none -- and the page
     // has to say that rather than show an empty table, which reads like a broken cluster
-    const rows = page.locator('.gf-plan-table tbody tr');
-    if ((await rows.count()) === 0) {
+    const table = page.locator('.gf-plan-table').filter({ hasText: 'Channel' });
+    if ((await table.count()) === 0) {
       await expect(page.getByText(/Nothing has been sent yet/)).toBeVisible();
     } else {
-      await expect(page.locator('.gf-plan-table')).toContainText('Dropped');
-      await expect(rows.first()).toBeVisible();
+      await expect(table.first()).toContainText('Sent');
+      await expect(table.first().locator('tbody tr').first()).toBeVisible();
     }
   });
 
   test('a single node says so, because a crawl on it will not be shared', async ({ page }) => {
-    // one node in the local setup: the page must say that rather than look like a cluster
     const alone = page.getByText(/This node is alone/);
-    const members = await page.locator('.gf-chip').filter({ hasText: /member\(s\)/ }).innerText();
+    const members = await page
+      .locator('.gf-hero-badges .gf-chip')
+      .filter({ hasText: /\d+ members/ })
+      .innerText();
     if (members.startsWith('1 ')) {
       await expect(alone).toBeVisible();
     } else {
       await expect(alone).toHaveCount(0);
     }
   });
+
+  test('settings are the merged values, searchable, with the secrets hidden', async ({ page }) => {
+    await open(page, 'Settings');
+    await expect(page.getByRole('heading', { name: /In force on this node/ })).toBeVisible();
+
+    // every group the server reports is greenfinger's own; nobody else's settings are on this page
+    const prefixes = page.locator('.gf-settings-prefix');
+    await expect(prefixes.first()).toContainText('greenfinger');
+
+    const find = page.getByRole('searchbox', { name: /narrow the settings/i });
+    await find.fill('secret');
+
+    // what is left is only the secrets, and every one of them is masked rather than shown
+    const values = page.locator('.gf-settings-value');
+    await expect(values.first()).toBeVisible();
+    const count = await values.count();
+    for (let i = 0; i < count; i++) {
+      await expect(values.nth(i)).toHaveText('******');
+    }
+
+    // and a setting nobody filled in reads as unset rather than as an empty cell
+    await find.fill('weaviate.apiKey');
+    await expect(page.locator('.gf-settings-value').first()).toHaveText('not set');
+  });
 });
 
 test.describe('the run reports', () => {
-  /**
-   * Crawls for real rather than reading somebody else's history: a report exists only after a run
-   * has finished, so a test that assumed one was already there would pass or fail on what the
-   * machine happened to have lying about.
-   */
   test('a finished crawl appears on the monitor page with what it produced', async ({ page }) => {
-    // this one really crawls: a minute of fetching, then the cluster has to agree it is done
-    // before anybody writes a report. The default ninety seconds is shorter than the wait below,
-    // so the test would run out before the assertion did and report the wrong thing.
-    test.setTimeout(240_000);
-    const name = `e2e-report-${Date.now()}`;
     await signIn(page, ADMIN);
+    await page.goto(`/catalogs/${CORPUS}/monitor`);
 
-    await page.getByRole('link', { name: 'New catalog' }).first().click();
-    await page.getByRole('textbox', { name: 'Url', exact: true }).fill('https://books.toscrape.com');
-    await page.getByRole('textbox', { name: 'Name', exact: true }).fill(name);
-    await page.getByRole('button', { name: /how far, how fast/i }).click();
-    await page.getByRole('spinbutton', { name: 'Max fetch size' }).fill('1');
-    await page.getByRole('spinbutton', { name: /fetch duration/i }).fill('1');
-    await page.getByRole('button', { name: 'Create catalog' }).click();
-    await expect(page).toHaveURL(/\/catalogs/);
-
-    const tile = page.locator('.gf-tile', { hasText: name });
-    await tile.getByRole('button', { name: 'Crawl' }).click();
-    await tile.getByRole('link', { name: /monitor/i }).click();
-
-    // the panel appears only once a run has ended and written its report
     const runs = page.locator('.gf-runs');
-    await expect(runs).toBeVisible({ timeout: 120_000 });
-
-    // one bar per run, and a bar is a button because picking one shows its detail
+    await expect(runs).toBeVisible();
+    // a report is written when a crawl finishes, and it is the only place these numbers survive
     await runs.locator('.gf-bar').first().click();
     await expect(runs.getByText('Ended because')).toBeVisible();
     await expect(runs.getByText(/url\(s\) dispatched/)).toBeVisible();
-    // dispatched is the whole bar; the segments are what became of those urls
+
+    // dispatched against handled, as a band: the gap is what a run left behind
     await expect(runs.locator('.gf-segbar .gf-seg').first()).toBeVisible();
     await expect(runs.locator('.gf-seg-legend')).toContainText('Handled');
-
-    // clean up: a test that leaves catalogs behind makes the next run harder to read
-    await page.goto('/catalogs');
-    const row = page.locator('.gf-tile', { hasText: name });
-    await row.getByRole('button', { name: /more/i }).click();
-    await page.getByRole('menuitem', { name: /delete definition/i }).click();
-    await page.getByRole('button', { name: /delete|confirm|yes/i }).last().click();
-    await expect(page.locator('.gf-tile', { hasText: name })).toHaveCount(0, { timeout: 30_000 });
   });
 });

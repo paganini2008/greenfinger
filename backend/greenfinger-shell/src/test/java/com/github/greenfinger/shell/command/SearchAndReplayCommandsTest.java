@@ -268,7 +268,7 @@ class SearchAndReplayCommandsTest {
                     () -> crawlCommands.dispatch(elsewhere, null, new CrawlOptions()))
                             .as(elsewhere)
                             .isInstanceOf(UsageException.class)
-                            .hasMessageContaining("greenfinger-face.sh");
+                            .hasMessageContaining("greenfinger-shell.sh");
         }
 
         // and something that is not a command anywhere is told it is unknown, which is a
@@ -315,7 +315,7 @@ class SearchAndReplayCommandsTest {
             crawlCommands.dispatch("help", null, new CrawlOptions());
             String output = console.output();
             assertThat(output).contains("merge").contains("rebuild").contains("replay")
-                    .contains("greenfinger-face.sh");
+                    .contains("greenfinger-shell.sh");
             assertThat(output).doesNotContain("vector-info").doesNotContain("catalog-save");
         }
     }

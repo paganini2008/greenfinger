@@ -30,6 +30,8 @@ import com.github.greenfinger.shell.render.TextTable;
 import com.github.greenfinger.core.WebCrawlerException;
 import com.github.greenfinger.core.WebCrawlerProperties;
 import com.github.greenfinger.core.catalog.CatalogDetails;
+import com.github.greenfinger.service.ops.CatalogSnapshot;
+import com.github.greenfinger.service.ops.GreenfingerOperations;
 import com.github.greenfinger.core.catalog.CatalogDetailsService;
 import com.github.greenfinger.core.model.Catalog;
 import com.github.greenfinger.core.model.Category;
@@ -38,8 +40,6 @@ import com.github.greenfinger.core.model.ExtractorType;
 import com.github.greenfinger.core.model.OutputType;
 import com.github.greenfinger.core.utils.UrlPathPatterns;
 import com.github.greenfinger.core.utils.UrlUtils;
-import com.github.greenfinger.service.CatalogAdminService;
-import com.github.greenfinger.service.CrawlReportService;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import java.util.function.BiConsumer;
@@ -63,10 +63,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 @RequiredArgsConstructor
 public class CatalogCommands {
 
-    private final CatalogAdminService catalogAdminService;
-    private final CatalogDetailsService catalogDetailsService;
-    private final CrawlReportService crawlReportService;
-    private final WebCrawlerProperties webCrawlerProperties;
+    private final GreenfingerOperations ops;
     private final ConsoleIO io;
 
     /**
@@ -86,21 +83,20 @@ public class CatalogCommands {
 
     @Command(name = "catalog-list", group = "Catalog", description = "Every stored catalog")
     public void list() {
-        List<Catalog> catalogs = catalogAdminService.findAll();
+        List<CatalogSnapshot> catalogs = ops.overview().catalogs();
         if (catalogs.isEmpty()) {
             print(Ansi.dim("No catalogs yet. Create one with:  catalog-save"));
             return;
         }
         TextTable table = TextTable.of("Id", "Name", "Url", "Category", "Outputs", "Version",
                 "Search").maxWidth(2, 40).title("Catalogs");
-        for (Catalog catalog : catalogs) {
-            CatalogDetails details = catalogDetailsService.loadCatalogDetails(catalog.getId());
+        for (CatalogSnapshot catalog : catalogs) {
             table.row(Ansi.cyan(catalog.getId()), catalog.getName(), catalog.getUrl(),
-                    catalog.getCat(),
+                    catalog.getCategory(),
                     String.join("+",
-                            details.getOutputTypes().stream().map(OutputType::getRepr).toList()),
-                    "v" + details.getVersion(),
-                    details.getSearchVersion() >= 0 ? "v" + details.getSearchVersion()
+                            catalog.getOutputTypes().stream().map(OutputType::getRepr).toList()),
+                    "v" + catalog.getVersion(),
+                    catalog.getSearchVersion() >= 0 ? "v" + catalog.getSearchVersion()
                             : Ansi.dim("-"));
         }
         print(table.render());
@@ -114,10 +110,10 @@ public class CatalogCommands {
         // Everything printed comes from CatalogDetails rather than from the Catalog row: the row
         // is how the catalog is stored, details is what it means once the defaults are applied, and
         // showing the row would report a blank where a default is in force.
-        CatalogDetails details = StringUtils.isNotBlank(id)
-                ? catalogDetailsService.loadCatalogDetails(catalogAdminService.requireById(id)
-                        .getId())
-                : running();
+        CatalogDetails details = ops.catalog(id);
+        if (details == null) {
+            throw new UsageException("Nothing is crawling. Name one: catalog-show --id=<id>");
+        }
 
         TextTable table = TextTable.of("Setting", "Value").maxWidth(1, 70)
                 .title("Catalog " + details.getName());
@@ -158,18 +154,6 @@ public class CatalogCommands {
     }
 
     /**
-     * The crawl in progress, when the command was given no id: a prompt watching a crawl is
-     * asking about that crawl, and pasting its id to do so is a step nobody wants.
-     */
-    private CatalogDetails running() {
-        CatalogDetails details = catalogDetailsService.loadRunningCatalogDetails();
-        if (details == null) {
-            throw new UsageException("Nothing is crawling. Name one: catalog-show --id=<id>");
-        }
-        return details;
-    }
-
-    /**
      * Create or update a catalog, one question at a time -- the one command here that asks
      * rather than reads. Seventeen settings as flags is a line nobody types twice, and a mistyped
      * one starts the crawl anyway with a default nobody chose.
@@ -195,15 +179,15 @@ public class CatalogCommands {
                     "  catalog-save --json='{\"name\":\"books\",\"url\":\"https://example.com\"}'");
         }
         boolean updating = StringUtils.isNotBlank(id);
-        Catalog catalog = updating ? catalogAdminService.requireById(id) : blank();
+        Catalog catalog = ops.form(id);
 
         print(Ansi.bold(updating ? "Updating '" + catalog.getName() + "'" : "New catalog"));
         print(Ansi.dim("Return keeps what is in the brackets. 'cancel' abandons the whole thing."));
 
         Interview interview = new Interview(io);
-        Catalog saved;
+        CatalogSnapshot saved;
         try {
-            saved = catalogAdminService.save(interview(interview, catalog));
+            saved = ops.saveCatalog(interview(interview, catalog));
         } catch (Interview.Cancelled e) {
             print(Ansi.yellow("Cancelled. Nothing was saved."));
             return;
@@ -227,8 +211,7 @@ public class CatalogCommands {
      * without it every key left out takes its default.
      */
     private void saveJson(String id, String json) {
-        Catalog catalog = StringUtils.isNotBlank(id) ? catalogAdminService.requireById(id)
-                : blank();
+        Catalog catalog = ops.form(id);
         try {
             // readerForUpdating: the json is a patch onto what is there, not a replacement, so a
             // field the caller did not mention keeps the value it had
@@ -240,7 +223,7 @@ public class CatalogCommands {
                             + "\"maxFetchSize\":500}'",
                     "Run 'options' for every field and what it accepts.");
         }
-        Catalog saved = catalogAdminService.save(catalog);
+        CatalogSnapshot saved = ops.saveCatalog(catalog);
         print(Ansi.green((StringUtils.isNotBlank(id) ? "Updated '" : "Saved '") + saved.getName()
                 + "'"));
         print("Id: " + Ansi.cyan(saved.getId()));
@@ -296,7 +279,7 @@ public class CatalogCommands {
      * A catalog is saved in order to be crawled, so the offer belongs here rather than in a second
      * command somebody has to know the name of.
      */
-    private void offerToRun(Interview interview, Catalog saved) {
+    private void offerToRun(Interview interview, CatalogSnapshot saved) {
         if (starter == null) {
             return;
         }
@@ -313,43 +296,19 @@ public class CatalogCommands {
         starter.accept(answer, saved.getId());
     }
 
-    /**
-     * A new catalog carrying the configured defaults, so the first question already has an answer
-     * in its brackets rather than an empty pair.
-     */
-    private Catalog blank() {
-        Catalog catalog = new Catalog();
-        catalog.setCat(Category.OTHER.getRepr());
-        catalog.setPageEncoding(webCrawlerProperties.getDefaultPageEncoding());
-        catalog.setExtractorType(ExtractorType.of(webCrawlerProperties.getDefaultExtractor()));
-        catalog.setMaxFetchSize(webCrawlerProperties.getDefaultMaxFetchSize());
-        catalog.setDepth(webCrawlerProperties.getDefaultMaxFetchDepth());
-        catalog.setDuration(webCrawlerProperties.getDefaultFetchDuration());
-        catalog.setFetchInterval(webCrawlerProperties.getDefaultFetchInterval());
-        catalog.setMaxRetryCount(webCrawlerProperties.getDefaultMaxRetryCount());
-        catalog.setImageEnabled(webCrawlerProperties.getImage().isEnabled());
-        catalog.setMaxVersions(webCrawlerProperties.getDefaultMaxVersions());
-        catalog.setContentMode(ContentMode.TEXT_IMAGE);
-        return catalog;
-    }
-
     @Command(name = "catalog-delete", group = "Catalog",
             description = "Remove the definition; use 'delete' for the data it produced")
     public void deleteCatalog(@Option(longName = "id",
             description = "The catalog id, from catalog-list") String id) {
-        Catalog catalog = catalogAdminService.requireById(id);
-        boolean removed = catalogAdminService.delete(catalog.getId());
-        if (!removed) {
-            throw new WebCrawlerException("Could not delete '" + catalog.getName() + "'");
-        }
-        print(Ansi.green("Deleted '" + catalog.getName() + "'"));
-        print(Ansi.dim("Its crawled data is untouched. Remove that with:  delete --id="
-                + catalog.getId() + " --all"));
+        String name = ops.deleteCatalog(id);
+        print(Ansi.green("Deleted '" + name + "'"));
+        print(Ansi.dim("Its crawled data is untouched. Remove that with:  delete --id=" + id
+                + " --all"));
     }
 
     @Command(name = "catalog-cats", group = "Catalog", description = "Every category in use")
     public void categories() {
-        List<String> categories = catalogAdminService.findAllCategories();
+        List<String> categories = ops.categories();
         if (categories.isEmpty()) {
             print(Ansi.dim("No categories yet."));
             return;
@@ -366,17 +325,17 @@ public class CatalogCommands {
             description = "Every version of one catalog, newest first")
     public void versions(@Option(longName = "id",
             description = "The catalog id, from catalog-list") String id) {
-        Catalog catalog = catalogAdminService.requireById(id);
-        List<Map<String, Object>> versions = crawlReportService.versions(catalog.getId());
+        GreenfingerOperations.Versions versions = ops.versions(id);
         TextTable table = TextTable.of("Version", "Pages", "Images", "State", "First built",
-                "Last run").rightAlign(1).rightAlign(2).title("Versions of " + catalog.getName());
-        for (Map<String, Object> version : versions) {
+                "Last run").rightAlign(1).rightAlign(2)
+                .title("Versions of " + versions.catalogName());
+        for (Map<String, Object> version : versions.rows()) {
             table.row("v" + version.get("version"), version.get("pages"), version.get("images"),
                     state(version), value(version.get("createdAt")),
                     value(version.get("updatedAt")));
         }
         print(table.render());
-        print(Ansi.dim("A report per version:  crawler-report --id=" + catalog.getId()
+        print(Ansi.dim("A report per version:  crawler-report --id=" + versions.catalogId()
                 + " --version=<n>"));
     }
 
@@ -407,15 +366,7 @@ public class CatalogCommands {
             @Option(longName = "version",
                     description = "Which version; omit for the newest one with a report")
                     Integer version) {
-        Catalog catalog = catalogAdminService.requireById(id);
-        Map<String, Object> report = crawlReportService.stored(catalog.getId(), version)
-                .orElseThrow(() -> new WebCrawlerException(version != null
-                        ? "No report for v" + version + " of '" + catalog.getName() + "'."
-                                + " Run 'versions --id=" + catalog.getId() + "' to see which"
-                                + " versions there are."
-                        : "'" + catalog.getName() + "' has no report yet. One is written when a"
-                                + " crawl finishes."));
-        render(report, "Report");
+        render(ops.report(id, version), "Report");
     }
 
     /**

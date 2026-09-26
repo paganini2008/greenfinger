@@ -36,7 +36,7 @@ class ControlMessageTest {
 
     @Test
     void startedCarriesWhatAJoiningNodeNeeds() {
-        ControlMessage message = ControlMessage.started("cat-1", "update", 3, true);
+        ControlMessage message = ControlMessage.started("cat-1", "update", 3, true, null);
 
         assertThat(message.type()).isEqualTo(ControlMessage.Type.STARTED);
         assertThat(message.action()).isEqualTo("update");
@@ -91,7 +91,7 @@ class ControlMessageTest {
     @Test
     @DisplayName("round trips as json, because that is what goes on the wire")
     void roundTrips() throws Exception {
-        ControlMessage message = ControlMessage.started("cat-1", "crawl", 0, false);
+        ControlMessage message = ControlMessage.started("cat-1", "crawl", 0, false, null);
         assertThat(objectMapper.readValue(objectMapper.writeValueAsString(message),
                 ControlMessage.class)).isEqualTo(message);
     }

@@ -19,6 +19,7 @@ package com.github.greenfinger.api.web;
 import java.io.IOException;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
@@ -44,6 +45,10 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Configuration(proxyBeanMethods = false)
+// component-scanned as well as imported, so the switch has to be here too: a node with no api has
+// no page to serve either
+@ConditionalOnProperty(prefix = "greenfinger.api.web", name = "enabled", havingValue = "true",
+        matchIfMissing = true)
 public class SinglePageAppConfiguration implements WebMvcConfigurer {
 
     private static final List<String> LOCATIONS =

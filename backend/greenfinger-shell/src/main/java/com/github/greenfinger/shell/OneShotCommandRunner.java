@@ -155,7 +155,7 @@ public class OneShotCommandRunner implements ApplicationRunner, ExitCodeGenerato
      */
     static Optional<String> hintFor(Throwable e) {
         if (e instanceof CatalogDetailsNotFoundException) {
-            return Optional.of("The ids are in the prompt --  ./greenfinger-face.sh  then"
+            return Optional.of("The ids are in the prompt --  ./greenfinger-shell.sh  then"
                     + " 'catalog-list' -- or on the page.");
         }
         return Optional.empty();

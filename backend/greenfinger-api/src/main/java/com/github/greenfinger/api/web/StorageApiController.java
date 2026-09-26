@@ -19,7 +19,6 @@ package com.github.greenfinger.api.web;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
 import com.github.greenfinger.core.model.Catalog;
 import com.github.greenfinger.service.CatalogAdminService;
 import com.github.greenfinger.service.RocksDbUsageService;
@@ -40,7 +39,7 @@ import lombok.RequiredArgsConstructor;
  * @Date: 05/09/2026
  * @Version 2.0.0
  */
-@RestController
+@ApiEndpoint
 @RequestMapping("${greenfinger.api.prefix:/v2}/storage")
 @RequiredArgsConstructor
 public class StorageApiController {

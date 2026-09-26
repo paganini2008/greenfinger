@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { ADMIN, SUPPORT, signIn } from './support';
+import { ADMIN, CORPUS, SUPPORT, signIn } from './support';
 
 /**
  * The dry run in front of the one operation that cannot be undone.
@@ -9,10 +9,10 @@ import { ADMIN, SUPPORT, signIn } from './support';
  * deleted would look exactly like a working one until the day somebody read the report and
  * decided not to go ahead.
  *
- * Precondition: a catalog with at least one crawled version -- `books2` in the local setup.
+ * Precondition: a catalog with at least one crawled version. globalSetup makes one.
  */
 
-const CATALOG = process.env['GF_E2E_CATALOG'] ?? 'books2';
+const CATALOG = CORPUS;
 
 test.describe('removing old versions', () => {
   test('the plan says what would go, and nothing goes', async ({ page }) => {
@@ -20,8 +20,8 @@ test.describe('removing old versions', () => {
     await page.goto(`/catalogs/${CATALOG}/monitor`);
     await expect(page.getByRole('heading', { name: CATALOG })).toBeVisible();
 
-    const pagesSaved = page.getByText('Pages saved');
-    await expect(pagesSaved,
+    const kept = page.getByText(/pages kept/);
+    await expect(kept,
       `no catalog named '${CATALOG}' with a crawled version; set GF_E2E_CATALOG to one that exists`)
       .toBeVisible();
 
@@ -39,12 +39,12 @@ test.describe('removing old versions', () => {
     await expect(rows.first().locator('td').nth(1)).toHaveText(/db|file|index|vector/i);
 
     // the confirmation is a second step, and it has not been taken
-    await expect(zone.getByRole('button', { name: /delete for good/i })).toBeVisible();
+    await expect(zone.getByRole('button', { name: /^(Empty it|Delete it)$/ })).toBeVisible();
     await expect(page.getByRole('dialog')).toHaveCount(0);
 
     // and the data is untouched: the report was a question, not an instruction
     await page.reload();
-    await expect(page.getByText('Pages saved')).toBeVisible();
+    await expect(page.getByText(/pages kept/)).toBeVisible();
     await page.goto('/search');
     await page.getByPlaceholder('anything you crawled').fill('books');
     await page.getByRole('button', { name: 'Search', exact: true }).click();
@@ -66,7 +66,7 @@ test.describe('removing old versions', () => {
   test('support never sees the danger zone at all', async ({ page }) => {
     await signIn(page, SUPPORT);
     await page.goto(`/catalogs/${CATALOG}/monitor`);
-    await expect(page.getByText('Pages saved')).toBeVisible();
+    await expect(page.getByText(/pages kept/)).toBeVisible();
 
     // hidden, not merely disabled: a button that cannot work is a worse answer than no button
     await expect(page.locator('.gf-danger-zone')).toHaveCount(0);

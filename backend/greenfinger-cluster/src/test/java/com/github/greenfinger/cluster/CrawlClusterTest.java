@@ -26,6 +26,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
+import com.github.greenfinger.cluster.leader.CatalogCatchUp;
+import com.github.greenfinger.cluster.support.FakeCatalogStore;
+import com.github.greenfinger.core.model.Catalog;
+import com.github.greenfinger.core.catalog.CatalogStore;
+import com.github.greenfinger.core.catalog.CatalogDetailsNotFoundException;
 import com.github.greenfinger.cluster.channel.CrawlTaskChannel;
 import com.github.greenfinger.cluster.state.ClusterGlobalStateManager;
 import com.github.greenfinger.cluster.support.TestCluster;
@@ -67,6 +72,21 @@ class CrawlClusterTest {
 
     private final List<String> joined = new CopyOnWriteArrayList<>();
 
+    /** Set by the case for the race: the first join refuses, as it does when the row is late. */
+    private final java.util.concurrent.atomic.AtomicBoolean refuseFirstJoin =
+            new java.util.concurrent.atomic.AtomicBoolean();
+
+    /** How many times a node asked the leader for its table before joining. */
+    private final java.util.concurrent.atomic.AtomicInteger catchUps =
+            new java.util.concurrent.atomic.AtomicInteger();
+
+    /** The row the announcement carries, when the case under test puts one there. */
+    private final java.util.concurrent.atomic.AtomicReference<Catalog> carriedCatalog =
+            new java.util.concurrent.atomic.AtomicReference<>();
+
+    /** What a node wrote to its own table. */
+    private final List<Catalog> saved = new CopyOnWriteArrayList<>();
+
     @BeforeAll
     static void startCluster() {
         cluster = TestCluster.start(2);
@@ -80,6 +100,10 @@ class CrawlClusterTest {
     @BeforeEach
     void setUp() {
         joined.clear();
+        refuseFirstJoin.set(false);
+        catchUps.set(0);
+        carriedCatalog.set(null);
+        saved.clear();
     }
 
     @Test
@@ -94,6 +118,53 @@ class CrawlClusterTest {
 
             TestCluster.await(() -> joined.contains("cat-1"), 10_000L,
                     "the other node was never told");
+        } finally {
+            a.close();
+            b.close();
+        }
+    }
+
+    @Test
+    @DisplayName("the announcement carries the catalog, so joining costs no round trip")
+    void joinsOnTheCarriedCatalog() throws Exception {
+        Node a = node(0);
+        Node b = node(1);
+        try {
+            refuseFirstJoin.set(true);
+            carriedCatalog.set(aCatalog("cat-carried"));
+            TestRun run = new TestRun("cat-carried", "books");
+            a.registry.register("cat-carried", run);
+            a.crawlCluster.create(new CrawlRun(run, "crawl", false, true));
+
+            TestCluster.await(() -> joined.contains("cat-carried"), 10_000L,
+                    "the other node never opened its half");
+            // the row was written from the message rather than fetched: asking the leader is a
+            // channel with a thirty second timeout, and a small crawl is over before it answers
+            assertThat(saved).extracting(Catalog::getId).contains("cat-carried");
+            assertThat(catchUps.get()).isZero();
+        } finally {
+            a.close();
+            b.close();
+        }
+    }
+
+    @Test
+    @DisplayName("a crawl of a catalog this node has not got yet is asked for, not given up on")
+    void joinsAfterAskingTheLeaderForTheCatalog() throws Exception {
+        Node a = node(0);
+        Node b = node(1);
+        try {
+            // the announcement travels on the control channel, small and immediate; the row
+            // travels on the replication channel and waits for a flush, so the other node can
+            // hear about a catalog it has never seen
+            refuseFirstJoin.set(true);
+            TestRun run = new TestRun("cat-race", "books");
+            a.registry.register("cat-race", run);
+            a.crawlCluster.create(new CrawlRun(run, "crawl", false, true));
+
+            TestCluster.await(() -> joined.contains("cat-race"), 10_000L,
+                    "the other node gave up instead of asking for the catalog");
+            assertThat(catchUps.get()).isEqualTo(1);
         } finally {
             a.close();
             b.close();
@@ -288,7 +359,8 @@ class CrawlClusterTest {
                 properties.getDispatch());
         CrawlCluster crawlCluster = new CrawlCluster(cluster.node(index).cluster(), channel,
                 registry, launcherThatRecords(), replayThatRecords(restoredOn),
-                deletionThatRecords(purgedHere),
+                deletionThatRecords(purgedHere), catchUpThatRecords(),
+                catalogStoreThatRecords(index == 0),
                 event -> {
                     if (listenersThrow) {
                         throw new IllegalStateException("a listener of somebody else's");
@@ -304,12 +376,113 @@ class CrawlClusterTest {
      * store and an output channel, none of which this module owns -- what is under test is
      * whether the message arrives and who acts on it.
      */
+    /**
+     * A catch-up that only records that it was asked. What it would really do -- take the
+     * leader's table -- is {@code CatalogCatchUpTest}'s subject.
+     */
+    private ObjectProvider<CatalogCatchUp> catchUpThatRecords() {
+        CatalogCatchUp catchUp = new CatalogCatchUp(null, null, null, Long.MAX_VALUE) {
+
+            @Override
+            public long catchUp() {
+                catchUps.incrementAndGet();
+                return 1L;
+            }
+        };
+        return new ObjectProvider<>() {
+
+            @Override
+            public CatalogCatchUp getObject() {
+                return catchUp;
+            }
+
+            @Override
+            public CatalogCatchUp getIfAvailable() {
+                return catchUp;
+            }
+        };
+    }
+
+    /**
+     * A table that answers with whatever the case put in {@code carriedCatalog} and records what
+     * was written to it.
+     */
+    /**
+     * @param holdsTheRow true for the node that starts the crawl, which is where the row already
+     *                    is. Everywhere else the table is empty until something writes to it --
+     *                    which is the case under test.
+     */
+    private ObjectProvider<CatalogStore> catalogStoreThatRecords(boolean holdsTheRow) {
+        // empty until something is written to it, as a table is: the case under test is a row
+        // that is not here yet arriving with the announcement
+        CatalogStore store = new FakeCatalogStore("test") {
+
+            @Override
+            public java.util.Optional<Catalog> findById(String id) {
+                java.util.Optional<Catalog> mine =
+                        saved.stream().filter(c -> id.equals(c.getId())).findFirst();
+                if (mine.isPresent() || !holdsTheRow) {
+                    return mine;
+                }
+                Catalog carried = carriedCatalog.get();
+                return carried != null && id.equals(carried.getId())
+                        ? java.util.Optional.of(carried)
+                        : java.util.Optional.empty();
+            }
+
+            @Override
+            public Catalog save(Catalog catalog) {
+                saved.add(catalog);
+                return catalog;
+            }
+        };
+        return new ObjectProvider<>() {
+
+            @Override
+            public CatalogStore getObject() {
+                return store;
+            }
+
+            @Override
+            public CatalogStore getIfAvailable() {
+                return store;
+            }
+        };
+    }
+
+    private static Catalog aCatalog(String id) {
+        Catalog catalog = new Catalog();
+        catalog.setId(id);
+        catalog.setName(id);
+        catalog.setUrl("https://books.toscrape.com");
+        return catalog;
+    }
+
+    /** Nothing to provide: the catch-up is absent in this slice, as it is on a lone node. */
+    private <T> ObjectProvider<T> none() {
+        return new ObjectProvider<T>() {
+
+            @Override
+            public T getObject() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public T getIfAvailable() {
+                return null;
+            }
+        };
+    }
+
     private ObjectProvider<CrawlerLauncher> launcherThatRecords() {
         CrawlerLauncher launcher = new CrawlerLauncher(null, null, null, null, null, null, null,
                 null, null, null, null, null, null) {
 
             @Override
             public CrawlerEngine.Result join(String catalogId, String action, boolean refresh) {
+                if (refuseFirstJoin.compareAndSet(true, false)) {
+                    throw new CatalogDetailsNotFoundException("No catalog with id: " + catalogId);
+                }
                 joined.add(catalogId);
                 return null;
             }

@@ -29,7 +29,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.core.catalog.CatalogDetailsService;
 import com.github.greenfinger.core.WebCrawlerException;
@@ -61,7 +60,7 @@ import lombok.extern.slf4j.Slf4j;
  * @Version 2.0.0
  */
 @Slf4j
-@RestController
+@ApiEndpoint
 @RequestMapping("${greenfinger.api.prefix:/v2}/crawl")
 @RequiredArgsConstructor
 public class CrawlApiController {

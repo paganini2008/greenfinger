@@ -2,3 +2,101 @@
 .gf-table-scroll {
   overflow-x: auto;
 }
+
+/* ------------------------------------------------------------------------------------------------
+   Settings. Around two hundred rows across five groups, so the shape that matters is the one that
+   makes a name findable: a fixed-width key column, values that wrap, and a box to narrow by.
+   --------------------------------------------------------------------------------------------- */
+
+.gf-settings-find {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0.25rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--gf-outline);
+  border-radius: var(--gf-r-pill);
+  background: var(--gf-surface);
+
+  mat-icon {
+    color: var(--gf-muted);
+    font-size: 1.1rem;
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+
+  input {
+    flex: 1;
+    border: 0;
+    outline: none;
+    background: transparent;
+    font: inherit;
+    font-size: 0.88rem;
+    color: inherit;
+  }
+}
+
+.gf-settings-group {
+  margin-top: 1.25rem;
+}
+
+.gf-settings-prefix {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin: 0 0 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+
+  span {
+    font-size: 0.72rem;
+    font-weight: 500;
+  }
+}
+
+.gf-settings-rows {
+  border: 1px solid var(--gf-outline);
+  border-radius: var(--gf-r-md);
+  overflow: hidden;
+}
+
+.gf-settings-row {
+  display: grid;
+  grid-template-columns: minmax(12rem, 22rem) 1fr;
+  gap: 1rem;
+  padding: 0.3rem 0.85rem;
+  font-size: 0.82rem;
+
+  /* zebra rather than rules: two hundred hairlines read as a grid, and the eye loses the row */
+  &:nth-child(odd) {
+    background: var(--gf-surface-container);
+  }
+}
+
+.gf-settings-key {
+  color: var(--gf-muted);
+  font-family: var(--gf-mono);
+  overflow-wrap: anywhere;
+}
+
+.gf-settings-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* a setting nobody filled in is not a value; it should not read as loudly as one */
+.gf-settings-unset {
+  color: var(--gf-muted);
+  font-weight: 400;
+  font-style: italic;
+}
+
+@media (max-width: 640px) {
+  .gf-settings-row {
+    grid-template-columns: 1fr;
+    gap: 0.1rem;
+    padding: 0.45rem 0.7rem;
+  }
+}

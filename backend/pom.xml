@@ -393,6 +393,36 @@
               <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
             </manifest>
           </archive>
+          <excludes>
+            <!--
+              No yaml or properties inside the artifact: a setting changes in deploy/config/
+              without a rebuild, which is the point of shipping it beside the jar.
+
+              Excluded here rather than from the resources, so config/ still reaches
+              target/classes. That is what lets a main class started from an IDE find its
+              configuration in the source tree and never in deploy/, which belongs to the
+              deployment. Tests are kept away from it by SPRING_CONFIG_LOCATION below.
+            -->
+            <exclude>config/**</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
+      <!--
+        Tests read their own configuration and nothing else.
+
+        classpath:/config/ is one of Spring's default locations and outranks the
+        classpath:/application.yml a test module ships, so with config/ on the classpath every
+        test would silently run on the production configuration. Naming the locations explicitly
+        leaves the root, which is exactly where a test's own file is.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.2.5</version>
+        <configuration>
+          <environmentVariables>
+            <SPRING_CONFIG_LOCATION>optional:classpath:/</SPRING_CONFIG_LOCATION>
+          </environmentVariables>
         </configuration>
       </plugin>
       <plugin>

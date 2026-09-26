@@ -14,6 +14,7 @@ import {
   HealthReport,
   NodeReading,
   ProxyNode,
+  SettingsGroup,
 } from '../../core/api.models';
 import { Sparkline } from '../../shared/sparkline';
 
@@ -29,6 +30,22 @@ function flatten(values: Record<string, unknown>, prefix = ''): { key: string; v
     }
     return [{ key: name, value: typeof value === 'object' ? JSON.stringify(value) : String(value) }];
   });
+}
+
+/**
+ * Whether a setting has a value at all. Blank counts: `${GF_WEAVIATE_API_KEY:}` in the yaml
+ * produces an empty string rather than a null, and to a reader those are the same answer.
+ */
+function unset(value: unknown): boolean {
+  return value === null || value === undefined || value === '';
+}
+
+/** A setting as a line of text. An empty cell would read as a value nobody could see. */
+function shown(value: unknown): string {
+  if (unset(value)) {
+    return 'not set';
+  }
+  return Array.isArray(value) ? value.join(', ') : String(value);
 }
 
 /** One member of the cluster, as that member describes itself. */
@@ -119,8 +136,18 @@ export class ClusterPage {
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
 
-  /** `health` is "is anything wrong"; `cluster` is "what is the machinery doing". */
-  protected readonly view = signal<'health' | 'cluster'>('health');
+  /**
+   * `health` is "is anything wrong", `cluster` is "what is the machinery doing", and `settings` is
+   * "what is this node actually running on" -- the third question of every support conversation,
+   * and the one no log line answers, because four sources are merged and the last one wins.
+   */
+  protected readonly view = signal<'health' | 'cluster' | 'settings'>('health');
+
+  protected readonly settings = signal<SettingsGroup[] | null>(null);
+  protected readonly settingsError = signal<string | null>(null);
+
+  /** Typing narrows every group at once: there are around two hundred settings. */
+  protected readonly filter = signal('');
 
   /**
    * Which node is being asked. Without pinning, consecutive polls come from different machines and
@@ -178,6 +205,32 @@ export class ClusterPage {
       name,
       entries: flatten(values ?? {}),
     })),
+  );
+
+  /**
+   * The settings, narrowed by what has been typed, matched on the name and on the value alike: a
+   * person looking for what is on port 9200 knows the value and not the key.
+   */
+  protected readonly filteredSettings = computed(() => {
+    const wanted = this.filter().trim().toLowerCase();
+    return (this.settings() ?? [])
+      .map((group) => ({
+        prefix: group.prefix,
+        type: group.type,
+        rows: Object.entries(group.properties)
+          .map(([key, value]) => ({ key, value: shown(value), unset: unset(value) }))
+          .filter(
+            (row) =>
+              !wanted ||
+              `${group.prefix}.${row.key}`.toLowerCase().includes(wanted) ||
+              row.value.toLowerCase().includes(wanted),
+          ),
+      }))
+      .filter((group) => group.rows.length);
+  });
+
+  protected readonly settingsCount = computed(() =>
+    this.filteredSettings().reduce((sum, group) => sum + group.rows.length, 0),
   );
 
   /** The node the detail panels are showing, by the address a person would recognise. */
@@ -360,6 +413,28 @@ export class ClusterPage {
     return member.heapMax > 0 ? Math.round((member.heapUsed / member.heapMax) * 100) : 0;
   }
 
+  /**
+   * Settings do not change while somebody is looking at them -- a restart is what changes them --
+   * so they are read once per node rather than polled.
+   */
+  protected show(view: 'health' | 'cluster' | 'settings'): void {
+    this.view.set(view);
+    if (view === 'settings' && this.settings() === null) {
+      this.readSettings();
+    }
+  }
+
+  private readSettings(): void {
+    this.settingsError.set(null);
+    this.api.settings(this.node()).subscribe({
+      next: (report) => this.settings.set(report.groups),
+      error: () =>
+        this.settingsError.set(
+          'This node did not answer /actuator/settings. It is exposed by default; an installation that narrowed GF_ACTUATOR_ENDPOINTS has to name it.',
+        ),
+    });
+  }
+
   /** Ask a different node: everything on the page is that node's, so all of it is dropped. */
   protected selectNode(index: number): void {
     if (this.node() === index) {
@@ -369,8 +444,12 @@ export class ClusterPage {
     this.tpsHistory.set([]);
     this.channelHistory.set({});
     this.status.set(null);
+    this.settings.set(null);
     this.loading.set(true);
     this.start();
+    if (this.view() === 'settings') {
+      this.readSettings();
+    }
   }
 
   private start(): void {

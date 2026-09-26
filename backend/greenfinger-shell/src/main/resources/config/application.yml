@@ -23,26 +23,49 @@ spring:
   # placeholders would fall back to their defaults -- or fail outright where there is none.
   #
   # It is properties syntax already (KEY=value), so the [.properties] hint is all Spring needs.
-  # Optional everywhere, and several paths because the working directory differs: deploy/ when a
-  # launcher started it, the module or the project root when an IDE did.
+  # Optional everywhere, and three paths because the working directory differs.
+  #
+  # Two files, and which one is read is decided by where the jvm was started rather than by
+  # anything in here:
+  #
+  #   deploy/.env    a deployed installation. A launcher's working directory is deploy/, so
+  #                  ./.env is that one and nothing else on this list exists beside it.
+  #   backend/.env   working on the source. An IDE runs in the module directory (../.env) or the
+  #                  project root (./backend/.env), and both land on that one.
+  #
+  # Deliberately no path that climbs out of deploy/ into a source tree: with ../backend/.env on
+  # this list a deployed node standing next to a checkout read the developer's keys, worked, and
+  # stopped working the moment deploy/ was copied anywhere else.
   config:
     import:
-      # backend/.env, reached from wherever the jvm was started: the module directory an IDE
-      # uses, the project root, or deploy/ when a launcher did it
       - optional:file:./.env[.properties]
       - optional:file:../.env[.properties]
-      - optional:file:../../.env[.properties]
       - optional:file:./backend/.env[.properties]
-      - optional:file:../backend/.env[.properties]
   application:
     name: greenfinger
   profiles:
-    # dev is zero configuration; prod expects GF_DB_* and the rest to be set in .env
+    # Two profiles, the same keys in both, and one difference: which database is opened when
+    # nothing says otherwise. dev is an H2 file and needs nothing installed; prod is MySQL.
+    #
+    # It used to be more than that -- prod also moved the files to MinIO and the search to
+    # Elasticsearch -- so GF_PROFILE=prod on a machine with none of those three failed to start,
+    # having changed four things when one was asked for. Those now default the same either way
+    # and are set in .env, which is the only place an installation should have to look.
     active: ${GF_PROFILE:dev}
+  datasource:
+    # The four connection keys are in the profile files, because that is the one thing the two
+    # profiles disagree about: dev opens an H2 file and needs nothing installed, prod opens
+    # MySQL. Everything else is the same in both, here, with .env deciding it.
+    hikari:
+      maximum-pool-size: ${GF_DB_POOL_SIZE:20}
+      minimum-idle: ${GF_DB_POOL_MIN_IDLE:5}
   jpa:
     hibernate:
       ddl-auto: ${GF_DB_DDL:update}
     open-in-view: false
+    # Only SQLite needs its dialect named: Hibernate ships none for it. Empty means Hibernate
+    # works it out from the connection, which it does for the other four.
+    database-platform: ${GF_DB_DIALECT:}
   main:
     banner-mode: console
   shell:
@@ -60,6 +83,10 @@ spring:
   # ---------------------------------------------------------------------------------------------
   spreader:
     name: ${GF_CLUSTER_NAME:default}
+    # Which application this process is, inside that cluster. The crawler nodes are one
+    # application and the terminal (greenfinger-shell.sh) is another: it joins the same cluster in
+    # order to reach them, and it is not one of them -- it runs no crawl and holds no data.
+    application-name: ${GF_CLUSTER_APP:greenfinger}
     # who to knock on. The default finds other processes on this machine; for real hosts list
     # them, or give a range so a new machine needs no configuration change
     ip-addresses: ${GF_CLUSTER_HOSTS:127.0.0.1}

@@ -123,7 +123,7 @@ export interface CrawlStateData {
 
     .gf-state-path {
       color: var(--gf-muted);
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-family: var(--gf-mono);
       font-size: 0.78rem;
       overflow-wrap: anywhere;
     }

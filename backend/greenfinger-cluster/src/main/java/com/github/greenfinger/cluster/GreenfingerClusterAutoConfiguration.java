@@ -64,6 +64,8 @@ import com.github.greenfinger.service.DeletionService;
 import com.github.greenfinger.service.FileRestorer;
 import com.github.greenfinger.service.ClusterSnapshot;
 import com.github.greenfinger.service.ReplayService;
+import com.github.greenfinger.cluster.remote.OperationsServer;
+import com.github.greenfinger.service.ops.LocalOperations;
 
 /**
  * Wires the cluster in, without an annotation to remember.
@@ -103,9 +105,11 @@ public class GreenfingerClusterAutoConfiguration {
             CrawlRegistry crawlRegistry, ObjectProvider<CrawlerLauncher> launcher,
             ObjectProvider<ReplayService> replayService,
             ObjectProvider<DeletionService> deletionService,
+            ObjectProvider<CatalogCatchUp> catchUp,
+            @Qualifier("catalogStore") ObjectProvider<CatalogStore> catalogStore,
             ApplicationEventPublisher eventPublisher) {
         return new CrawlCluster(cluster, crawlTaskChannel, crawlRegistry, launcher, replayService,
-                deletionService, eventPublisher);
+                deletionService, catchUp, catalogStore, eventPublisher);
     }
 
     /**
@@ -140,7 +144,7 @@ public class GreenfingerClusterAutoConfiguration {
      * Which stores have to be copied, decided once at startup from the jdbc url and the configured
      * blob target rather than guessed per write.
      */
-    @Bean(initMethod = "afterPropertiesSet", destroyMethod = "destroy")
+    @Bean
     public ClusterReplication clusterReplication(GossipCluster cluster,
             ClusterProperties properties, CrawlRegistry crawlRegistry, Environment environment,
             OutputProperties outputProperties, EmbeddingProperties embeddingProperties,
@@ -206,10 +210,20 @@ public class GreenfingerClusterAutoConfiguration {
      * Where an administrative write goes. Declared whatever the database is: a shared one has
      * nothing to replicate, but the same gateway carries a delete, which touches local disk.
      */
-    @Bean(initMethod = "afterPropertiesSet", destroyMethod = "destroy")
+    @Bean
     public LeaderChannel leaderChannel(GossipCluster cluster, ClusterProperties properties) {
         return new LeaderChannel(cluster, properties.getLeader().getTimeoutMs(),
                 properties.getLeader().getMaxAttempts());
+    }
+
+    /**
+     * What a terminal elsewhere in the cluster may ask this node for, when this node is the
+     * leader. Registered on every crawler node, because leadership moves.
+     */
+    @Bean
+    public OperationsServer operationsServer(LeaderChannel leaderChannel,
+            LocalOperations operations) {
+        return new OperationsServer(leaderChannel, operations);
     }
 
     /**
@@ -217,7 +231,7 @@ public class GreenfingerClusterAutoConfiguration {
      * database, because leadership moves and a node without the handlers would refuse every
      * write; only used as the catalog store when there is something to keep in step.
      */
-    @Bean(initMethod = "afterPropertiesSet", destroyMethod = "destroy")
+    @Bean
     public LeaderCatalogStore leaderCatalogStore(
             @Qualifier("catalogStore") CatalogStore catalogStore, ClusterReplication replication,
             LeaderChannel leaderChannel) {
@@ -234,7 +248,7 @@ public class GreenfingerClusterAutoConfiguration {
      * Only when the table is one file per node. A shared database cannot fall behind itself, and
      * a timer pointed at it would spend every interval proving that.
      */
-    @Bean(initMethod = "afterPropertiesSet", destroyMethod = "destroy")
+    @Bean
     @ConditionalOnBean(GossipCluster.class)
     public CatalogCatchUp catalogCatchUp(GossipCluster cluster, LeaderCatalogStore store,
             @Qualifier("catalogStore") CatalogStore catalogStore, ClusterReplication replication,
@@ -286,7 +300,7 @@ public class GreenfingerClusterAutoConfiguration {
      * {@code @ConditionalOnMissingBean}, and that condition is met only by a bean registered
      * earlier, which auto-configuration by definition is not.
      */
-    @Bean(initMethod = "afterPropertiesSet", destroyMethod = "destroy")
+    @Bean
     @Primary
     public DeletionService leaderDeletionService(OutputFactory outputFactory,
             OutputProperties outputProperties, WebCrawlerProperties webCrawlerProperties,
