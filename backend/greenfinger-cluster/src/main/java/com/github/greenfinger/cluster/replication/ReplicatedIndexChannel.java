@@ -29,26 +29,18 @@ import com.github.greenfinger.output.index.LuceneOutputChannel;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Copies index documents to the other nodes, for the index that is not shared.
+ * Copies index documents to the other nodes, for the embedded index, which is a directory per node.
+ * A url goes to exactly one node, so without this most of the corpus is missing from every node's
+ * answers. Elasticsearch is one shared cluster and needs none of it.
  *
  * <p>
- * Elasticsearch is one cluster every node writes to and reads from, so none of this applies to it.
- * The embedded index is a directory per node, and then a page fetched on node B is missing from
- * node A's search results -- and since a url is dispatched to exactly one node, that is most of
- * the corpus missing from every node's answer.
+ * The whole document travels rather than a "index resource X" pointer: the three channels are
+ * independent and unordered, so the pointer could arrive before the row or the files, and an index
+ * that silently skipped that page would be worse than the bandwidth.
  *
- * <h2>Why the document and not a pointer to it</h2>
- * The row and the files are already replicated, so a node could in principle be told "index
- * resource X" and build the document from its own copies. It could also be told that before either
- * of them arrived -- the three channels are independent and nothing orders them against each other
- * -- and an index that silently missed a page whose row landed a moment later would be worse than
- * the bandwidth. So the document travels whole, and needs nothing else to have arrived.
- *
- * <h2>What it costs</h2>
- * The extracted text, once per node, on top of the same text going over the blob channel as a
- * file. A crawl of a text-heavy site therefore moves roughly twice what it would with a shared
- * index, which is the price of not having one, and is why the startup report recommends
- * Elasticsearch for a cluster rather than treating the two as equivalent.
+ * <p>
+ * It costs the extracted text once per node, on top of the same text going over the blob channel --
+ * which is why the startup report recommends Elasticsearch for a cluster.
  * 
  * @Description: ReplicatedIndexChannel
  * @Author: Fred Feng

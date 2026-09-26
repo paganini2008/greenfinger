@@ -33,13 +33,11 @@ import lombok.experimental.UtilityClass;
  * Two flavours, chosen by whether the thing being named has a natural key:
  *
  * <ul>
- * <li><b>v5</b> for resources, images and chunks. Derived from the natural key, so the same input
- * always yields the same id, which is what makes replaying a layer idempotent -- writing a second
- * time overwrites the first rather than duplicating it. The database's unique constraint is then
- * an assertion rather than a mechanism: if it ever fires, url deduplication has a bug.</li>
- * <li><b>v7</b> for catalogs. A catalog has no natural key -- its name is only a label -- and
- * deriving the id from the name would let "delete a catalog and recreate it under the same name"
- * silently inherit the previous catalog's leftover documents and vectors.</li>
+ * <li><b>v5</b> for resources, images and chunks: derived from the natural key, so a replay
+ * overwrites rather than duplicates. The unique constraint is then an assertion -- if it fires, url
+ * deduplication has a bug.</li>
+ * <li><b>v7</b> for catalogs, which have no natural key. Deriving one from the name would let a
+ * catalog deleted and recreated under that name inherit the old one's documents and vectors.</li>
  * </ul>
  *
  * @Description: UuidUtils

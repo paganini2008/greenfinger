@@ -25,7 +25,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.core.catalog.CatalogDetailsService;
 import com.github.greenfinger.core.engine.CrawlRegistry;
@@ -41,7 +40,7 @@ import lombok.RequiredArgsConstructor;
  * @Date: 30/08/2026
  * @Version 2.0.0
  */
-@RestController
+@ApiEndpoint
 @RequestMapping("${greenfinger.api.prefix:/v2}/catalog")
 @RequiredArgsConstructor
 public class CatalogApiController {

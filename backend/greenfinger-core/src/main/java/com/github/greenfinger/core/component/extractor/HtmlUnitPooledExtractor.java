@@ -32,6 +32,7 @@ import com.github.greenfinger.core.WebCrawlerExtractorProperties;
 import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.core.engine.CrawlTask;
 import com.github.greenfinger.core.utils.ThreadUtils;
+import org.htmlunit.SilentCssErrorHandler;
 
 /**
  * A lightweight headless browser: runs the page's scripts without the cost of a real browser
@@ -130,7 +131,7 @@ public class HtmlUnitPooledExtractor extends PooledExtractor<WebClient> {
             webClient.getOptions().setThrowExceptionOnScriptError(false);
             webClient.getOptions().setThrowExceptionOnFailingStatusCode(false);
             webClient.getOptions().setPrintContentOnFailingStatusCode(false);
-            webClient.setCssErrorHandler(new org.htmlunit.SilentCssErrorHandler());
+            webClient.setCssErrorHandler(new SilentCssErrorHandler());
             return webClient;
         }
 

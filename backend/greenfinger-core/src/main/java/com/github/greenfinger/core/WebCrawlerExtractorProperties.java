@@ -192,20 +192,11 @@ public class WebCrawlerExtractorProperties {
     public static class Adaptive {
 
         /**
-         * Which engine renders the pages plain http could not. All three browser engines work;
-         * restclient does not, since that is what the fast path already is.
-         *
-         * <p>
-         * Playwright is the default. It used to be HtmlUnit, for one reason that has since gone
-         * away: HtmlUnit was the only engine in the jar, so it was the only one that worked
-         * without a setup step. All three ship now, and on the merits Playwright wins -- it is a
-         * real browser, so it renders what a browser renders, and it reports the http status the
-         * page answered with, which HtmlUnit does and Selenium cannot.
-         *
-         * <p>
-         * The cost is the browser binaries, which Playwright downloads on first use. A deployment
-         * that cannot reach the internet for them, or that would rather not pay the memory,
-         * should set this to htmlunit.
+         * Which engine renders the pages plain http could not -- any of the three browsers, not
+         * restclient, which is the fast path itself. Playwright is the default: a real browser, so
+         * it renders what a browser renders, and it reports the page's http status, which Selenium
+         * cannot. It downloads browser binaries on first use, so a deployment without internet
+         * access, or short of memory, should use htmlunit.
          */
         private String browser = WebCrawlerConstants.ENGINE_PLAYWRIGHT;
 

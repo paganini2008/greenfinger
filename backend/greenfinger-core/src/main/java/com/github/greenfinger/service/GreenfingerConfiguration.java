@@ -37,6 +37,10 @@ import com.github.greenfinger.record.GreenfingerRecordConfiguration;
 import com.github.greenfinger.output.OutputFactory;
 import com.github.greenfinger.output.OutputProperties;
 import com.github.greenfinger.output.vector.EmbeddingProperties;
+import org.springframework.context.ApplicationContext;
+import org.springframework.beans.factory.ObjectProvider;
+import javax.sql.DataSource;
+import com.github.greenfinger.service.ops.LocalOperations;
 
 /**
  * Wires the crawler: the engine, the outputs, persistence, and the services the command line and a
@@ -67,7 +71,7 @@ public class GreenfingerConfiguration {
      */
     @Bean
     public ConfigurationReport configurationReport(
-            org.springframework.context.ApplicationContext applicationContext) {
+            ApplicationContext applicationContext) {
         return new ConfigurationReport(applicationContext);
     }
 
@@ -215,7 +219,7 @@ public class GreenfingerConfiguration {
     public CrawlReportRecorder crawlReportRecorder(CrawlReportStore crawlReportStore,
             ResourceRecordStore recordStore, OutputProperties outputProperties,
             ClusterSnapshot clusterSnapshot,
-            org.springframework.beans.factory.ObjectProvider<javax.sql.DataSource> dataSource) {
+            ObjectProvider<DataSource> dataSource) {
         return new CrawlReportRecorder(crawlReportStore, recordStore, outputProperties,
                 clusterSnapshot, dataSource.getIfAvailable());
     }
@@ -234,6 +238,25 @@ public class GreenfingerConfiguration {
                 catalogStore, catalogDetailsService, recordStore, crawlRegistry, semaphore,
                 versionPruner, coordinatorFactory, componentFactory, reportRecorder,
                 eventPublisher);
+    }
+
+    /**
+     * What a face asks of this node, whichever face it is. The command line calls it directly, the
+     * web interface reaches it through the controllers, and a terminal elsewhere in the cluster
+     * asks the leader, which lands here.
+     */
+    @ConditionalOnMissingBean
+    @Bean
+    public LocalOperations localOperations(CatalogAdminService catalogAdminService,
+            CatalogDetailsService catalogDetailsService, CrawlReportService crawlReportService,
+            CrawlRegistry crawlRegistry, CrawlerLauncher crawlerLauncher,
+            DeletionService deletionService, ReplayService replayService,
+            WebCrawlerSemaphore semaphore, ResourceRecordStore recordStore,
+            OutputFactory outputFactory, OutputProperties outputProperties,
+            WebCrawlerProperties webCrawlerProperties) {
+        return new LocalOperations(catalogAdminService, catalogDetailsService, crawlReportService,
+                crawlRegistry, crawlerLauncher, deletionService, replayService, semaphore,
+                recordStore, outputFactory, outputProperties, webCrawlerProperties);
     }
 
 }

@@ -33,6 +33,7 @@ import com.github.greenfinger.core.output.OutputPayload;
 import com.github.greenfinger.core.record.ResourceRecord;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import java.util.Objects;
 
 /**
  * The mandatory output: html, extracted text and image bytes, written where the database rows
@@ -114,7 +115,7 @@ public class FileOutputChannel implements OutputChannel {
         return page.getStoredImages().stream()
                 .filter(s -> contentHash.equals(s.getContentHash())).map(
                         CrawledPage.StoredImage::getData)
-                .filter(java.util.Objects::nonNull).findFirst().orElse(null);
+                .filter(Objects::nonNull).findFirst().orElse(null);
     }
 
     private byte[] bytesOf(String text) {

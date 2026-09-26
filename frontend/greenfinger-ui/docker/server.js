@@ -419,42 +419,61 @@ function serve(file, response, fallbackToApp) {
   });
 }
 
-http
-  .createServer((request, response) => {
-    if ((request.url || '').split('?')[0] === NODES_PATH) {
-      // What the System health page's node picker reads. Only the proxy knows the list -- a node
-      // knows its cluster's members but not which of them this front end was pointed at, and it is
-      // this front end's addresses that a browser can actually reach.
-      const body = JSON.stringify(
-        UPSTREAMS.map((one, index) => ({ index, address: `${one.host}:${one.port}` })),
+
+/**
+ * Started when this file is run, and not when it is required.
+ *
+ * The pieces above are ordinary functions with ordinary answers -- which header goes to a node,
+ * which member list came back, where a path resolves -- and they were only reachable by starting
+ * a server on a port and talking to it over http. That is why the Origin bug of the 23rd reached
+ * a release: the one line that decides it is four lines long, and nothing could call it.
+ */
+module.exports = {
+  upstreamHeaders,
+  membersFrom,
+  pinnedNode,
+  withoutNodeParam,
+  resolve,
+};
+
+if (require.main === module) {
+  http
+    .createServer((request, response) => {
+      if ((request.url || '').split('?')[0] === NODES_PATH) {
+        // What the System health page's node picker reads. Only the proxy knows the list -- a node
+        // knows its cluster's members but not which of them this front end was pointed at, and it is
+        // this front end's addresses that a browser can actually reach.
+        const body = JSON.stringify(
+          UPSTREAMS.map((one, index) => ({ index, address: `${one.host}:${one.port}` })),
+        );
+        response.writeHead(200, {
+          'content-type': 'application/json; charset=utf-8',
+          'cache-control': 'no-store',
+        });
+        response.end(body);
+        return;
+      }
+      if (PROXIED.test(request.url || '')) {
+        proxy(request, response);
+        return;
+      }
+      const file = resolve(request.url || '/');
+      if (!file) {
+        response.writeHead(400, { 'content-type': 'text/plain; charset=utf-8' });
+        response.end('bad path\n');
+        return;
+      }
+      serve(file, response, true);
+    })
+    .listen(PORT, () => {
+      if (DISCOVER && SEEDS.length) {
+        discover();
+        // unref'd, so this timer alone never keeps the process alive
+        setInterval(discover, DISCOVERY_INTERVAL).unref();
+      }
+      console.log(
+        `greenfinger web on ${PORT}, serving ${STATIC}, api to ` +
+          (UPSTREAMS.map((one) => `${one.host}:${one.port}`).join(', ') || '(nothing configured)'),
       );
-      response.writeHead(200, {
-        'content-type': 'application/json; charset=utf-8',
-        'cache-control': 'no-store',
-      });
-      response.end(body);
-      return;
-    }
-    if (PROXIED.test(request.url || '')) {
-      proxy(request, response);
-      return;
-    }
-    const file = resolve(request.url || '/');
-    if (!file) {
-      response.writeHead(400, { 'content-type': 'text/plain; charset=utf-8' });
-      response.end('bad path\n');
-      return;
-    }
-    serve(file, response, true);
-  })
-  .listen(PORT, () => {
-    if (DISCOVER && SEEDS.length) {
-      discover();
-      // unref'd, so this timer alone never keeps the process alive
-      setInterval(discover, DISCOVERY_INTERVAL).unref();
-    }
-    console.log(
-      `greenfinger web on ${PORT}, serving ${STATIC}, api to ` +
-        (UPSTREAMS.map((one) => `${one.host}:${one.port}`).join(', ') || '(nothing configured)'),
-    );
-  });
+    });
+}

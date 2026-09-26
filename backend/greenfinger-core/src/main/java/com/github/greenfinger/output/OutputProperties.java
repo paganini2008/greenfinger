@@ -107,14 +107,8 @@ public class OutputProperties {
     public static class Index {
 
         /**
-         * lucene or elasticsearch.
-         *
-         * <p>
-         * Lucene by default, and embedded: a fresh clone crawls and searches with nothing
-         * installed. Elasticsearch is what a deployment moves to when the index outgrows one
-         * machine, and the documents written to the two are the same documents -- the same
-         * fields, the same {@code catalogVersion} filter, the same one-index-per-catalog layout --
-         * so moving is a {@code replay}, not a re-crawl.
+         * lucene or elasticsearch. Lucene is embedded, so a fresh clone needs nothing installed;
+         * both write the same documents, so moving is a {@code replay}, not a re-crawl.
          */
         private String provider = "lucene";
 
@@ -123,22 +117,12 @@ public class OutputProperties {
         private String password;
 
         /**
-         * The prefix every index name starts with. One index per catalog, named
-         * {@code <prefix>-<catalogId>}, holding every version of that catalog.
+         * One index per catalog, {@code <prefix>-<catalogId>}, holding every version of it.
          *
          * <p>
-         * Per catalog rather than one index for everything, which is what 1.x and the first cut of
-         * 2.0 did. Three things get better and one gets worse. Deleting a catalog becomes dropping
-         * an index rather than a delete-by-query that only marks documents; a catalog can have its
-         * own analyzer, which matters the moment one site is Chinese and another is not; and a
-         * search that names its catalogs reads that many indices instead of filtering the whole
-         * corpus. What gets worse is that a search across everything now fans out over n indices
-         * -- cheap for the tens of catalogs this is built for, and the reason the name is a prefix
-         * so that {@code <prefix>-*} addresses the lot in one request.
-         *
-         * <p>
-         * From the catalog's id, never its name: a name is editable, and an index named after one
-         * would be orphaned by a rename with nothing to say what it had belonged to.
+         * Per catalog so a delete is a drop rather than a delete-by-query, and so one catalog can
+         * have its own analyzer; a search across everything fans out over {@code <prefix>-*}. By
+         * id, never name: a rename would orphan the index.
          */
         private String prefix = "greenfinger";
 
@@ -179,26 +163,14 @@ public class OutputProperties {
         public static class Lucene {
 
             /**
-             * One directory per catalog underneath this one.
-             *
-             * <p>
-             * Beside the frontier and the dedup stores rather than beside the pages, because it is
-             * the same kind of thing: derived, rebuildable from the pages and the database with
-             * {@code replay}, and belonging to one node rather than being shared. A cluster whose
-             * nodes must agree about search results wants Elasticsearch, and the warning at
-             * startup says so.
+             * One directory per catalog. Beside the frontier rather than the pages: derived,
+             * rebuildable with {@code replay}, and belonging to one node rather than shared.
              */
             private String directory = "./data/user/index";
 
             /**
-             * standard, smartcn or cjk.
-             *
-             * <p>
-             * The counterpart of the {@code analyzer} setting above, which names an Elasticsearch
-             * analyzer. {@code standard} splits CJK into single characters, which finds everything
-             * and ranks it badly; {@code smartcn} is a real Chinese segmenter and is the embedded
-             * answer to installing IK; {@code cjk} is bigrams, which needs no dictionary and is a
-             * reasonable middle for mixed Chinese, Japanese and Korean.
+             * standard, smartcn or cjk. {@code standard} splits CJK into characters and ranks it
+             * badly; {@code smartcn} is a real segmenter; {@code cjk} is bigrams, no dictionary.
              */
             private String analyzer = "standard";
 
@@ -225,18 +197,9 @@ public class OutputProperties {
     public static class Vector {
 
         /**
-         * lucene, elasticsearch, qdrant or weaviate.
-         *
-         * <p>
-         * Lucene by default, for the same reason the index is: its HNSW implementation is the one
-         * Elasticsearch's own knn search is built on, so the embedded answer is not a lesser
-         * engine, only a smaller deployment of the same one.
-         *
-         * <p>
-         * Elasticsearch is what a deployment moves to, and it is the same server the index
-         * already uses -- a vector database is a service to install, watch, back up and upgrade
-         * for one field per document, and that is a poor trade when the server beside it has held
-         * {@code dense_vector} since 8.x. Qdrant and Weaviate stay for a deployment that has one.
+         * lucene, elasticsearch, qdrant or weaviate. Lucene's HNSW is what Elasticsearch's own knn
+         * is built on, so embedded is a smaller deployment of the same engine, and Elasticsearch
+         * is the server the index already uses. Qdrant and Weaviate stay for deployments with one.
          */
         private String store = "lucene";
 
@@ -293,13 +256,8 @@ public class OutputProperties {
         }
 
         /**
-         * Vectors in the server the index already uses.
-         *
-         * <p>
-         * A separate {@code uris} from the index's on purpose, so a deployment can put the two on
-         * different clusters -- the index is read on every search and the vectors only on a
-         * semantic one, and they do not have to scale together. Left as it ships, both point at
-         * the same server, which is the point.
+         * Vectors in the server the index already uses. A separate {@code uris} so the two can be
+         * put on different clusters; as it ships they point at the same one.
          *
          * @Description: Elasticsearch
          * @Author: Fred Feng
@@ -322,13 +280,8 @@ public class OutputProperties {
             private String similarity = "cosine";
 
             /**
-             * The floor on the candidate pool a knn search walks.
-             *
-             * <p>
-             * Elasticsearch filters after the graph walk, so a walk that returns exactly k rows
-             * and is then filtered to one catalog returns fewer than asked -- which reads as
-             * missing data rather than as a narrow search. Four times k with this as a floor is
-             * wide enough that a filtered search still fills a page.
+             * The floor on the candidate pool. Elasticsearch filters after the graph walk, so a
+             * walk of exactly k returns fewer once filtered -- which reads as missing data.
              */
             private int minCandidates = 100;
 

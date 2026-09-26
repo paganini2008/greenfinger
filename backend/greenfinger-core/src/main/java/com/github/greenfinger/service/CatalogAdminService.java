@@ -44,6 +44,7 @@ import com.github.greenfinger.output.OutputFactory;
 import com.github.greenfinger.output.OutputProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.github.greenfinger.core.WebCrawlerConstants;
 
 /**
  * Creating, finding and describing catalogs. Everything that runs a crawl saves its definition
@@ -103,33 +104,17 @@ public class CatalogAdminService {
         applyCrawlDefaults(catalog);
         if (StringUtils.isBlank(catalog.getRunningState())) {
             catalog.setRunningState(
-                    com.github.greenfinger.core.WebCrawlerConstants.RUNNING_STATE_NONE);
+                    WebCrawlerConstants.RUNNING_STATE_NONE);
         }
         catalog.setUpdatedAt(new Date());
         return catalogStore.save(catalog);
     }
 
     /**
-     * An edit changes what it names and nothing else.
-     *
-     * <p>
-     * A form sends the fields somebody filled in. Everything it does not send arrives as null,
-     * and null is indistinguishable from "clear this" unless somebody decides which it is. Here
-     * it means "leave it alone", because the fields most likely to be missing are the ones no
-     * form has any business setting: which version is being written, which one search is serving,
-     * when the index was last built.
-     *
-     * <p>
-     * Without this, editing a catalog quietly unpublished it. The defaults for a <em>new</em>
-     * catalog were applied to an <em>existing</em> one: {@code searchVersion} went back to -1, so
-     * the catalog stopped being searchable although its index was still there and still correct,
-     * and {@code indexVersion} went back to 0, so the next crawl would have written over the
-     * newest version instead of adding one. Changing the category was enough to do it, and
-     * nothing said so.
-     *
-     * <p>
-     * Only on this path. The replication applier writes rows that are already complete and
-     * authoritative, and it goes to the store directly.
+     * An edit changes what it names and nothing else: a field a form did not send arrives as null
+     * and is left alone. Taking null as "clear this" unpublishes a catalog on any edit, because the
+     * fields most likely to be missing are the ones no form should set -- the version being
+     * written, the one search serves. Only on this path; replication writes complete rows.
      */
     private void keepWhatWasNotSent(Catalog catalog) {
         if (catalog.getId() == null) {
@@ -157,14 +142,8 @@ public class CatalogAdminService {
     }
 
     /**
-     * Writes the defaults down rather than leaving the columns empty.
-     *
-     * <p>
-     * The runtime would fill a null in anyway, but a row full of nulls tells a person nothing about
-     * how their crawl is actually configured, and a form has nothing to show. So the settled values
-     * are stored, and they are the ones a new user should want: polite pacing, no depth limit,
-     * images on, and the fastest extractor -- the three browser engines exist for sites that need
-     * javascript, and are several times slower.
+     * Writes the defaults down rather than leaving the columns empty: the runtime would fill a
+     * null anyway, but a row of nulls tells a person nothing and gives a form nothing to show.
      */
     private void applyCrawlDefaults(Catalog catalog) {
         if (StringUtils.isBlank(catalog.getPageEncoding())) {
@@ -221,29 +200,29 @@ public class CatalogAdminService {
     }
 
     public Catalog require(String idOrName) {
+        if (StringUtils.isBlank(idOrName)) {
+            // nothing was named at all, which is a different problem from naming something that
+            // is not there, and has a different answer
+            throw new CatalogDetailsNotFoundException("Give a catalog id.");
+        }
         return find(idOrName).orElseThrow(
                 () -> new CatalogDetailsNotFoundException("No such catalog: " + idOrName));
     }
 
     /**
-     * By id and only by id.
-     *
-     * <p>
-     * The name is unique, so looking a catalog up by it works -- which is exactly the problem. A
-     * name is editable, and a command that took one would keep working right up until somebody
-     * renamed a catalog, at which point a script that had been correct for a year would start
-     * either failing or, worse, finding a different catalog that had since taken the name. The
-     * command line therefore addresses catalogs by id, and the id is what {@code catalog-list}
-     * prints.
+     * By id and only by id. A name is unique, so looking up by it works -- until somebody
+     * renames a catalog and a year-old script either fails or finds whatever took the name.
      */
     public Catalog requireById(String id) {
+        // No "run catalog-list" here. Core is asked this by the http api, by the prompt and by
+        // the one-line form, and only one of the three has that command -- a message naming it
+        // told two callers out of three to type something they cannot. Whoever caught it knows
+        // which face they are; the hint belongs there.
         if (StringUtils.isBlank(id)) {
-            throw new CatalogDetailsNotFoundException(
-                    "Give a catalog id. Run 'catalog-list' to see them.");
+            throw new CatalogDetailsNotFoundException("Give a catalog id.");
         }
         return catalogStore.findById(id.trim()).orElseThrow(
-                () -> new CatalogDetailsNotFoundException("No catalog has the id '" + id + "'."
-                        + " Run 'catalog-list' to see the ids."));
+                () -> new CatalogDetailsNotFoundException("No catalog has the id '" + id + "'."));
     }
 
     public List<Catalog> findAll() {
@@ -251,12 +230,8 @@ public class CatalogAdminService {
     }
 
     /**
-     * The categories that exist, which is now a fixed list rather than whatever has been typed.
-     *
-     * <p>
-     * It used to be {@code select distinct cat}, which answered a different question: what has
-     * been used so far. That is the wrong answer for the thing asking -- a picker offering only
-     * the values already in the table can never be used to choose a new one.
+     * The categories that exist, as a fixed list: {@code select distinct cat} answers what has
+     * been used so far, and a picker fed by that can never choose a value nobody has used.
      */
     public List<String> findAllCategories() {
         return Arrays.stream(Category.values()).map(Category::getRepr).toList();
@@ -267,22 +242,10 @@ public class CatalogAdminService {
     }
 
     /**
-     * Removes a definition, stopping its crawl first if one is running.
-     *
-     * <p>
-     * The order matters, and getting it wrong is worse than it sounds. A crawl holds this
-     * process's one permit for as long as it runs, and it finds out what to fetch next from the
-     * frontier rather than from the catalog table -- so deleting the row underneath a running
-     * crawl does not stop it. It keeps fetching, for a catalog that no longer exists, while
-     * disappearing from the running list (the row it was listed by is gone). The permit is never
-     * given back, and every later crawl on this node is refused by a crawl nobody can see or name.
-     * Observed for real: an hour of cpu spent on a deleted catalog, and every crawl afterwards
-     * turned away.
-     *
-     * <p>
-     * Asking rather than killing: the crawl winds down at its next check, so what is in flight
-     * still reaches the output channel. In a cluster the other nodes hear about it the usual way,
-     * from the control channel once this node's run ends.
+     * Removes a definition, stopping its crawl first. A crawl reads the frontier, not the catalog
+     * table, so deleting the row underneath one leaves it fetching for a catalog that no longer
+     * exists and never returning the permit. Asked rather than killed, so what is in flight still
+     * reaches the output channel.
      */
     public boolean delete(String idOrName) {
         String id = require(idOrName).getId();

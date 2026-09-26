@@ -21,28 +21,16 @@ import java.util.function.Function;
 /**
  * Where an administrative write goes: to the leader, wherever it was asked for.
  *
- * <h2>Why one writer</h2>
- * Everything behind this gateway is a store that gives each process its own copy -- the catalog
- * table on H2 or SQLite, the RocksDB directories, the local file tree, the embedded index and the
- * embedded vector store. Copies drift when two of them can be written at once, and the cheapest
- * way not to have to reconcile a drift is not to produce one: one node performs the write and the
- * others are told what it did.
+ * <p>
+ * Everything behind it is a per-process copy -- the catalog table on H2 or SQLite, the RocksDB
+ * directories, the local file tree, the embedded index and vector store. One writer means no drift,
+ * so the leader's table is simply the truth: no write stamps, content hashes or tombstones, which
+ * concurrent writers would all need.
  *
  * <p>
- * That single writer is what a whole class of machinery is <em>not</em> needed for. With
- * concurrent writers, "who has the newer row" has to be decided from the rows themselves, and a
- * deletion cannot be expressed at all without remembering it separately -- because a node that
- * missed a delete looks exactly like the node that created the row. With one writer, the leader's
- * table is simply the truth: a node that fell behind takes what the leader has, and anything the
- * leader does not have is gone. No write stamps to compare, no content hashes to break the tie,
- * no tombstones to keep.
- *
- * <h2>What does not come through here</h2>
- * The crawl's own output: the pages, images, documents and vectors each node writes for the urls
- * it fetched. Those are not administrative writes and they have no conflict to resolve -- a url
- * is deduplicated when it is queued and dispatched to exactly one node, so two nodes never write
- * the same row. Sending them through one node would put every page's bytes on the network twice
- * and make the leader the ceiling on the whole cluster's crawl rate.
+ * The crawl's own output does not come through here: a url is dispatched to exactly one node, so
+ * there is no conflict, and routing pages through the leader would double their bytes and cap the
+ * cluster's crawl rate.
  *
  * @Description: LeaderGateway
  * @Author: Fred Feng
@@ -52,11 +40,8 @@ import java.util.function.Function;
 public interface LeaderGateway {
 
     /**
-     * Runs one operation on the leader and returns what it returned.
-     *
-     * <p>
-     * On the leader this is a plain call with no network involved -- worth saying because it is
-     * the ordinary case in a cluster of one, which is what most installations are.
+     * Runs one operation on the leader and returns what it returned. On the leader itself this is a
+     * plain call with no network -- the ordinary case in the cluster of one most installations are.
      *
      * @param operation the registered name of the handler
      * @param request   the argument, serialised as json

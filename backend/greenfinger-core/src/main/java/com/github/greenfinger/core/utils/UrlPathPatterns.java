@@ -39,9 +39,8 @@ import lombok.experimental.UtilityClass;
  *   https://&#42;&#42;.msc.&#42;&#42;/&#42;&#42;   unchanged, already fully qualified
  * </pre>
  *
- * The second expansion of the first form is what lets a subdomain pattern match the bare domain
- * as well as its subdomains; on its own the pattern requires a dot before {@code google} and would
- * quietly skip {@code https://google.com/}.
+ * The first form expands twice so a subdomain pattern also matches the bare domain: on its own it
+ * requires a dot before {@code google} and would quietly skip {@code https://google.com/}.
  * 
  * @Description: UrlPathPatterns
  * @Author: Fred Feng

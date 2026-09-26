@@ -32,15 +32,10 @@ import lombok.extern.slf4j.Slf4j;
  * Copies vectors to the other nodes, for the vector store that is not shared.
  *
  * <p>
- * The same problem the index has and the same answer: Qdrant and Weaviate are servers every node
- * reaches, the embedded store is a directory per node, and a chunk embedded on node B is a hole in
- * node A's semantic search. The vectors travel rather than being recomputed, because embedding is
- * the expensive half -- a float array is a few kilobytes and re-embedding the chunk on three nodes
- * is three times the model's work.
- *
- * <p>
- * Only the writes travel. Every read is answered from this node's own copy, and once the writes
- * have landed the copies are the same.
+ * The index's problem and the index's answer: the servers are shared, the embedded store is a
+ * directory per node, and a chunk embedded on node B is a hole in node A's semantic search. The
+ * vectors travel rather than being recomputed, because embedding is the expensive half. Only writes
+ * travel; reads are answered from this node's own copy, which the writes keep identical.
  * 
  * @Description: ReplicatedVectorStore
  * @Author: Fred Feng

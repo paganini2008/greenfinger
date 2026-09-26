@@ -27,11 +27,9 @@ import lombok.extern.slf4j.Slf4j;
  * wrapped in different templates, or with a changing timestamp or advert in the body.
  *
  * <p>
- * Comparing a new fingerprint against every stored one would be linear in the size of the crawl, so
- * fingerprints are indexed by band: the 64 bits are cut into four 16 bit bands and each band value
- * indexes the fingerprints that carry it. Two fingerprints within three bits must agree exactly on
- * at least one band, so looking up four bands finds every real candidate while reading a small
- * fraction of the store.
+ * Comparing against every stored fingerprint would be linear in the size of the crawl, so they are
+ * banded: the 64 bits are cut into four 16 bit bands, and since two fingerprints within three bits
+ * must agree exactly on one band, four lookups find every real candidate.
  * 
  * @Description: SimHashContentDedupFilter
  * @Author: Fred Feng

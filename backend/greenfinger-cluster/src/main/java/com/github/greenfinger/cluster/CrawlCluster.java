@@ -28,7 +28,11 @@ import com.github.greenfinger.cluster.channel.ControlChannel;
 import com.github.greenfinger.cluster.channel.ControlMessage;
 import com.github.greenfinger.cluster.channel.CrawlTaskChannel;
 import com.github.greenfinger.core.ManagedBeanLifeCycle;
+import com.github.greenfinger.cluster.leader.CatalogCatchUp;
 import com.github.greenfinger.core.catalog.CatalogDetails;
+import com.github.greenfinger.core.catalog.CatalogStore;
+import com.github.greenfinger.core.model.Catalog;
+import com.github.greenfinger.core.catalog.CatalogDetailsNotFoundException;
 import com.github.greenfinger.core.engine.CrawlCoordinator;
 import com.github.greenfinger.core.engine.CrawlCoordinatorFactory;
 import com.github.greenfinger.core.engine.CrawlRegistry;
@@ -43,27 +47,18 @@ import com.github.greenfinger.service.ReplayService;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * The one thing about a crawl that is nobody's business but the cluster's: who joins it.
+ * Who joins a crawl.
  *
- * <h2>Joining</h2>
- * A crawl is started on one node by a command. That node announces it, and every other node opens
- * its own half -- the same components, the same output channels, the same worker loop, just
- * without the entry point. Without this, urls dispatched to a peer would arrive at a process that
- * has no frontier to put them on.
+ * <p>
+ * It is started on one node, which announces it; every other node opens its own half -- same
+ * components, same output channels, no entry point. Without that, a url dispatched to a peer
+ * arrives at a process with no frontier to put it on.
  *
- * <h2>Nobody decides it is over</h2>
- * Not here, and not on the leader. Whether the crawl has reached {@code maxFetchSize} or run out
- * of {@code fetchDuration} is a question about the shared counters, so every node asks it of the
- * same numbers and reaches the same answer; the first to notice writes the flag and the reason
- * beside those counters, and the others read it on their next tick. That is how 1.x worked, with
- * Redis where this has the cluster cache, and it is why this class has no supervisor: a leader
- * that judged completion would be a single point of failure for a decision that does not need
- * one, and it would only ever see the crawls it happened to be taking part in.
- *
- * <h2>What the leader is still for</h2>
- * Publishing the search version, and that is all -- see {@code ClusterCrawlCoordinator}. It is not
- * a correctness mechanism either: publishing is idempotent, and doing it on the leader only avoids
- * three nodes writing the same row three times.
+ * <p>
+ * Nobody decides it is over, here or on the leader: the limits are questions about shared counters,
+ * so every node reaches the same answer and the first to notice writes the flag. The leader's only
+ * part in a crawl is publishing the search version, which is idempotent and merely avoids three
+ * nodes writing one row; administrative writes are separate -- see {@code LeaderCatalogStore}.
  * 
  * @Description: CrawlCluster
  * @Author: Fred Feng
@@ -86,6 +81,12 @@ public class CrawlCluster implements CrawlCoordinatorFactory, ManagedBeanLifeCyc
     /** Also looked up late, and for the same reason: it is downstream of this bean. */
     private final ObjectProvider<DeletionService> deletionService;
 
+    /** Asked when a crawl is announced for a catalog this node has never heard of. */
+    private final ObjectProvider<CatalogCatchUp> catchUp;
+
+    /** This node's own table: read to announce a catalog, written to accept one. */
+    private final ObjectProvider<CatalogStore> catalogStore;
+
     /** Where a finished crawl is announced to whatever this process has listening. */
     private final ApplicationEventPublisher eventPublisher;
 
@@ -97,6 +98,7 @@ public class CrawlCluster implements CrawlCoordinatorFactory, ManagedBeanLifeCyc
             CrawlRegistry crawlRegistry, ObjectProvider<CrawlerLauncher> launcher,
             ObjectProvider<ReplayService> replayService,
             ObjectProvider<DeletionService> deletionService,
+            ObjectProvider<CatalogCatchUp> catchUp, ObjectProvider<CatalogStore> catalogStore,
             ApplicationEventPublisher eventPublisher) {
         this.cluster = cluster;
         this.crawlChannel = crawlChannel;
@@ -104,6 +106,8 @@ public class CrawlCluster implements CrawlCoordinatorFactory, ManagedBeanLifeCyc
         this.launcher = launcher;
         this.replayService = replayService;
         this.deletionService = deletionService;
+        this.catchUp = catchUp;
+        this.catalogStore = catalogStore;
         this.eventPublisher = eventPublisher;
         this.controlChannel = new ControlChannel(cluster, this::onControl);
     }
@@ -153,7 +157,7 @@ public class CrawlCluster implements CrawlCoordinatorFactory, ManagedBeanLifeCyc
             // said before the first url is dispatched, so the others are opening their half while
             // this node is still fetching the entry page
             controlChannel.announce(ControlMessage.started(catalogId, run.action(),
-                    catalogDetails.getVersion(), run.refresh()));
+                    catalogDetails.getVersion(), run.refresh(), rowOf(catalogId)));
         }
         return coordinator;
     }
@@ -169,6 +173,108 @@ public class CrawlCluster implements CrawlCoordinatorFactory, ManagedBeanLifeCyc
         }
     }
 
+    /** How long a node keeps trying to open its half before giving the run up. */
+    private static final int JOIN_ATTEMPTS = 10;
+
+    private static final long JOIN_RETRY_MS = 3000L;
+
+    /**
+     * Tries again rather than sitting the crawl out.
+     *
+     * <p>
+     * The refusal worth waiting for is "another crawl is already running": the previous run is
+     * winding down here while the node that started the next one has already finished its own
+     * half. Giving up on the first refusal leaves this node out of the whole crawl, and the urls
+     * it was sent expire on its staging queue -- which the cluster reports, correctly but
+     * uselessly, as a node that stopped answering.
+     */
+    private void joinWithRetries(ControlMessage message) {
+        for (int attempt = 1; attempt <= JOIN_ATTEMPTS; attempt++) {
+            try {
+                join(message);
+                return;
+            } catch (Exception e) {
+                if (attempt == JOIN_ATTEMPTS) {
+                    log.error("Could not join the crawl of catalog {} after {} attempt(s): {}",
+                            message.catalogId(), attempt, e.getMessage(), e);
+                    return;
+                }
+                log.info("Cannot open catalog {} here yet ({}); trying again", message.catalogId(),
+                        e.getMessage());
+                try {
+                    Thread.sleep(JOIN_RETRY_MS);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+        }
+    }
+
+    /** The row behind a catalog, for an announcement to carry. */
+    private Catalog rowOf(String catalogId) {
+        CatalogStore store = catalogStore.getIfAvailable();
+        return store != null ? store.findById(catalogId).orElse(null) : null;
+    }
+
+    /**
+     * A crawl of a catalog this node has never heard of is a race, not a failure: the
+     * announcement is small, immediate and unbatched, and the row that follows it waits for a
+     * replication flush. The announcement therefore carries the row, and opening this node's half
+     * costs nothing but the write.
+     *
+     * <p>
+     * Asking the leader is the fallback, for a message from an older build that carries no row. It
+     * is a round trip on a channel with a thirty second timeout, and a crawl of a small site can
+     * be over before it answers -- which is why it is not the first move.
+     */
+    private void join(ControlMessage message) throws Exception {
+        try {
+            launcher.getObject().join(message.catalogId(), message.action(), message.refresh());
+        } catch (CatalogDetailsNotFoundException e) {
+            if (!acceptCarriedCatalog(message) && !askTheLeaderFor(message.catalogId())) {
+                throw e;
+            }
+            launcher.getObject().join(message.catalogId(), message.action(), message.refresh());
+        }
+    }
+
+    /**
+     * Writes the row the announcement carried, unless replication has already landed it. The two
+     * arrive on different channels and either can be first, so this is a race by construction:
+     * what matters is that the row is here, not who put it there.
+     */
+    private boolean acceptCarriedCatalog(ControlMessage message) {
+        CatalogStore store = catalogStore.getIfAvailable();
+        if (message.catalog() == null || store == null) {
+            return false;
+        }
+        if (store.findById(message.catalogId()).isPresent()) {
+            return true;
+        }
+        try {
+            store.save(message.catalog());
+            log.info("Catalog {} arrived with the announcement of its crawl", message.catalogId());
+        } catch (RuntimeException e) {
+            if (store.findById(message.catalogId()).isEmpty()) {
+                throw e;
+            }
+            log.debug("Catalog {} was replicated while its announcement was being applied",
+                    message.catalogId());
+        }
+        return true;
+    }
+
+    private boolean askTheLeaderFor(String catalogId) {
+        CatalogCatchUp available = catchUp.getIfAvailable();
+        if (available == null) {
+            return false;
+        }
+        log.info("Catalog {} is not here yet; asking the leader for it before joining", catalogId);
+        available.catchUp();
+        return true;
+    }
+
     private void joinLater(ControlMessage message) {
         if (crawlRegistry.getContext(message.catalogId()) != null) {
             // already running here: this is the node that started it, hearing its own message
@@ -176,15 +282,7 @@ public class CrawlCluster implements CrawlCoordinatorFactory, ManagedBeanLifeCyc
         }
         // never on the dispatch thread: opening a run touches the database, the blob store and,
         // when the vector output is on, a model that takes seconds to load
-        joiners.execute(() -> {
-            try {
-                launcher.getObject().join(message.catalogId(), message.action(),
-                        message.refresh());
-            } catch (Exception e) {
-                log.error("Could not join the crawl of catalog {}: {}", message.catalogId(),
-                        e.getMessage(), e);
-            }
-        });
+        joiners.execute(() -> joinWithRetries(message));
     }
 
     /**

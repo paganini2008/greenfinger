@@ -44,61 +44,22 @@ import java.util.ArrayList;
 import org.slf4j.LoggerFactory;
 
 /**
- * The recursive call, as it crosses a process boundary.
+ * The recursive call, as it crosses a process boundary: one unicast per url out, and on the way in
+ * a write to this node's persistent frontier, because an accepted url is a promise a restart has to
+ * keep. Buffered, since {@code onPayload} runs on spreader's shared dispatch thread.
  *
  * <p>
- * Sending is one unicast per url: the balancer picks a node, this one included, and a url that
- * lands here never touches the network -- spreader dispatches to the local listener directly. So
- * with one node the whole thing degenerates to a queue write, which is exactly what a crawl on a
- * laptop should cost.
+ * Four things worth knowing:
  *
- * <p>
- * Receiving puts the url on this node's frontier and returns. The frontier, not a queue in memory:
- * a url accepted here is a url this node has promised to fetch, and a process that dies holding
- * promises has to be able to keep them when it comes back.
- *
- * <h2>Why this buffers</h2>
- * {@code onPayload} runs on spreader's dispatch thread, shared by every component. Writing to
- * RocksDB there would put the cluster's locks and cache replication behind this crawl's disk.
- *
- * <h2>A url can arrive twice</h2>
- * Delivery is at least once. The transport acknowledges and retries, and the receiver deduplicates
- * by sender and sequence, but the guarantee that survives all of that is still "at least", and a
- * duplicate does turn up.
- *
- * <p>
- * It costs one wasted fetch and nothing else, which is why it is left alone rather than defended
- * against here. Everything downstream is keyed by the url: the resource id is a name based uuid of
- * the url and the version, the file paths are derived from that id, and the vector point ids from
- * the same -- so the second pass writes the same row, the same files and the same points, over the
- * top of the first. The obvious defence, checking the url filter on the way in, cannot be used: a
- * refresh deliberately bypasses that filter, and applying it here would make a refresh fetch
- * nothing at all.
- *
- * <h2>Urls that arrive before this node is ready</h2>
- * A node is told a crawl has started and then has to open its half of it -- database, blob store,
- * output channels, and when the vector output is on, an embedding model that takes seconds to
- * load. The node that started the crawl does not wait for that; it begins fetching immediately.
- * So the first urls can land here before there is a frontier to put them on, and dropping them
- * would silently lose whole pages at the one moment the crawl is at its most branching.
- *
- * <p>
- * They are staged instead, and delivered as soon as the run appears. The staging area is bounded
- * in both size and age: a url still homeless after that is one whose crawl is never going to open
- * here, and holding it forever would be a leak rather than a rescue.
- *
- * <h2>What happens when the buffer fills</h2>
- * The base class drops, deliberately, because a full buffer means consumption is losing to
- * production and blocking the producer only spreads the problem. That answer is wrong here: a
- * dropped url is a page that will never be fetched and nothing will ever say so. So overflow is
- * absorbed instead -- the url goes straight onto this node's frontier, on the dispatch thread,
- * which is slower but loses nothing. Overload turns into "this node keeps the work" rather than
- * "this work disappears".
- * 
- * <h2>It registers itself</h2>
- * {@link SelfRegisteringListener} is not decoration. Without it the auto-registrar also puts this
- * listener on the <em>default</em> channel, and every message then arrives twice -- which shows up
- * not as an error but as a crawl that fetches every page a second time.
+ * <ul>
+ * <li>A url can arrive twice (at-least-once delivery); everything downstream is keyed by url, so it
+ * costs one wasted fetch. The url filter cannot screen arrivals -- a refresh bypasses it.</li>
+ * <li>Urls arriving before this node has opened its half of the run are staged, bounded by size and
+ * age; dropping them would lose whole pages at the most branching moment.</li>
+ * <li>Overflow goes onto the local frontier instead of being dropped by the base class.</li>
+ * <li>{@link SelfRegisteringListener} keeps the auto-registrar from also binding this to the
+ * default channel, which delivers every message twice.</li>
+ * </ul>
  *
  * @Description: CrawlTaskChannel
  * @Author: Fred Feng
@@ -170,19 +131,10 @@ public class CrawlTaskChannel extends BufferedGossipListener
     }
 
     /**
-     * Hands one url to the node that url belongs to.
-     *
-     * <p>
-     * Routed by a consistent hash of the url rather than round robin, and the reason is stated at
-     * the call below: round robin sends the same url wherever the counter happens to point, so two
-     * nodes that discover the same link inside the replication window each fetch it and neither
-     * frontier can see that the other has it.
-     *
-     * <p>
-     * This comment used to say the opposite -- no routing key, round robin spreads a crawl evenly
-     * -- which was true of an earlier cut and had been left standing over code that does the other
-     * thing. Evenness is not lost: a hash over urls is even in aggregate, because there are far
-     * more urls than nodes.
+     * Hands one url to the node that url belongs to, by a consistent hash of the url: round robin
+     * would send the same url wherever the counter points, and two nodes discovering the same link
+     * inside the replication window would each fetch it. Evenness survives -- there are far more
+     * urls than nodes.
      *
      * @return false when nothing took it, and the caller has to keep it.
      */
@@ -196,22 +148,11 @@ public class CrawlTaskChannel extends BufferedGossipListener
         }
         Node target;
         try {
-            // includeSelf: this node is a worker like any other, and being picked costs it
-            // nothing -- spreader dispatches locally without serialising or leaving the process.
-            //
-            // Routed by the url rather than round robin, which is what 1.x did too: every packet
-            // it sent carried partitioner=hash over catalogId, refer, path and version. Round
-            // robin sends the same url wherever the counter happens to point, so two nodes that
-            // discover the same link within the replication window each fetch it, and neither
-            // frontier can see that the other has it. Hashed, the same url always reaches the
-            // same node, and that node's frontier refuses it the second time.
-            //
-            // Consistent rather than the plain modulo 1.x used: a node joining moves about 1/N of
-            // the urls instead of nearly all of them, so the affinity survives the cluster
-            // changing shape mid-crawl. Refer is deliberately not in the key, though it was in
-            // 1.x's: the same url found on two different pages is precisely what this exists to
-            // send to one place.
-            target = cluster.unicastOn(Channels.CRAWL, null, routingKey(task), payload, true,
+            // includeSelf: local dispatch costs nothing, no serialising, no network. Consistent
+            // hashing rather than modulo, so a node joining moves ~1/N of the urls. Refer stays
+            // out of the key -- one url found on two pages must land on one node.
+            target = cluster.unicastOn(Channels.CRAWL, Channels.crawlers(cluster), routingKey(task),
+                    payload, true,
                     LoadBalancer.consistentHash());
         } catch (RuntimeException e) {
             log.warn("Could not dispatch '{}': {}", task.getUrl(), e.getMessage());

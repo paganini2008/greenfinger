@@ -25,20 +25,14 @@ import lombok.Setter;
 import lombok.ToString;
 
 /**
- * One url waiting to be fetched.
+ * One url waiting to be fetched -- typed, with a real {@code depth}, in place of the 1.x
+ * string-keyed {@code Packet} whose depth check counted slashes in the url.
  *
  * <p>
- * This replaces the 1.x {@code Packet}, a string-keyed map shuttled over the network. Making it a
- * typed object removes the casts that littered the handler, and it carries a real {@code depth}
- * rather than leaving the depth check to count slashes in the url.
- *
- * <p>
- * It is also what one node sends another, so it is a wire format and has to behave like one.
- * Unknown fields are ignored: nodes are upgraded one at a time, and for the length of that window
- * a node running the new build sends tasks to nodes running the old one. Without this, a field
- * added in the new version would make every url it sends undecodable on the others -- and the
- * receiving channel drops what it cannot read, so the symptom would be pages quietly going
- * missing during an upgrade and nowhere else.
+ * It is also a wire format, so unknown fields are ignored: nodes are upgraded one at a time, and
+ * without that a field added in the new build makes its urls undecodable on the old ones. The
+ * receiving channel drops what it cannot read, so the symptom is pages quietly going missing during
+ * an upgrade and nowhere else.
  * 
  * @Description: CrawlTask
  * @Author: Fred Feng

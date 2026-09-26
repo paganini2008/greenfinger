@@ -35,22 +35,13 @@ import crawlercommons.sitemaps.SiteMapURL;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Collects the urls a site publishes about itself, before the crawl starts guessing.
+ * Collects the urls a site publishes about itself, before the crawl starts guessing: following
+ * links reaches the deep pages eventually, and a sitemap hands over thousands at once.
  *
  * <p>
- * Following links from the home page reaches the deep pages eventually, and eventually can be a
- * very long time; a sitemap hands over thousands of them at once. Every serious crawler reads one,
- * and the site put it there to be read.
- *
- * <p>
- * Where to look, in the order the standard says: the {@code Sitemap:} directives in robots.txt
- * first, since that is the declared location, and only then the conventional {@code /sitemap.xml}.
- * Sitemap indexes are followed one level down, which is where the large sites keep theirs.
- *
- * <p>
- * What comes back is only a list of candidates. Every url still goes through the frontier and the
- * acceptors, so the domain boundary, the start url prefix and the path patterns apply exactly as
- * they do to a link found on a page.
+ * Looked for in the order the standard says -- the {@code Sitemap:} directives in robots.txt, then
+ * the conventional {@code /sitemap.xml} -- with indexes followed one level down. What comes back
+ * are candidates: every url still goes through the frontier and the acceptors.
  * 
  * @Description: SitemapSeeder
  * @Author: Fred Feng

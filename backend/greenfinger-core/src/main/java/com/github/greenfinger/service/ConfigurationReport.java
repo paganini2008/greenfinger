@@ -26,18 +26,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Writes every setting that is actually in force into the log at startup.
+ * Writes every setting that is actually in force into the log at startup, at debug.
  *
  * <p>
- * Configuration reaches this application from four places -- the packaged yaml, the copy beside
- * the launcher, {@code .env}, and the command line -- and which of them won is the first question
- * of most support conversations. Reading the yaml answers it wrongly whenever something overrode
- * it. This prints the objects the code will actually read, after everything has been merged, which
- * is the only version of the answer worth having. 1.x did the same thing and for the same reason.
- *
- * <p>
- * Only greenfinger's own properties: Spring's are numerous, unchanged, and would bury the ones
- * that matter.
+ * It used to be info, and it was thirty lines in front of everybody who ever started a node. The
+ * question it answers -- which of the four sources won -- is now answered on demand by
+ * {@code /actuator/settings} and by the System page, so the log keeps it only for whoever turns
+ * this logger up.
  *
  * @Description: ConfigurationReport
  * @Author: Fred Feng
@@ -54,7 +49,7 @@ public class ConfigurationReport implements SmartInitializingSingleton {
 
     @Override
     public void afterSingletonsInstantiated() {
-        if (!log.isInfoEnabled()) {
+        if (!log.isDebugEnabled()) {
             return;
         }
         Map<String, ConfigurationPropertiesBean> beans =
@@ -62,7 +57,7 @@ public class ConfigurationReport implements SmartInitializingSingleton {
         beans.values().stream()
                 .filter(bean -> bean.getInstance().getClass().getPackageName()
                         .startsWith(PACKAGE_PREFIX))
-                .forEach(bean -> log.info("Configuration in force:{}{}", System.lineSeparator(),
+                .forEach(bean -> log.debug("Configuration in force:{}{}", System.lineSeparator(),
                         ToStringBuilder.reflectionToString(bean.getInstance(),
                                 ToStringStyle.MULTI_LINE_STYLE)));
     }

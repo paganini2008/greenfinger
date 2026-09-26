@@ -17,6 +17,7 @@
 package com.github.greenfinger.cluster.channel;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.github.greenfinger.core.model.Catalog;
 
 /**
  * What the control channel carries.
@@ -37,7 +38,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record ControlMessage(Type type, String catalogId, String action, int version,
-        boolean refresh, String reason, boolean interrupted, String layers, boolean dropIndex) {
+        boolean refresh, String reason, boolean interrupted, String layers, boolean dropIndex,
+        Catalog catalog) {
 
     /**
      * 
@@ -54,65 +56,48 @@ public record ControlMessage(Type type, String catalogId, String action, int ver
         STARTED,
 
         /**
-         * A crawl is over. Every node publishes a completion event locally.
-         *
-         * <p>
-         * The state of it was already shared and still is: the completion flag and the reason sit
-         * beside the counters, and any node can read them whenever it likes. This is not a second
-         * copy of that fact to be kept in step with it -- nothing acts on this message except to
-         * hand it to whatever is listening. What it adds is a moment, which a flag in a cache does
-         * not have: an application that wants to do something when a crawl finishes had to poll
-         * for it, arriving up to one interval late with nothing to hang the work on.
-         *
-         * <p>
-         * Sent once, by the node winding the run down, and heard by every node including that one.
+         * A crawl is over. Not a second copy of the shared flag -- nothing acts on this except
+         * to hand it to whatever is listening. What it adds is a moment, which a flag in a cache
+         * does not have. Sent once, by the node winding the run down, heard by every node.
          */
         COMPLETED,
 
         /**
-         * Put back any file of this version that is missing here.
-         *
-         * <p>
-         * Unlike everything else a replay rebuilds, files are not one shared thing: every node
-         * keeps its own full copy, so "what is missing" has a different answer on each of them.
-         * That makes slicing the work across nodes wrong -- a node handed a slice would check its
-         * own files, which are fine, and report nothing to do while the node that actually lost
-         * them was never asked. So this goes to everybody, and each node repairs itself. A node
-         * with nothing missing sends no requests at all, which is what makes asking all of them
-         * cheap.
+         * Put back any file of this version that is missing here. Files are not one shared
+         * thing -- each node has its own gaps -- so slicing is wrong and everybody repairs
+         * itself. A node with nothing missing sends no requests, which makes asking all cheap.
          */
         RESTORE_FILES,
 
         /**
-         * Remove your own copy of the layers a delete cannot replicate.
+         * Remove your own copy of the layers a delete cannot replicate: the embedded index and
+         * the three RocksDB directories, which are plain local files. Without this, two nodes out
+         * of three keep a frontier for a version whose rows have gone -- invisible until the next
+         * crawl finds a frontier it did not write.
          *
          * <p>
-         * Rows, blobs and vectors go through stores that copy their own writes, so a delete of
-         * those removes them everywhere it is run. The embedded index and the three RocksDB
-         * directories do not: the index is handed out undecorated, and the directories are plain
-         * files under this node's data directory. A delete used to take them here and nowhere
-         * else, which left two nodes out of three holding a Lucene directory and a frontier for a
-         * version whose rows had gone -- invisible until the next crawl of the same catalog found
-         * a frontier it did not write.
-         *
-         * <p>
-         * The instruction travels rather than the removal, because "the frontier of v3" is a
-         * different set of paths on every node. Everyone hears it, the sender included, and the
-         * sender has already done its own and says so.
+         * The instruction travels rather than the removal, because the paths differ per node.
          */
         PURGE_LOCAL
     }
 
+    /**
+     * @param catalog the row itself, so a node that has never heard of this catalog can open its
+     *                half without asking anybody. The announcement and the row travel on
+     *                different channels -- one immediate, one batched -- so the announcement
+     *                routinely arrives first, and a node that had to go and fetch the row waited
+     *                on a round trip the crawl did not wait for
+     */
     public static ControlMessage started(String catalogId, String action, int version,
-            boolean refresh) {
+            boolean refresh, Catalog catalog) {
         return new ControlMessage(Type.STARTED, catalogId, action, version, refresh, null, false,
-                null, false);
+                null, false, catalog);
     }
 
     public static ControlMessage completed(String catalogId, int version, String reason,
             boolean interrupted) {
         return new ControlMessage(Type.COMPLETED, catalogId, null, version, false, reason,
-                interrupted, null, false);
+                interrupted, null, false, null);
     }
 
     /**
@@ -123,7 +108,7 @@ public record ControlMessage(Type type, String catalogId, String action, int ver
             boolean dropIndex, String origin) {
         return new ControlMessage(Type.PURGE_LOCAL, catalogId, null,
                 version != null ? version : EVERY_VERSION, false, origin, false, layers,
-                dropIndex);
+                dropIndex, null);
     }
 
     /** What {@link #version()} reads as when a purge covers the whole catalog. */
@@ -135,7 +120,7 @@ public record ControlMessage(Type type, String catalogId, String action, int ver
      */
     public static ControlMessage restoreFiles(String catalogId, int version, String origin) {
         return new ControlMessage(Type.RESTORE_FILES, catalogId, null, version, false, origin,
-                false, null, false);
+                false, null, false, null);
     }
 
 }

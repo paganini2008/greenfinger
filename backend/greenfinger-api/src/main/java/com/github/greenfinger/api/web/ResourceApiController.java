@@ -29,7 +29,6 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import com.github.greenfinger.core.model.Catalog;
 import com.github.greenfinger.core.model.Image;
@@ -42,25 +41,18 @@ import com.github.greenfinger.service.CatalogAdminService;
 import lombok.RequiredArgsConstructor;
 
 /**
- * What a crawl stored, to be looked through rather than searched.
- *
- * <p>
- * {@code SearchApiController} answers "which page is about this", ranked, from the version being
- * served. This answers "what did I actually get", in crawl order, for any version -- including
- * one that was never published, which the search index by definition cannot show. A crawl that
- * came back wrong is diagnosed here, not there.
- *
- * <p>
- * Metadata only. The page itself is on the site it came from and the row carries its url; serving
- * a stored copy back would mean reading a file per row and would make this a mirror rather than a
- * record of what was fetched.
+ * What a crawl stored, to be looked through rather than searched. {@code SearchApiController}
+ * answers "which page is about this", ranked, from the published version; this answers "what did I
+ * actually get", in crawl order, for any version -- including one never published, which is where a
+ * crawl that came back wrong is diagnosed. Metadata only: serving stored copies would make it a
+ * mirror rather than a record.
  *
  * @Description: ResourceApiController
  * @Author: Fred Feng
  * @Date: 05/09/2026
  * @Version 2.0.0
  */
-@RestController
+@ApiEndpoint
 @RequestMapping("${greenfinger.api.prefix:/v2}/resource")
 @RequiredArgsConstructor
 public class ResourceApiController {
@@ -110,17 +102,10 @@ public class ResourceApiController {
     }
 
     /**
-     * Attaches each row's images, in two queries for the whole page rather than two per row.
-     *
-     * <p>
-     * Carried with the list rather than fetched when a row is opened, because the count is part of
-     * what somebody is scanning the list for -- a page that was supposed to have pictures and has
-     * none is the thing they came to find, and it cannot be seen if every row has to be clicked.
-     *
-     * <p>
-     * An image is stored once per catalog and version however many pages point at it, so the two
-     * urls on each row are genuinely two different things: {@code sourceUrl} is what this page
-     * asked for, and the stored file may have arrived from a different page's url first.
+     * Attaches each row's images, two queries per page rather than two per row. Carried with the
+     * list because the count is what somebody is scanning for -- a page that should have pictures
+     * and has none. An image is stored once per catalog and version however many pages point at it,
+     * so {@code sourceUrl} is what this page asked for and the file may have arrived via another.
      */
     private List<ResourceRow> withImages(List<Resource> resources) {
         if (resources.isEmpty()) {

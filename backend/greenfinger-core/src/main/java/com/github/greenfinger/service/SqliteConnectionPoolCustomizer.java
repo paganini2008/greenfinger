@@ -21,26 +21,16 @@ import com.zaxxer.hikari.HikariDataSource;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Makes SQLite survive a crawl.
+ * Makes SQLite survive a crawl by pinning the pool to one connection. SQLite locks the whole file
+ * to write, so twenty connections and a dozen crawl threads become {@code SQLITE_BUSY}, not
+ * throughput -- measured at 72 failures and one page saved out of twelve. WAL and a busy timeout
+ * are not enough, because two transactions upgrading a read lock cannot both wait and SQLite fails
+ * one immediately; a single connection removes the race.
  *
  * <p>
- * SQLite takes a lock on the whole database file to write, so a pool of twenty connections and a
- * dozen crawl threads do not become throughput -- they become {@code SQLITE_BUSY}. Measured on a
- * twelve page crawl with the shipped defaults: 72 failures and one page saved out of twelve. Adding
- * WAL and a busy timeout was not enough, because two transactions that both hold a read lock and
- * then try to upgrade cannot both wait; SQLite fails one immediately rather than deadlock. Holding
- * a single connection removes the upgrade race altogether: the same crawl then saved every page
- * with no failures at all.
- *
- * <p>
- * Doing this here rather than in a comment in {@code application-prod.yml} is deliberate. The
- * defaults are shared by four databases, and the one that needs different ones cannot be expected
- * to announce itself -- a user who follows the SQLite lines in that file and keeps the default pool
- * gets a crawl that quietly loses most of its pages.
- *
- * <p>
- * WAL is still turned on, since it is what lets readers carry on while the one writer works, and a
- * busy timeout remains as the backstop for another process holding the file.
+ * In code rather than in {@code application-prod.yml} because the defaults are shared by four
+ * databases and the one that needs different ones cannot announce itself. WAL stays on so readers
+ * carry on, and the busy timeout backstops another process holding the file.
  *
  * @Description: SqliteConnectionPoolCustomizer
  * @Author: Fred Feng

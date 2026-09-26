@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.greenfinger.api.web;
+package com.github.greenfinger.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -35,7 +35,6 @@ import com.github.greenfinger.core.model.ResourceImage;
 import com.github.greenfinger.core.record.ResourceRecord;
 import com.github.greenfinger.core.record.ResourceRecordStore;
 import com.github.greenfinger.output.vector.VectorHit;
-import com.github.greenfinger.service.CatalogAdminService;
 
 /**
  * What a blank search box is answered with.

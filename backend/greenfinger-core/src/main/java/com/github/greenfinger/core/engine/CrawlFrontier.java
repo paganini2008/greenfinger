@@ -23,16 +23,11 @@ import com.github.greenfinger.core.component.WebCrawlerComponent;
  * The queue of urls waiting to be fetched, and the reason an interrupted crawl can be resumed.
  *
  * <p>
- * A crawl is a graph traversal, so the only thing that describes "where it had got to" is the set
- * of urls it had discovered but not yet visited. 1.x kept that set in memory and, on restart, tried
- * to reconstruct it from the single most recently saved page -- which is unrelated to what was
- * pending, so everything queued at the moment of interruption was simply lost. Persisting the
- * frontier is what Scrapy's JOBDIR, Nutch's CrawlDb and Heritrix's frontier all do, and it makes
- * resume exact.
- *
- * <p>
- * Because the frontier lives beside the visited set in RocksDB rather than in the record database,
- * resume works whether or not database backup is switched on.
+ * A crawl is a graph traversal, so the only thing describing "where it had got to" is the set of
+ * urls discovered but not visited. Keeping it in memory and reconstructing from the last saved page
+ * loses everything that was queued; persisting it -- as Scrapy's JOBDIR, Nutch's CrawlDb and
+ * Heritrix all do -- makes resume exact. It lives in RocksDB beside the visited set, so resume works
+ * whether or not database backup is on.
  * 
  * @Description: CrawlFrontier
  * @Author: Fred Feng

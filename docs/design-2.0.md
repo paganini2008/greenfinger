@@ -33,10 +33,11 @@ greenfinger-api                  面向 web 的服务端：REST 接口 + 统一�
                                  Spring Security 登录 + 托管前端静态页
 greenfinger-shell                spring-shell 命令 + 终端渲染
 frontend/greenfinger-ui          Angular 21（signals）+ RxJS + Angular Material + Tailwind
-deploy/                          发布物：两个启动脚本、两个 jar、config/、static/、.env
+deploy/                          发布物：四个启动脚本、两个 jar、config/、static/、.env
 ```
 
 三个后端模块，不是五个：`greenfinger-output` 与 `greenfinger-record` 已并入 core。
+2026-09-02 加了第四个 `greenfinger-cluster`（任务分发、复制、共享计数器），见第 17 章。
 
 **两个前端并列，都直接依赖 core，互不穿透**：
 
@@ -1049,7 +1050,7 @@ Angular 21 + signals + RxJS + Angular Material + Tailwind，绿白为主。
 - **搜索三种模式**（词 / 语义 / 图片）是三个不同存储上的不同查询，做成一个搜索框加模式切换，让它成为操作者能做的选择，而不是藏在后端的决定。ES 的分页走 cursor，绕开一万条上限。
 - **版本号问服务端要**（`/v2/version`），不写死在页面里，所以徽章不会比它标注的构建活得更久。
 - **logo**：给的是白底无透明通道的 3:1 字标，`tools/make-icons.mjs` 把近白像素抠成透明（带软边保留字形抗锯齿），并按"第一个空列"自动切出左侧那枚带叶子的 G 作为 favicon —— 按比例猜会把叶子切掉或把 g 带进来。
-- **暗色主题**（2026-09-01）：`color-scheme: light dark` 加 `html[data-theme]` 两条覆盖。`mat.theme()` 生成的 token 本来就是 `light-dark()` 对，所以整个切换就是一个属性，`ThemeService` 里没有任何颜色值。三档 system / light / dark，默认 system —— 跟随操作系统是大多数人已经做过的选择。选 system 时**要删掉属性而不是设成某个值**，设成任何值都会让浏览器不再跟随系统。存 localStorage 不存账号：主题是屏幕的属性，不是人的属性。
+- **只有一套绿白主题**（2026-09-23 定案）：暗色主题做过（`color-scheme: light dark` 加 `html[data-theme]` 覆盖，`ThemeService` 里没有任何颜色值），后来整个删掉。原因不是实现麻烦，是两套配色要同时维护，而这个产品的画面主体是抓回来的网页和图片 —— 界面的颜色越少越不跟内容打架。现在颜色全部来自 `mat.theme()` 生成的 token，改配色只动一个文件。
 - **向量检索翻页用 offset**（2026-09-01）：ES 有稳定排序键所以能用 cursor，向量检索的顺序是"到这条查询的距离"，只对这一次查询存在，没有可携带的东西。因此也设上限（服务端 1000）—— offset 越深向量库走得越久。文本检索的 offset **不下推**到向量库，因为重排和"一页一条"发生在应答之后，下推会跳过本来就要被去掉的行。
 - **e2e**（2026-09-01）：Playwright 6 个用例，登录 → 建 catalog → Crawl → Monitor → 删除这条主链路真跑。配置里故意没有 `webServer` —— 从测试配置启动 jar，等于让它也管数据库、爬取目录和端口，那三样出问题都会被报告成"测试失败"。
 
@@ -1335,8 +1336,14 @@ openspreader 的 cache 是"每个进程一份全量副本"：**读不出进程**
 2026-09-02 的回归里真的发生了：`run-local.sh` 的三个节点、上一轮遗留还在跑的 docker 容器、
 以及 8088 上的单节点合并了，e2e 清理时的删除跨环境传过去，所有 catalog 在所有节点上消失。
 
-所以 `run-local.sh`（`greenfinger-local`）、`run-docker.sh`（`greenfinger-docker`）
-和 plain 启动器（默认）各用各的名字，真实部署也应当自己命名。
+所以 `run-local.sh`（`greenfinger-local`、22010）、`run-docker.sh`（`greenfinger-docker`、22020）
+各用各的名字**和端口**，真实部署也应当自己命名。
+
+**端口那一半同样要紧，而且更隐蔽**（2026-09-26 补）：占端口是整机的事，不分集群。第二个集群
+换了名字但没换端口，就永远选不出 leader —— 端口被一个它不认作成员的进程占着。于是"除了需要
+leader 的事之外一切正常"，计数器就那么停住不动。因此一次性命令那个启动器 2026-09-26 起
+**不给默认集群名**：必须 `--cluster=<name>`，启动前先探端口，被占就当场报错退出，而不是
+悄悄排到别人的爬取后面。想要的就是加入的话，`--join=<name>` 说出来。
 
 ### 17.10 replay：唯一的 scatter-gather
 
@@ -1467,5 +1474,99 @@ size = clamp(总数 / (节点数 × 3), 50, 200)
 
 **扩展点保留**：`ExistingUrlPathFilter` 仍是接口，catalog 仍然记着自己用哪个过滤器，
 `WebCrawlerComponentFactory` 仍是 `@ConditionalOnMissingBean` —— 想换一种去重的应用换掉工厂即可。
-face 端的那一问因此不再拿内置名单校验答案：名字合不合法只有被问到的工厂知道，它会在爬取开始时拒绝。
+提示符那一问因此不再拿内置名单校验答案：名字合不合法只有被问到的工厂知道，它会在爬取开始时拒绝。
 
+
+---
+
+## 19. leader 成为管理类写入的唯一写入者（2026-09-22）
+
+### 19.1 为什么非要收成一个写入者
+
+第 17 章把爬取本身分散掉了：一个 URL 只投给一个节点，没有冲突可言。但**管理类的写**不是这个
+形状 —— 保存一个 catalog、删掉一个版本、把爬完的版本发布给搜索，这些写的是每个节点各有一份的
+东西：H2 / SQLite 的 catalog 表、RocksDB 目录、本地文件树、内嵌的索引与向量库。
+
+两个人同时改一份各自持有的副本，要么加写入时间戳、内容哈希和墓碑，要么承认它会漂移。
+2.0 选第三条：**只允许一个人写**。leader 那份表就是事实，上面那三样一个都不需要存在。
+
+### 19.2 形状：一个网关、一条通道、一个兜底
+
+- `LeaderGateway#onLeader(op, arg, Type)` —— 请求发到 leader，返回 leader 的答案。
+  **在 leader 自己身上它就是一次普通方法调用，没有网络**；绝大多数装机是单节点集群，
+  也就是说绝大多数装机跑的是原来那条路径。
+- `LeaderChannel` —— 请求/应答，带请求 id 和重试。leader 会换人，所以每个节点都注册同一套
+  handler：拿到 leadership 的那个必须马上能服务。
+- `CatalogCatchUp` —— 后来才加入的节点向 leader 要自己缺的行，复制负责其余的。
+
+爬取的产出不走这条路。投递已经保证了一个 URL 只有一个节点处理，让页面字节绕经 leader 只会把
+流量翻倍，并把整个集群的抓取速率压到一个进程的上限。
+
+### 19.3 踩到的两类坑
+
+**主键冲突**，两次：catch-up 与复制撞在一起，以及后来"把 Catalog 行随 STARTED 消息一起带过去"
+与复制撞在一起。两次的修法一样 —— 先 `findById`，插入失败就当作别人已经写过、回头再读一次，
+并把 `catchUp()` / `align()` 加上 `synchronized`。分布式里"我先查再写"永远有窗口，能容忍重复
+比堵住窗口便宜。
+
+**join 的竞态**：follower 先收到"开始爬 catalog X"的广播，后收到复制过来的那一行，于是它去查
+一个还不存在的 catalog。一开始靠 catch-up 兜，但那要 2–3.5 分钟才收敛，短爬取早就结束了。
+最后改成**广播消息自己带上那行 Catalog** —— 需要它的人和它同时到。
+
+## 20. 终端退化成界面（2026-09-26）
+
+### 20.1 一个可执行文件，两种身份
+
+原来的 `greenfinger-face.sh` 是一个会爬取的交互式进程，它在后台起引擎、占集群端口、参与选举。
+改完之后它只是**界面**：改名 `greenfinger-shell.sh`，不加载引擎、不连数据库、不建索引，
+挂到别人的集群上，把命令发给 leader、把答案画出来 —— 和网页做的是同一件事，走的是同一个接口。
+
+支撑它的是一个门面 `GreenfingerOperations`：本地实现 `LocalOperations`（爬虫侧直接调服务层）
+和远程实现 `RemoteOperations`（经 `LeaderGateway` 走一趟 leader）。命令类只认这个接口，
+所以同一份命令代码在一次性爬虫里和在纯终端里行为一致。
+
+两种身份用一个开关分：`greenfinger.shell.client=true` 走 `ShellClientMode`，
+否则走 `CrawlerNodeMode`。不是两个 `@SpringBootApplication` —— 同包下两个会让 spring-shell
+的 `help` bean 重复注册。
+
+### 20.2 不参选，也不假装能干活
+
+终端进程的寿命是"有人在敲键盘"，让它当 leader 是最糟的选择。openspreader 新增的
+`leader-eligible=false` 正好是这件事，终端和 `--join` 起的辅助进程都设它。
+
+但"不选我"不等于"我不会被选"，所以还有第二道：`LeaderChannel` 带一个 `performs` 标志，
+终端上是 false，真被派到活会答 `refused("This node is a terminal, not a crawler")`。
+加上 `ShellClusterGuard` 在启动时 `awaitJoin` + `awaitLeader`，集群里一个爬虫都没有就直接报
+"No crawler node is running in cluster …"，而不是打开一个每条命令都超时的提示符。
+
+### 20.3 集群身份的三条规矩
+
+| 启动器 | 集群名 | 端口 | 参选 |
+|---|---|---|---|
+| `greenfinger-cli.sh` | 必须 `--cluster=<name>`，无默认 | 22000 | 是（`--join` 时否） |
+| `run-local.sh` | `greenfinger-local` | 22010 | 是 |
+| `run-docker.sh` | `greenfinger-docker` | 22020 | 是 |
+| `greenfinger-shell.sh` | 必须 `--cluster=<name>` | 跟随目标集群 | **否** |
+
+一次性命令**自成一个集群**：它可能被 cron 在任何时刻拉起，误入一个正在爬别的站的集群就只能
+排队，而调用方得到的是"命令卡住了"。`--join=<name>` 是显式的反面 —— 以**另一个爬虫**的身份
+加入，不是去抢主。终端相反，它哪个集群都能挂，包括挂到一次性命令起的那个上去看它在干什么。
+
+### 20.4 无头的服务端
+
+网页不起的时候，controller 不该加载。`@ApiEndpoint`（= `@RestController` +
+`@ConditionalOnProperty`）套在八个 controller 和单页应用配置上，`greenfinger.api.web.enabled=false`
+时它们整体消失。**但 `WebSecurityConfiguration` 留在开关外面** —— 端口还开着，把守卫一起关掉
+等于开一个裸端口。实测无头下 health 200、`/v2/version` 404、`/` 404、`/v2/catalog` 401。
+
+### 20.5 启动脚本上花掉的时间
+
+三件都不是 Java 的事，但都真的挡住过启动：
+
+- `run.conf` 里的空值 `GF_CLUSTER_PORT=` 会让 yaml 的 `${GF_CLUSTER_PORT:22000}` 绑成空串，
+  不是默认值 —— 得先把空的 `GF_*` 全部 unset（`drop_empty_gf`）。而且 `run.conf` 要在解析参数
+  **之前**读，否则它会把命令行刚设好的 `--cluster` 又抹掉。
+- 探端口用 `/dev/tcp`，关 fd 的 `exec 3<&-` 如果留在父进程里，一旦重定向出错整个脚本直接退出，
+  表现为"启动器什么都没打印就没了"。开和关都放进子 shell。
+- 容器里的终端不能报 `127.0.0.1`：共享配置把 `advertise-host` 钉成回环，节点会往自己的回环回话，
+  终端于是被怀疑失联，每条命令 30 秒超时。容器知道自己的地址，`hostname -i` 就是答案。

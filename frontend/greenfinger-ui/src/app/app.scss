@@ -1,136 +1,92 @@
 :host {
   display: block;
-  height: 100%;
+  min-height: 100%;
 }
 
-// The one solid green surface in the product. Everything below it is white, which is what keeps
-// the green meaning "Greenfinger" rather than merely "coloured".
-// The masthead. Green in light, and deliberately not green in dark.
+// Everything floats on the paper with the same gap around it, so the chrome reads as one object
+// on a surface. The surface is warm, which leaves white for the things that hold data.
+.gf-frame {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: var(--gf-inset);
+  background: var(--mat-sys-surface);
+}
+
+.gf-shell {
+  flex: 1 1 auto;
+  background: transparent;
+}
+
+// One rounded green slab, floating, full height.
 //
-// --gf-green is Material's primary, and in a dark scheme that token flips to a *light* green so it
-// can be read as text on a dark ground. Used as a background it made the bar acid green across the
-// top of a near-black page -- the brightest possible surface, carrying a logo and two icons. In
-// dark the bar is a raised surface and the green goes back to being the mark on it.
-// Pinned, now that the page itself scrolls: the masthead carries the account menu and the theme
-// switch, and they should not need scrolling back up to reach.
-.gf-toolbar {
-  background: var(--gf-chrome);
-  // tracks --gf-chrome-height, which is what the fixed rail measures itself against
-  height: var(--gf-chrome-height);
+// Fixed, not sticky: Material positions the drawer absolutely and gives the content a matching
+// margin, so a drawer in normal flow pushes the whole page down below itself.
+.gf-sidenav {
+  width: 13rem;
+  border-right: 0;
+  position: fixed;
+  top: var(--gf-inset);
+  bottom: var(--gf-inset);
+  left: var(--gf-inset);
+  // Rounded on the three sides that face the window, square on the one that faces the page.
+  // The square edge is what lets the current row run out of the rail and become part of the
+  // page: a slab rounded on all four corners is an object beside the content, and the tab
+  // sticking out of it would end in mid-air.
+  border-radius: var(--gf-r-lg) 0 0 var(--gf-r-lg);
+  // A single flat green over this height reads as printed card; the lifted top end gives it a
+  // light source.
+  background: linear-gradient(180deg, var(--gf-chrome) 0%, var(--gf-chrome-deep) 100%);
   color: var(--gf-on-chrome);
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  border-bottom: 1px solid transparent;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+  box-shadow: var(--gf-shadow);
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0.6rem 0.6rem;
+  overflow: hidden;
 }
 
-// The wordmark is a green-to-black gradient, which disappears against a green bar. Knocking it
-// out to solid white keeps the shape -- the leafed G is the recognisable part -- and reads as a
-// deliberate reversed lockup rather than a logo that half vanished.
+// The wordmark is a green-to-black gradient, which disappears on green; knocked out to white it
+// keeps the leafed G.
+// A column, so the wordmark can take the rail's width instead of sharing a line with the badge.
+.gf-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+  padding: 0.9rem 0.65rem 1.1rem;
+  text-decoration: none;
+  color: inherit;
+}
+
 .gf-logo {
-  height: 2.15rem;
+  // 900x288 in the file, so this is about 138px wide against a rail with 200px of room.
+  height: 2.65rem;
   width: auto;
-  // knocked out on the green bar; on the dark bar the wordmark's own colours read fine
+  max-width: 100%;
+  min-width: 0;
   filter: brightness(0) invert(1);
 }
 
 .gf-version {
-  font-size: 0.7rem;
+  white-space: nowrap;
+  font-size: 0.62rem;
   font-weight: 500;
-  opacity: 0.75;
-  border: 1px solid currentColor;
-  border-radius: 999px;
+  color: var(--gf-on-chrome-muted);
+  border: 1px solid color-mix(in srgb, #ffffff 35%, transparent);
+  border-radius: var(--gf-r-pill);
   padding: 0 0.4rem;
-  line-height: 1.25rem;
+  line-height: 1.15rem;
 }
 
-// On the chrome, not on the green: in a dark scheme the bar is near-black and --gf-on-green is
-// the dark colour meant to sit on a light green, so the initial and its disc were both dark on a
-// dark bar -- an avatar nobody could see.
-.gf-avatar {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  font-weight: 600;
-  background: color-mix(in srgb, var(--gf-on-chrome) 22%, transparent);
-  color: var(--gf-on-chrome);
-}
-
-// The rail stays put while the page moves under it, which is what it did before by virtue of
-// living outside the scrolling pane. Sticky rather than fixed so it still participates in the
-// layout and the content keeps its column.
-.gf-sidenav {
-  // Six words wide, not fifteen rem. The list is six short nouns and the widest of them is
-  // "Resources"; the rest of the column was empty green, which read as a margin the page had
-  // been pushed away from rather than as a rail.
-  width: 12.25rem;
-  border-right: 0;
-  background: var(--gf-chrome);
-  color: var(--gf-on-chrome);
-  display: flex;
-  flex-direction: column;
-  // Fixed rather than sticky. Material positions the drawer `absolute` inside its container and
-  // gives the content pane a matching margin-left; making it sticky put it back into normal flow,
-  // where it took vertical space and pushed the whole page down below itself. Fixed keeps it out
-  // of flow -- so the margin-left still lines the content up beside it -- and pinned, so the rail
-  // stays while the page scrolls under it.
-  position: fixed;
-  top: var(--gf-chrome-height);
-  bottom: 0;
-  left: 0;
-  // Material M3 rounds the drawer's outer edge (0 16px 16px 0). The masthead, the rail and the
-  // footer are one piece of chrome around the page, and a piece of chrome with one rounded corner
-  // reads as a card that has drifted into the corner of the window.
-  border-radius: 0;
-}
-
-// The active item is marked with a green bar rather than a filled row: a rail of solid green
-// blocks would compete with the toolbar for the eye.
-//
-// It said that and then did both, and the filled row was the brightest thing on the screen --
-// louder than the page's own headline, for the sake of telling you which link you had already
-// clicked. The bar and the colour of the word are enough.
-// On a green rail a green tint says nothing, so the active row is the solid colour and the rest
-// of the rail is the tint.
-// Square, and touching both edges of the rail: a pill floating inside a green column is a second
-// shape where the rail is already the shape.
-.gf-active {
-  color: var(--gf-on-chrome);
-  background: var(--gf-active);
-  border-radius: 0;
-  font-weight: 600;
-
-  // the same override as the rest of the rail: the label is in Material's own element
-  --mat-list-list-item-label-text-color: var(--gf-on-chrome);
-
-  .mdc-list-item__primary-text,
-  .mat-mdc-list-item-title,
-  .mat-mdc-list-item-unscoped-content {
-    color: var(--gf-on-chrome);
-  }
-
-  mat-icon {
-    color: var(--gf-on-chrome);
-  }
-}
-
-// Every nav row, reversed out of the green rail. White, not a percentage of it: six items is a
-// short enough list that dimming five of them to promote one buys nothing, and a 86% white on
-// green is the sort of "nearly legible" that only looks deliberate on a designer's screen.
+// Every nav row, white rather than a percentage of it: six items is too short a list for dimming
+// five to buy anything.
 .gf-sidenav .mat-mdc-list-item {
   color: var(--gf-on-chrome);
+  border-radius: var(--gf-r-md);
+  margin-bottom: 0.15rem;
 
-  // Material puts the label in an element of its own and colours it from --mat-sys-on-surface,
-  // which is the page's near-black. That selector is more specific than a colour on the list
-  // item, so setting the item alone left white icons beside black words on a dark green rail --
-  // and at this size, on this green, in a screenshot, that reads as a slightly dull white. It
-  // was measured rather than looked at in the end: rgb(27, 29, 27).
-  //
-  // Both the token and the element, because the token is the supported way and the element is
-  // what actually carries the colour if a future Material stops reading the token.
+  // Material colours the label in an element of its own, from a selector more specific than the
+  // list item -- so setting the item alone leaves black words on the green rail.
   --mat-list-list-item-label-text-color: var(--gf-on-chrome);
   --mat-list-list-item-supporting-text-color: var(--gf-on-chrome);
   --mat-list-list-item-leading-icon-color: var(--gf-on-chrome);
@@ -148,55 +104,258 @@
   }
 
   // Padding trimmed with the width: Material's own is built for a 256px drawer.
-  padding-left: 0.85rem !important;
-  padding-right: 0.85rem !important;
+  padding-left: 0.8rem !important;
+  padding-right: 0.8rem !important;
 
   &:hover:not(.gf-active) {
-    background: color-mix(in srgb, #000000 10%, transparent);
+    background: color-mix(in srgb, #ffffff 12%, transparent);
   }
+
+  // Material's hover and focus layers are square overlays that know nothing about the item's
+  // radius, so they square off the corners on hover unless given its shape.
+  &::before,
+  &::after,
+  .mat-ripple,
+  .mat-mdc-focus-indicator {
+    border-radius: inherit;
+  }
+}
+
+// The row you are on, in the page's own colour: the page reaching into the rail rather than a
+// marker painted on it.
+// Written at the rail's own specificity on purpose: `.gf-active .mdc-list-item__primary-text` is
+// one class shallower than the rule that colours every row, loses, and leaves white on white.
+.gf-sidenav .mat-mdc-list-item.gf-active {
+  background: var(--gf-active);
+  box-shadow: var(--gf-shadow);
+  font-weight: 600;
+  // Runs out of the rail into the page, in the page's own colour, so the two are one surface.
+  // Widened, not only pulled: the row has an explicit `width: 100%`, so a negative margin moves
+  // what follows without making the box wider. One extra pixel covers a fractional layout.
+  width: calc(100% + 0.6rem + 1px) !important;
+  margin-right: calc(-0.6rem - 1px);
+  // Softened at the join as well, rather than cut square: the tab meets the page on a curve, so
+  // the rail's green reads as a notch the page is tucked into instead of a butt joint between
+  // two flat colours. Smaller than the radius on the window side -- this end is a junction, not
+  // an edge, and the same 14px there made the tab look detached again.
+  border-radius: var(--gf-r-md) 0 0 var(--gf-r-md);
+  padding-right: 1.6rem !important;
+  // the notches hang outside the row, above and below it
+  overflow: visible !important;
+
+  --mat-list-list-item-label-text-color: var(--gf-chrome-deep);
+  --mat-list-list-item-hover-label-text-color: var(--gf-chrome-deep);
+  --mat-list-list-item-focus-label-text-color: var(--gf-chrome-deep);
+  --mat-list-list-item-leading-icon-color: var(--gf-chrome);
+  // No tint on the row you are already on: hover answers "you can click this", and dimming the
+  // join broke it every time the pointer passed over.
+  --mat-list-list-item-hover-state-layer-opacity: 0;
+  --mat-list-list-item-focus-state-layer-opacity: 0;
+
+  .mdc-list-item__primary-text,
+  .mat-mdc-list-item-title,
+  .mat-mdc-list-item-unscoped-content {
+    color: var(--gf-chrome-deep);
+  }
+
+  mat-icon {
+    color: var(--gf-chrome);
+  }
+}
+
+// The inside corner, which is what makes the tab look joined rather than laid on top. It belongs
+// to the green, not the tab, so no border-radius can draw it: two boxes in the page's colour with
+// a quarter disc taken out, and the green shows through the gap.
+.gf-tab-notch {
+  display: none;
+}
+
+.gf-sidenav .mat-mdc-list-item.gf-active .gf-tab-notch {
+  display: block;
+  position: absolute;
+  // Pinned to the row, top and bottom: without them the box keeps its static position in the
+  // middle of the row and both corners are drawn against the wrong edges.
+  top: 0;
+  bottom: 0;
+  right: -1px;
+  width: var(--gf-notch);
+  pointer-events: none;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    width: var(--gf-notch);
+    height: var(--gf-notch);
+  }
+
+  // above the row, curving down into it
+  &::before {
+    bottom: 100%;
+    background: radial-gradient(
+      circle at top left,
+      transparent calc(var(--gf-notch) - 0.5px),
+      var(--gf-active) var(--gf-notch)
+    );
+  }
+
+  // and below it, curving up
+  &::after {
+    top: 100%;
+    background: radial-gradient(
+      circle at bottom left,
+      transparent calc(var(--gf-notch) - 0.5px),
+      var(--gf-active) var(--gf-notch)
+    );
+  }
+}
+
+// Only while something is running: an empty card reserving space for news is furniture.
+.gf-rail-live {
+  margin-top: auto;
+  display: block;
+  border-radius: var(--gf-r-md);
+  padding: 0.7rem 0.75rem;
+  text-decoration: none;
+  color: var(--gf-on-chrome);
+  background: color-mix(in srgb, #ffffff 14%, transparent);
+}
+
+.gf-rail-live-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  color: var(--gf-on-chrome-muted);
+}
+
+.gf-rail-live-name {
+  display: block;
+  margin: 0.2rem 0 0.35rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gf-rail-live-go {
+  font-size: 0.75rem;
+  color: var(--gf-wheat);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .gf-role-note {
   color: var(--gf-on-chrome);
-  border-top-color: color-mix(in srgb, #ffffff 25%, transparent);
   margin-top: auto;
   display: flex;
   gap: 0.5rem;
   align-items: flex-start;
-  padding: 0.75rem 1rem;
-  font-size: 0.75rem;
-  line-height: 1.1rem;
-  border-top: 1px solid;
+  padding: 0.75rem 0.65rem 0.4rem;
+  font-size: 0.72rem;
+  line-height: 1.05rem;
+  color: var(--gf-on-chrome-muted);
 }
 
-// Material gives the content pane its own scrollbar; with the document scrolling there must not
-// be a second one, or the page scrolls and the pane inside it scrolls separately.
+// Material leaves the drawer's own width behind; the rest is this stylesheet's to add.
 .gf-content {
-  background: var(--mat-sys-surface-container-lowest, #fff);
+  background: transparent;
   overflow: visible !important;
-  // Search with nothing typed is half a screen tall, and the footer sat where the content ended
-  // with the page showing underneath it. The pane is a column at least as tall as the window and
-  // the routed page takes the slack, so the green band is the bottom of the window or lower.
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - var(--gf-chrome-height));
-  // The rule that makes the routed page take the slack lives in styles.scss -- a routed component
-  // is created by the outlet, so it never carries this stylesheet's scoping attribute and a rule
-  // written here would silently miss it.
+  min-height: calc(100vh - var(--gf-inset) * 2);
+  // No gap: a channel of paper here stops the current row reaching the page to join it.
+  padding-left: 0;
 }
 
-// A crawl is a fact about the whole application, so it is announced above the nav and the page
-// rather than inside either. Amber rather than green: it is not an error, but it is the reason
-// the buttons below it will not respond.
+// What is left of a masthead once the wordmark is in the rail: a way in on a phone, and who you
+// are.
+.gf-topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem 0.35rem 0.25rem;
+  flex: none;
+}
+
+// Only where it does something: beside an open rail it is a control with nothing to do.
+.gf-rail-toggle {
+  display: none;
+}
+
+@media (max-width: 599px) {
+  .gf-rail-toggle {
+    display: inline-flex;
+  }
+}
+
+// A plain button: mat-button lays its label out in a span with its own padding, which stacks
+// three items instead of putting them in a row.
+.gf-account {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  border-radius: var(--gf-r-pill);
+  padding: 0.2rem 0.65rem 0.2rem 0.2rem;
+  background: var(--gf-surface);
+  box-shadow: var(--gf-shadow);
+  color: var(--mat-sys-on-surface);
+
+  &:hover {
+    background: color-mix(in srgb, var(--gf-wheat-soft) 55%, var(--gf-surface));
+  }
+}
+
+.gf-account-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.gf-account-caret {
+  width: 1.1rem;
+  height: 1.1rem;
+  font-size: 1.1rem;
+  color: var(--gf-muted);
+}
+
+.gf-avatar {
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: var(--gf-r-pill);
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  font-size: 0.85rem;
+  background: var(--gf-chrome);
+  color: var(--gf-on-chrome);
+}
+
+// On a phone the rail is an overlay, so there is no column beside the page to leave room for.
+@media (max-width: 599px) {
+  .gf-content {
+    padding-left: 0;
+  }
+}
+
+// A fact about the whole application, so it sits above the page. Wheat rather than green: it is
+// not an error, and green here would compete with the numbers.
 .gf-running-banner {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   flex-shrink: 0;
-  padding: 0.6rem 1.25rem;
-  background: color-mix(in srgb, var(--mat-sys-tertiary) 18%, var(--gf-surface));
-  border-bottom: 1px solid var(--gf-outline);
-  font: var(--mat-sys-body-large);
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 1rem;
+  border-radius: var(--gf-r-md);
+  background: var(--gf-wheat-soft);
+  color: var(--gf-on-wheat);
+  font: var(--mat-sys-body-medium);
 }
 
 .gf-running-text {
@@ -208,7 +367,7 @@
   flex: 0 0 auto;
   width: 0.6rem;
   height: 0.6rem;
-  border-radius: 999px;
+  border-radius: var(--gf-r-pill);
   background: var(--gf-green);
   animation: gf-pulse 1.6s ease-in-out infinite;
 }

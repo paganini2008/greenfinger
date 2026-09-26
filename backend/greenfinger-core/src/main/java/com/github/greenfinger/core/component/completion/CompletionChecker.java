@@ -21,20 +21,13 @@ import com.github.greenfinger.core.component.WebCrawlerComponent;
 import com.github.greenfinger.core.component.state.Dashboard;
 
 /**
- * Decides that a crawl has reached its own end.
+ * Decides that a crawl has reached its own end. There are exactly two: {@code maxFetchSize} reached
+ * or {@code fetchDuration} elapsed. Ctrl+C, {@code interrupt} and the watchdog also end a run, but
+ * as interventions -- same flag with {@code interrupted} true, and no version is published.
  *
  * <p>
- * There are exactly two of these, and between them they are the whole definition of a finished
- * crawl: the catalog's {@code maxFetchSize} was reached, or its {@code fetchDuration} ran out.
- * Nothing else completes a crawl. Ctrl+C, the {@code interrupt} command and the watchdog all end
- * a run too, but they are interventions -- they set the same flag with {@code interrupted} true,
- * and the search version is not published.
- *
- * <p>
- * A checker is passive: it is handed the dashboard and answers a question about it. It has no
- * state of its own, no idea which node it is running on, and no way to reach the crawl. That is
- * what lets every node run the same checks against the same shared counters and reach the same
- * answer -- whoever notices first writes the flag, and everyone else reads it.
+ * A checker is passive: handed the dashboard, no state, no idea which node it runs on. That is what
+ * lets every node reach the same answer from the same shared counters, first to notice writing it.
  *
  * @Description: CompletionChecker
  * @Author: Fred Feng
@@ -47,14 +40,9 @@ public interface CompletionChecker extends WebCrawlerComponent {
     boolean isCompleted(CatalogDetails catalogDetails, Dashboard dashboard);
 
     /**
-     * Whether this has to be asked by a clock rather than by the crawl.
-     *
-     * <p>
-     * A limit measured in pages can only be reached by fetching one, so asking on the way past
-     * costs nothing and stops the crawl the moment it is due. A limit measured in time is the
-     * opposite: it comes due whether or not anything is being fetched, and a crawl whose threads
-     * are all blocked on a slow site is exactly when it matters. So that one is asked on a
-     * schedule.
+     * Whether a clock has to ask this rather than the crawl. A limit in pages can only be reached
+     * by fetching one; a limit in time comes due whether or not anything is being fetched, and a
+     * crawl blocked on a slow site is exactly when it matters.
      */
     default boolean scheduled() {
         return false;

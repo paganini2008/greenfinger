@@ -6,7 +6,7 @@
   <parent>
     <groupId>com.github.paganini2008</groupId>
     <artifactId>greenfinger-backend</artifactId>
-    <version>2.0.0-SNAPSHOT</version>
+    <version>${revision}</version>
   </parent>
 
   <artifactId>greenfinger-shell</artifactId>
@@ -113,8 +113,16 @@
       <resource>
         <directory>src/main/resources</directory>
         <excludes>
-          <!-- shipped beside the jar in bin/config instead, so it can be edited without a rebuild -->
-          <exclude>config/**</exclude>
+          <!--
+            Shipped beside the jar in config/ instead, so a setting can change without a rebuild:
+            no yaml or properties goes inside the artifact at all.
+
+            Excluded from target/classes as well as from the jar, and that is not incidental.
+            Spring's default search path includes classpath:/config/, which outranks a test's
+            own classpath:/application.yml, so leaving it here would silently hand every test the
+            production configuration. Running from source points at this directory explicitly;
+            see the run instructions in the backend README.
+          -->
           <exclude>bin/**</exclude>
         </excludes>
       </resource>
@@ -147,27 +155,6 @@
         <artifactId>maven-resources-plugin</artifactId>
         <executions>
           <execution>
-            <id>assemble-run-conf</id>
-            <phase>package</phase>
-            <goals>
-              <goal>copy-resources</goal>
-            </goals>
-            <configuration>
-              <outputDirectory>${dist.directory}</outputDirectory>
-              <!-- the point of this execution: an installation's settings survive a rebuild -->
-              <overwrite>false</overwrite>
-              <resources>
-                <resource>
-                  <directory>${project.basedir}/src/main/resources/bin</directory>
-                  <filtering>false</filtering>
-                  <includes>
-                    <include>run.conf</include>
-                  </includes>
-                </resource>
-              </resources>
-            </configuration>
-          </execution>
-          <execution>
             <id>assemble-distribution</id>
             <phase>package</phase>
             <goals>
@@ -181,12 +168,20 @@
                 <resource>
                   <directory>${project.basedir}/src/main/resources/bin</directory>
                   <filtering>false</filtering>
-                  <!-- run.conf is the one file here a person edits, so it is copied by the
-                       execution below with overwrite off: a build gives it to an installation
-                       that has none and never touches one that has been filled in -->
-                  <excludes>
-                    <exclude>run.conf</exclude>
-                  </excludes>
+                </resource>
+                <!--
+                  The backend's own settings, copied out rather than kept twice. backend/.env is
+                  where a developer edits them and what an IDE reads; deploy/ is a copy of the
+                  source tree and nothing in it is a second original. .env itself is not in the
+                  repository, so on a machine that has none only the example is copied.
+                -->
+                <resource>
+                  <directory>${project.basedir}/../</directory>
+                  <filtering>false</filtering>
+                  <includes>
+                    <include>.env</include>
+                    <include>.env.example</include>
+                  </includes>
                 </resource>
                 <resource>
                   <directory>${project.build.directory}</directory>

@@ -49,10 +49,8 @@ public class WebCrawlerProperties {
      * Plain http first, a browser only for the pages that came back as an unrendered shell.
      *
      * <p>
-     * The default because the alternatives are both wrong more often than they are right: plain
-     * http silently stores an empty page whenever a site renders itself, and a browser engine costs
-     * an order of magnitude on the great majority of pages that never needed one. A site with no
-     * javascript never starts a browser at all under this setting, so it costs nothing to leave on.
+     * The alternatives are each wrong more often: plain http stores empty pages for sites that
+     * render themselves, and a browser costs an order of magnitude on pages that never needed one.
      */
     private String defaultExtractor = WebCrawlerConstants.ENGINE_ADAPTIVE;
     private String defaultOutputTypes = "file";
@@ -67,13 +65,9 @@ public class WebCrawlerProperties {
     private int workThreads = 16;
 
     /**
-     * Offer the site the ETag and Last-Modified it sent last time, so a merge can be answered with
-     * a 304 instead of the page.
-     *
-     * <p>
-     * On, because it only ever applies to a page that has been crawled before and only saves work.
-     * Turn it off for a site whose validators lie -- a page that changes without its ETag changing
-     * would otherwise never be seen to change again.
+     * Offer back the ETag and Last-Modified, so a merge can be answered with a 304. Turn it off
+     * for a site whose validators lie: a page that changes without its ETag would never be seen
+     * to change again.
      */
     private boolean conditionalGet = true;
 
@@ -85,13 +79,9 @@ public class WebCrawlerProperties {
     private String frontierDirectory = "./data/system/frontier";
 
     /**
-     * How often the clock asks whether the crawl is over.
-     *
-     * <p>
-     * Two questions can only be answered by a clock: has {@code fetchDuration} run out, and have
-     * the counters stopped moving. Both are cheap -- a comparison against numbers that are already
-     * in hand -- so the interval is about how promptly a finished crawl is noticed rather than
-     * about cost. 1.x asked every five seconds; so does this.
+     * How often the clock asks whether the crawl is over -- {@code fetchDuration} spent, or the
+     * counters standing still. Both are comparisons against numbers already in hand, so this is
+     * about how promptly a finished crawl is noticed rather than about cost.
      */
     private Duration completionCheckInterval = Duration.ofSeconds(5);
 
@@ -99,20 +89,13 @@ public class WebCrawlerProperties {
      * How long the counters may stand still before the crawl is wound up.
      *
      * <p>
-     * Standing still means two things and the difference decides whether the version is published.
-     * A small site simply runs out of urls: everything dispatched has been handled, nothing is
-     * queued anywhere, and the quiet is the crawl being finished -- so it is published. The other
-     * quiet is a node that stopped answering while holding urls, or a network that went away
-     * mid-crawl: the counters do not meet, some pages will never arrive, and publishing that would
-     * put a half version in front of searches. The frontier survives either way, so a resume picks
-     * up whatever was missed.
+     * Quiet means two things, and which one decides whether the version is published: a site that
+     * ran out of urls with the counters meeting is finished, while a node that stopped answering
+     * while holding urls leaves a half version. The frontier survives either way, so a resume
+     * picks up what was missed.
      *
      * <p>
-     * It is also, for a site smaller than {@code maxFetchSize}, how long the crawl sits there
-     * after the last page: nothing else ends it. Two minutes is the compromise -- long enough that
-     * a slow site with a fetch still outstanding is not called stalled and a good version thrown
-     * away, short enough that a small site is not left waiting. 1.x used five, for the timeout it
-     * had in the same place.
+     * It is also how long a site smaller than {@code maxFetchSize} sits there after its last page.
      */
     private Duration idleTimeout = Duration.ofMinutes(2);
 
@@ -120,18 +103,10 @@ public class WebCrawlerProperties {
      * How many failed fetches in a row end the crawl, or 0 to never end it on that alone.
      *
      * <p>
-     * A fetch that did not come back as a page counts, whatever the reason: anything outside 2xx
-     * and 3xx, and the requests that never got a status at all. A site is entitled to say no, and
-     * some say it to everything -- a challenge in front of the whole domain answers 403 to every
-     * request a crawler can make, so the crawl fetches nothing, learns nothing, and keeps asking
-     * until {@code fetchDuration} runs out. A host that has gone away looks the same from here.
-     *
-     * <p>
-     * In a row, not in total, and reset by the first page that comes back: a members-only corner
-     * of an otherwise open site is a handful of 403s scattered among successes and must not end
-     * anything, while a door closed to the whole site gives an unbroken run of them. The duration
-     * timeout remains the backstop underneath -- this only decides how much sooner it is obvious,
-     * and it ends the crawl the way a person asking for it does, so nothing is published.
+     * In a row, not in total, and reset by the first page that arrives: a members-only corner of
+     * an open site is a few 403s among successes, while a challenge in front of the whole domain
+     * is an unbroken run. Ends the crawl the way a person asking for it does, so nothing is
+     * published; the duration timeout remains the backstop underneath.
      */
     private int maxConsecutiveFailures = 20;
 
@@ -200,17 +175,12 @@ public class WebCrawlerProperties {
             private String directory = "./data/system/dedup/content";
 
             /**
-             * Hamming distance under which two simhash fingerprints count as the same document.
-             * Only consulted when type is simhash.
+             * Hamming distance under which two simhash fingerprints count as one document.
              *
              * <p>
-             * Three is the classic threshold for a 64 bit fingerprint, and it is calibrated for
-             * long documents: the same edit that moves a three-paragraph article by zero or one
-             * bits moves a single paragraph by five or six, because the edit is a larger share of
-             * what the page says. Raising this catches more near-duplicates on short pages at the
-             * cost of eventually discarding pages that genuinely differ, which is the worse
-             * failure -- so the default stays conservative and {@code minTextLength} keeps the
-             * shortest pages out of the comparison entirely.
+             * Three is the classic threshold for 64 bits and is calibrated for long documents: an
+             * edit moves a short page much further. Raising it eventually discards pages that
+             * genuinely differ, so {@code minTextLength} keeps short ones out instead.
              */
             private int simhashDistance = 3;
 

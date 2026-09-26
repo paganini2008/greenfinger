@@ -26,20 +26,13 @@ import com.github.greenfinger.core.model.Catalog;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Copies the catalog definitions, which are the one thing every node needs before it can do
- * anything at all.
+ * Copies the catalog definitions, which every node needs before it can do anything. Without them a
+ * peer cannot open its half of a crawl, and a seed dispatched to it lands on no frontier -- one url
+ * dispatched, none handled, and nothing reported as failing.
  *
  * <p>
- * This was the first thing to go wrong in a three node run and it went wrong invisibly: the crawl
- * started on one node, that node told the others, and the others had never heard of the catalog,
- * so they could not open their half of it. The seed was then dispatched round robin to a node with
- * no frontier for it. Nothing failed -- the counters simply read one url dispatched, none handled,
- * for as long as anybody cared to watch.
- *
- * <p>
- * The rows are small and change rarely: a definition edited by hand, a running state, a version
- * being promoted. Unlike a resource row, every field of one can change, so what arrives is applied
- * whenever it differs at all rather than on a comparison of particular columns.
+ * The rows are small and change rarely, and unlike a resource row every field can change, so an
+ * arriving copy is applied whenever it differs at all rather than on particular columns.
  * 
  * @Description: ReplicatedCatalogStore
  * @Author: Fred Feng
@@ -154,14 +147,9 @@ public class ReplicatedCatalogStore implements CatalogStore {
     }
 
     /**
-     * Compared as json rather than field by field: a catalog has thirty of them and a comparison
-     * that forgets one goes wrong quietly, which is the failure this whole class exists to fix.
-     *
-     * <p>
-     * Except {@code createdAt} and {@code updatedAt}, which are when the row was written rather
-     * than anything about it. Every save stamps {@code updatedAt} afresh, so including it would
-     * make every copy differ from every other and the check would never once say "already have
-     * this" -- which is exactly what it is for, since delivery is at least once.
+     * Compared as json, not field by field: a catalog has thirty fields and a comparison that
+     * forgets one fails quietly. Timestamps are excluded -- every save re-stamps {@code updatedAt},
+     * so including it would make every copy differ and never once skip a duplicate delivery.
      */
     public static boolean sameAs(Catalog stored, Catalog incoming) {
         try {

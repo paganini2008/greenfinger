@@ -38,17 +38,13 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * The three channels that copy writes between nodes, and the decision of which of them to open.
+ * The three channels that copy writes between nodes, and which of them to open. One that is not
+ * needed is not harmless: into a shared MySQL it writes every row twice. So each opens only when
+ * {@link StoreType} says the store behind it is per node.
  *
  * <p>
- * Opening one that is not needed is not free and not harmless: replicating into a shared MySQL
- * would write every row twice, and replicating into a shared MinIO would upload every image twice.
- * So each is opened only when {@link StoreType} says the store behind it is per node.
- *
- * <p>
- * The dedup channel is always open, because the frontier and the two filters are RocksDB whatever
- * else is configured -- there is no shared variant of them, by design: the frontier is this node's
- * work queue and must not be shared, while the filters must be, which is what this channel is for.
+ * The dedup channel is always open: the frontier and the filters are RocksDB whatever else is
+ * configured, and the filters are exactly what has to be shared.
  * 
  * @Description: ClusterReplication
  * @Author: Fred Feng
@@ -233,13 +229,9 @@ public class ClusterReplication implements ManagedBeanLifeCycle {
     }
 
     /**
-     * What every open channel has done, and whether any of it was lost.
-     *
-     * <p>
-     * The one number worth acting on is {@code lost}: under-delivery is a frame that fell short
-     * and is being offered again, but a loss is a copy somewhere that is permanently behind, and
-     * the only way back for that node is a replay. Reported rather than merely logged because
-     * "this node's answers are wrong" is not something to find out by reading a log file.
+     * What every open channel has done. The number worth acting on is {@code lost}: a copy
+     * somewhere is permanently behind and only a replay puts it right. Reported rather than
+     * logged, because "this node's answers are wrong" should not need a log file to find.
      */
     public List<ChannelStatus> status() {
         List<ChannelStatus> all = new ArrayList<>(4);

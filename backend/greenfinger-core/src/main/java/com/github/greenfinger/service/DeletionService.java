@@ -42,19 +42,17 @@ import com.github.greenfinger.core.output.IndexAdmin;
 import com.github.greenfinger.output.vector.VectorStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import java.util.ArrayList;
+import java.io.File;
 
 /**
  * Removes one or more versions from any combination of the four stores.
  *
  * <p>
- * Deletion runs in the reverse of the order writing runs in -- vector, index, file, then database
- * -- because the database is where the list of what to delete comes from, and removing it first
- * would leave the file paths unknown.
- *
- * <p>
- * Each layer is attempted independently and reported separately: four stores cannot be emptied
- * atomically, so a run that half succeeded must be visible and safely repeatable. Repeating is
- * safe because deleting a version that is already gone does nothing.
+ * In the reverse of the order writing runs in -- vector, index, file, then database -- because
+ * the database is where the list of what to delete comes from. Each layer is attempted and
+ * reported separately: four stores cannot be emptied atomically, so a half-done run has to be
+ * visible and repeatable, which it is because deleting what is already gone does nothing.
  * 
  * @Description: DeletionService
  * @Author: Fred Feng
@@ -99,12 +97,9 @@ public class DeletionService {
     }
 
     /**
-     * Every version of a catalog, leaving the catalog's containers in place.
-     *
-     * <p>
-     * The middle of the three, and the one somebody means by "clean it out": the index is emptied
-     * but still there, the collections keep their other catalogs, the tables keep everybody else's
-     * rows, and the catalog can be crawled again into what it already had.
+     * Every version of a catalog, leaving its containers in place -- what somebody means by
+     * "clean it out": the index is emptied but still there, and the catalog can be crawled again
+     * into what it already had.
      */
     public DeleteReport cleanCatalog(CatalogDetails catalogDetails, Set<DeleteLayer> layers,
             boolean dryRun, boolean force) {
@@ -116,16 +111,12 @@ public class DeletionService {
      * The catalog's data and the containers that held it.
      *
      * <p>
-     * The strongest of the three, and the index is where it differs from cleaning: an index
-     * belongs to one catalog, so it is dropped rather than emptied -- immediate, complete, nothing
-     * to merge afterwards, and it takes with it any documents belonging to versions nothing else
-     * remembers. The other three layers have nothing of their own to drop: a vector collection is
-     * shared by every catalog, so is a table, and a directory is emptied by removing its contents.
-     * For those two, cleaning and deleting are the same statements.
+     * The index is where this differs from cleaning: it belongs to one catalog, so it is dropped
+     * rather than emptied, taking documents of versions nothing else remembers with it. The other
+     * layers are shared, so for them cleaning and deleting are the same statements.
      *
      * <p>
-     * The definition itself is not touched. {@code catalog-delete} removes that, and the two are
-     * deliberately separate.
+     * The definition itself is not touched; {@code catalog-delete} removes that.
      */
     public DeleteReport deleteCatalog(CatalogDetails catalogDetails, Set<DeleteLayer> layers,
             boolean dryRun, boolean force) {
@@ -166,19 +157,15 @@ public class DeletionService {
             for (int version : versions) {
                 deleteOne(catalogDetails, version, layers, dryRun, blobStore, report, wholesale);
             }
-            // Every version is gone, so the catalog is back to defined and never crawled. Leaving
-            // the numbers where they were would have the next crawl write v4 into a catalog whose
-            // v0 to v3 exist nowhere -- a first crawl reporting itself as the fourth, and a
-            // search version pointing at something that was deleted.
+            // Back to defined and never crawled: leaving the numbers would have the next crawl
+            // write v4 into a catalog whose v0 to v3 exist nowhere.
             if (!dryRun && scope != Scope.VERSIONS && layers.contains(DeleteLayer.DB)) {
                 catalogStore.resetVersions(catalogDetails.getId());
                 log.info("Catalog '{}' is empty: back to v0, with nothing to search",
                         catalogDetails.getName());
             }
-            // Said last, and only for a real delete: by this point every layer that replicates
-            // itself has, and what is left is the two that do not. Announced rather than done
-            // here, because "remove the index and the frontier" means a different set of paths on
-            // every node -- each one has to run it against its own.
+            // Last, and only for a real delete: what is left is the two layers that do not
+            // replicate themselves, and their paths differ on every node.
             if (!dryRun) {
                 announcePurge(catalogDetails, versions, layers, scope);
             }
@@ -196,12 +183,9 @@ public class DeletionService {
             throw new WebCrawlerException(
                     "Version " + version + " is being crawled right now. Stop it first.");
         }
-        // Only when versions were named. Emptying a catalog, or deleting it, is a request for all
-        // of it -- the version search is serving is not an oversight there, it is the point, and
-        // asking for a flag to confirm what was just asked for would refuse both whole-catalog
-        // operations on every catalog that has ever finished a crawl. Naming a version is
-        // different: that is somebody removing one of several, and taking the served one out from
-        // under a search that is answering with it deserves to be said out loud.
+        // Only when versions were named: emptying or deleting a catalog is a request for all of
+        // it, served version included. Naming one version is different -- taking the served one
+        // out from under a live search deserves to be said out loud.
         if (scope == Scope.VERSIONS && !force && version == catalogDetails.getSearchVersion()) {
             throw new WebCrawlerException("Version " + version
                     + " is the one search is serving. Pass --force to remove it anyway.");
@@ -209,17 +193,11 @@ public class DeletionService {
     }
 
     /**
-     * Removes a whole catalog from every layer asked for, one statement each.
+     * Removes a whole catalog from every layer asked for, one statement each. Counted per
+     * version before the statement, because afterwards there is nothing to count.
      *
-     * <p>
-     * Counted per version before the statement rather than after, because afterwards there is
-     * nothing to count and the report is still read version by version. Anything belonging to a
-     * version nothing else remembers goes with the rest and appears only in the log line.
-     *
-     * @return per layer, the per version counts, so {@link #deleteOne} knows what to report and
-     *         what it no longer has to do. A layer that is missing from the map is one this did
-     *         not handle -- a dry run, or a statement that failed -- and is done version by
-     *         version as it would have been anyway.
+     * @return per layer, the per version counts. A layer missing from the map was not handled
+     *         here -- a dry run, or a failed statement -- and is done version by version.
      */
     private Map<DeleteLayer, Map<Integer, Long>> deleteWholesale(CatalogDetails catalogDetails,
             List<Integer> versions, Set<DeleteLayer> layers, boolean dryRun, Scope scope,
@@ -322,21 +300,17 @@ public class DeletionService {
     }
 
     /**
-     * The three RocksDB stores a crawl keeps under the system data directory: the frontier, and
-     * the url and content dedup filters. All three are laid out as
-     * {@code {base}/{catalogId}/v{version}}.
+     * The three RocksDB stores a crawl keeps: the frontier and the two dedup filters, laid out
+     * as {@code {base}/{catalogId}/v{version}}.
      *
      * <p>
-     * Nothing searches them, so they are not a layer somebody chooses. They go with the rows,
-     * because that is what they are about: the filters answer "have I fetched this already" and
-     * the frontier holds what is left to fetch, and both of those are questions about rows that
-     * are being removed. Left behind, they are a directory per version that nothing will ever
-     * open again -- and a {@code resume} that found the frontier of a deleted version would start
-     * fetching urls whose rows are gone.
+     * Not a layer somebody chooses -- they go with the rows, because they are about the rows. Left
+     * behind, a {@code resume} would find the frontier of a deleted version and fetch urls whose
+     * rows are gone.
      */
     private List<Path> stateDirectories(String catalogId, Integer version) {
         String scope = version == null ? catalogId
-                : catalogId + java.io.File.separator + "v" + version;
+                : catalogId + File.separator + "v" + version;
         return List.of(Paths.get(webCrawlerProperties.getFrontierDirectory(), scope),
                 Paths.get(webCrawlerProperties.getDedup().getUrl().getDirectory(), scope),
                 Paths.get(webCrawlerProperties.getDedup().getContent().getDirectory(), scope));
@@ -460,18 +434,12 @@ public class DeletionService {
     }
 
     /**
-     * The half of a delete that only ever removes this node's own copy: the embedded index, and
-     * the three RocksDB directories.
+     * The half of a delete that only removes this node's own copy: the embedded index and the
+     * three RocksDB directories. Public because the cluster calls it on the receiving side.
      *
      * <p>
-     * Run here by {@link #delete} as part of the ordinary flow, and run on every other node when
-     * that one announces it. Public because the cluster calls it on the receiving side -- the
-     * instruction that travels is a catalog and a version, and this is what a node does with it.
-     *
-     * <p>
-     * Repeating it is safe and is expected to happen: removing an index that is already empty and
-     * a directory that is already gone are both no-ops, which is what lets the announcement be
-     * sent without waiting to hear who acted on it.
+     * Repeating it is safe and expected -- both removals are no-ops when already done, which is
+     * what lets the announcement be sent without waiting to hear who acted on it.
      *
      * @param version null for every version of the catalog
      * @return documents removed from this node's index. Zero when the index is shared, because
@@ -525,19 +493,14 @@ public class DeletionService {
     }
 
     /**
-     * Every collection whose name starts with a configured prefix.
-     *
-     * <p>
-     * Asked of the store rather than assumed, because the width of the vectors is part of the
-     * collection's name -- {@code greenfinger_text_384} -- and the width comes from the embedding
-     * model, which is not loaded when a version is being deleted. Using the bare prefix as the
-     * name, which is what this did until 2026-09-02, addressed a collection that has never
-     * existed: it deleted nothing, counted nothing, and reported "0", which reads exactly like
-     * "there was nothing there".
+     * Every collection whose name starts with a configured prefix. Asked of the store rather
+     * than assumed: the vector width is part of the name -- {@code greenfinger_text_384} -- and
+     * comes from a model that is not loaded during a delete. The bare prefix names nothing, and
+     * deleting nothing reports "0", which reads like "there was nothing there".
      */
     private List<String> collections(VectorStore vectorStore) throws Exception {
         OutputProperties.Vector config = outputProperties.getVector();
-        List<String> collections = new java.util.ArrayList<>();
+        List<String> collections = new ArrayList<>();
         collections.addAll(vectorStore.collectionsMatching(config.getTextCollection()));
         collections.addAll(vectorStore.collectionsMatching(config.getImageCollection()));
         return collections;
@@ -551,15 +514,9 @@ public class DeletionService {
     }
 
     /**
-     * The pages and pictures of one version, and what else goes with them.
-     *
-     * <p>
-     * Counted the same way whether it is being predicted or performed, which it was not: the dry
-     * run counted pages and pictures, the delete returned every row it had touched -- the
-     * page-to-picture references and the run report as well -- and a preview of 293 items was
-     * followed by "removed 397". Both numbers were true and the pair was not, and the one worth
-     * showing is the one somebody can recognise: the things they crawled, not the rows underneath
-     * them. The whole-catalog path already counted it this way, so the two agree now too.
+     * The pages and pictures of one version. Counted the same way whether predicted or
+     * performed -- a preview of 293 followed by "removed 397" was both numbers being true and the
+     * pair not. The one worth showing is what somebody recognises: pages, not the rows under them.
      */
     private long deleteDb(CatalogDetails catalogDetails, int version, boolean dryRun) {
         long kept = recordStore.countByCatalog(catalogDetails.getId(), version)

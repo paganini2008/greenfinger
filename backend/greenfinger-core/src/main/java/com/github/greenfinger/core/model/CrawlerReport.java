@@ -29,25 +29,15 @@ import lombok.Setter;
 import lombok.ToString;
 
 /**
- * What one version of one catalog cost to build, kept in the database.
+ * What one version of one catalog cost to build. One row per {@code (catalog, version)} holding the
+ * whole picture as json: per-node counters and totals, the cluster as it stood, the stores written
+ * into, and the settings the run used. Re-running a version rewrites the row and moves
+ * {@code updated_at}; {@code created_at} still says when it was first built.
  *
  * <p>
- * There is already a report per run beside the pages themselves, and it stays: it is written by
- * every node, it survives the database being thrown away, and a directory copied elsewhere carries
- * its own account of how it was made. What it cannot do is be queried, and it cannot be read at all
- * once its version has been deleted -- which is exactly when somebody wants to know what that
- * version had been.
- *
- * <p>
- * So this row is the other half: one per {@code (catalog, version)}, holding the whole picture as
- * json -- every node's counters and the totals, the cluster as it stood, the database and blob
- * store the run wrote into, how many files and images came out of it, and the settings the crawl
- * ran under. Re-running the same version -- an update, a resume -- rewrites the row and moves
- * {@code updated_at}; {@code created_at} keeps saying when that version was first built.
- *
- * <p>
- * The content is json rather than fifty columns because the shape is a report, not a model: it
- * grows a field whenever there is one more thing worth recording, and none of it is ever joined on.
+ * The per-run report file beside the pages stays -- it survives the database being thrown away --
+ * but it cannot be queried, and it is gone once the version is deleted, which is when somebody
+ * wants it. Json rather than fifty columns: nothing here is ever joined on.
  * 
  * @Description: CrawlerReport
  * @Author: Fred Feng
@@ -82,25 +72,9 @@ public class CrawlerReport implements Serializable {
     private Integer version;
 
     /**
-     * The whole report, as json.
-     *
-     * <h2>A length rather than {@code @Lob}</h2>
-     * {@code @Lob} on a String means "a character large object", and every dialect has its own
-     * idea of what that is. Two of them are wrong for a json document:
-     *
-     * <ul>
-     * <li><b>MySQL</b> chose {@code tinytext} -- 255 bytes. Every crawl on MySQL failed to record
-     * its report with "Data too long for column 'content'", and the crawl itself went on
-     * perfectly, so the only sign was a warning in a log.</li>
-     * <li><b>PostgreSQL</b> chose {@code oid}, which is a reference to a large object rather than
-     * text: it is written through the large-object api inside a transaction, not with
-     * {@code setString}, and what ends up in the column is a number.</li>
-     * </ul>
-     *
-     * A declared length picks the right type on every one of them instead: {@code longtext} on
-     * MySQL, {@code text} on PostgreSQL, {@code clob} on Oracle, {@code varchar(max)} on SQL
-     * Server, and a large {@code varchar} on H2 and SQLite. A million characters is far more than
-     * a report and costs nothing on any of them -- none of these types reserves the space.
+     * The whole report, as json. A declared length, never {@code @Lob}: MySQL maps that to
+     * {@code tinytext} (255 bytes) and PostgreSQL to {@code oid}, which stores a large-object
+     * reference instead of the text. The length maps to the right type on every dialect.
      */
     @Column(name = "content", nullable = false, length = 1_000_000)
     private String content;

@@ -29,6 +29,7 @@ import com.chaconneai.openspreader.cluster.SelfRegisteringListener;
 import com.chaconneai.spreader.GossipCluster;
 import com.chaconneai.spreader.Node;
 import com.chaconneai.spreader.event.BufferedGossipListener;
+import com.github.greenfinger.cluster.Channels;
 import com.github.greenfinger.cluster.ClusterProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.LoggerFactory;
@@ -37,37 +38,14 @@ import org.slf4j.LoggerFactory;
  * One kind of write, copied to every other node.
  *
  * <p>
- * Used for the three stores that give each process its own copy of the data: a file-backed
- * database, the RocksDB dedup filters, and a blob directory on local disk. A shared server --
- * MySQL, MinIO, Elasticsearch -- needs none of this, and {@code StoreType} is what decides.
- *
- * <h2>Sending</h2>
- * Multicast, excluding self, because the write has already happened here -- that is what there is
- * to tell the others about. Batched, because these are small and frequent.
- *
- * <h2>Receiving: one consumer, and only ever additive</h2>
- * A single consumer thread, unlike the crawl channel: urls have no order between them but two
- * updates to the same row do, and two threads applying them concurrently could leave the older
- * one last.
+ * For the three stores that keep a copy per process -- a file database, the RocksDB filters, a
+ * local blob directory. A shared server needs none of it, and {@code StoreType} decides.
  *
  * <p>
- * What arrives is applied as "make sure this is here", never as "overwrite whatever is there".
- * Delivery is at least once -- a frame whose acknowledgement was lost is sent again, and the
- * receiver's own deduplication has a window rather than a memory -- so an applier that is not
- * idempotent will eventually write the same thing twice. Checking first costs one lookup.
- *
- * <h2>Under-delivery is not silence any more</h2>
- * The transport acknowledges and retries on its own, and gives up after
- * {@code GossipConfig.payloadRetries()}. It says so by returning how many members took the frame
- * -- a number this class used to discard, which is what made a lost write look exactly like a
- * successful one. A frame that did not reach everybody is now held and sent again, a bounded
- * number of times, and what is still missing at the end of that is counted and logged at error
- * rather than forgotten.
- *
- * <p>
- * Re-sending goes to everybody, not to whoever was missing: the transport does not say which
- * member refused it, and every applier here is idempotent by construction, so the cost of telling
- * a node something it already knows is one lookup.
+ * Sending is a batched multicast excluding self; receiving is a single consumer thread, because two
+ * updates to one row have an order two threads could invert. What arrives is applied as "make sure
+ * this is here", never as an overwrite, since delivery is at least once -- which is also why a
+ * frame that missed a member is re-offered to everybody, and logged at error if it still misses.
  * 
  * @Description: ReplicationChannel
  * @Author: Fred Feng
@@ -105,11 +83,7 @@ public class ReplicationChannel extends BufferedGossipListener
 
     /**
      * A frame the transport could not place everywhere, and how many times it has been offered.
-     *
-     * <p>
-     * The encoded bytes are kept rather than the entries: re-encoding would be the same work
-     * twice, and a frame that is already framed is one that can go back out without touching the
-     * batching rules it was built under.
+     * The encoded bytes are kept rather than the entries, so it goes back out untouched.
      */
     private record Pending(byte[] frame, int entries, int attempts) {}
 
@@ -168,7 +142,7 @@ public class ReplicationChannel extends BufferedGossipListener
      */
     @Override
     public void replicate(ReplicationBatch.Entry entry) {
-        if (cluster.members().size() < 2) {
+        if (crawlers() < 2) {
             // alone: nobody to tell, and queuing would only grow
             return;
         }
@@ -211,12 +185,21 @@ public class ReplicationChannel extends BufferedGossipListener
      * @param attempts how many times this frame has already been offered, so a frame that keeps
      *                 falling short is given up on rather than retried for ever
      */
+    /**
+     * How many crawler nodes there are, which is not how many members there are: a terminal is a
+     * member with nowhere to put a copy, so counting it would have every frame reported as having
+     * missed somebody and retried until it was given up on.
+     */
+    private int crawlers() {
+        return cluster.membersOf(Channels.crawlers(cluster)).size();
+    }
+
     private void send(byte[] frame, int entries, int attempts) {
         // read before the send: a member that leaves between the two would otherwise make a
         // complete delivery look short
-        int expected = Math.max(0, cluster.members().size() - 1);
+        int expected = Math.max(0, crawlers() - 1);
         // never to self: this node is where the write came from
-        int delivered = cluster.multicastOn(channel, null, frame, false);
+        int delivered = cluster.multicastOn(channel, Channels.crawlers(cluster), frame, false);
         sent.addAndGet(entries);
         if (delivered >= expected) {
             return;
@@ -248,15 +231,12 @@ public class ReplicationChannel extends BufferedGossipListener
     }
 
     /**
-     * Offers every held frame once more.
-     *
-     * <p>
-     * Drained into a list first: {@link #send} puts a frame that is still short straight back on
-     * the queue, and reading the queue while writing to it would retry the same frame until it
-     * either succeeded or ran out of attempts, inside one pass.
+     * Offers every held frame once more. Drained into a list first: {@link #send} puts a short
+     * frame straight back, so reading the queue while writing it would retry one frame to
+     * exhaustion inside a single pass.
      */
     void retryPending() {
-        if (retries.isEmpty() || cluster.members().size() < 2) {
+        if (retries.isEmpty() || crawlers() < 2) {
             return;
         }
         List<Pending> due = new ArrayList<>(retries.size());

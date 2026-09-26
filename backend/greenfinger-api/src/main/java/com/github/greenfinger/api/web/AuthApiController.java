@@ -29,12 +29,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 import com.github.greenfinger.api.security.TokenAuthenticationFilter;
 import com.github.greenfinger.api.security.TokenStore;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import java.util.Collection;
 
 /**
  * Signing in and out.
@@ -50,7 +50,7 @@ import lombok.RequiredArgsConstructor;
  * @Version 2.0.0
  */
 @Validated
-@RestController
+@ApiEndpoint
 @RequestMapping("${greenfinger.api.prefix:/v2}")
 @RequiredArgsConstructor
 public class AuthApiController {
@@ -93,7 +93,7 @@ public class AuthApiController {
     }
 
     private static List<String> authorities(
-            java.util.Collection<? extends GrantedAuthority> granted) {
+            Collection<? extends GrantedAuthority> granted) {
         return granted.stream().map(GrantedAuthority::getAuthority).sorted().toList();
     }
 

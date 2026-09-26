@@ -26,25 +26,13 @@ import org.jsoup.select.Elements;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Separates the article from the furniture around it.
+ * Separates the article from the furniture around it -- navigation, sidebar and cookie banner are
+ * the biggest source of noise in the index and in every embedding.
  *
  * <p>
- * Taking the whole body puts the navigation, the sidebar, the cookie banner and the footer into
- * the index and into every embedding. It is the single biggest source of noise in both: a search
- * matches a word that only ever appeared in a menu, and a page's vector ends up describing the
- * site's chrome rather than what the page is about.
- *
- * <p>
- * The method is the one boilerplate detection has used since Boilerpipe (Kohlschutter et al.,
- * "Boilerplate Detection using Shallow Text Features", WSDM 2010) and Readability: score the
- * candidate blocks by how much prose they hold against how much of that prose is inside links, and
- * keep the best one. No model, no dictionary, and it works the same in any language -- which
- * matters here, because the crawler is not told what language a page is in.
- *
- * <p>
- * It gives up rather than guesses. When nothing scores well -- a page that really is a listing, or
- * markup too unusual to read -- the whole body is used, on the grounds that indexing too much
- * beats indexing nothing.
+ * The Boilerpipe/Readability method: score candidate blocks by prose against prose inside links. No
+ * model and no dictionary, so it works in any language, which matters because the crawler is never
+ * told which one a page is in. When nothing scores well it uses the whole body rather than guess.
  * 
  * @Description: ContentExtractor
  * @Author: Fred Feng
@@ -168,18 +156,10 @@ public class ContentExtractor {
     }
 
     /**
-     * Length as a measure of how much was said, not of how many characters were typed.
-     *
-     * <p>
-     * A threshold in characters is a threshold in English. Two hundred characters of English is a
-     * couple of sentences; two hundred characters of Chinese is several paragraphs, because a han
-     * character carries roughly what an English word does. Counting them at face value makes every
-     * CJK article look too short to be one, and the extractor quietly falls back to the whole page
-     * for an entire language.
-     *
-     * <p>
-     * Each CJK character is therefore counted as {@value #CJK_WEIGHT} so that one threshold means
-     * the same thing in either script.
+     * Length as a measure of how much was said, not how many characters were typed. A han character
+     * carries about what an English word does, so counting at face value makes every CJK article
+     * look too short and falls back to the whole page for an entire language. Each CJK character
+     * therefore counts as {@value #CJK_WEIGHT}.
      */
     static int weightedLength(String text) {
         if (text == null || text.isEmpty()) {

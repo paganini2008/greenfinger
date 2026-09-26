@@ -34,20 +34,17 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.LinkedHashMap;
 
 /**
- * One crawl's counters, held in the cluster cache so that every node's Monitor page shows the
- * crawl rather than its own share of it.
+ * One crawl's counters, in the cluster cache, so every node's Monitor page shows the crawl rather
+ * than its own share of it.
  *
- * <h2>Reads are free, writes are not</h2>
- * Every process holds a full replica of the cache, so a read never leaves the JVM -- which is what
- * makes it reasonable for a page that refreshes every second to ask for eight counters. A write is
- * a round trip to whichever node holds the cluster port, measured in the low thousands per second
- * for the whole cluster, which a crawl would saturate on its own. That is why increments are
- * accumulated in {@link ClusterGlobalStateManager} and arrive here already summed.
+ * <p>
+ * Reads are free and writes are not: every process holds a replica, but a write is a round trip
+ * to the node holding the cluster port, which a crawl would saturate -- so increments arrive here
+ * already summed by {@link ClusterGlobalStateManager}.
  *
- * <h2>What stays local</h2>
- * The rolling average execution time. It is a property of this node's network and disk, and
- * averaging four nodes' averages would describe none of them. Everything a decision is made on --
- * the counters, the start time, the completion flag -- is shared.
+ * <p>
+ * The rolling average execution time stays local: it is a property of this node's disk and
+ * network, and averaging four averages describes none of them.
  * 
  * @Description: ClusterDashboard
  * @Author: Fred Feng
@@ -78,19 +75,13 @@ public class ClusterDashboard implements Dashboard, ManagedBeanLifeCycle {
     }
 
     /**
-     * Every node in the crawl calls this, and what it does depends on which node.
+     * Every node calls this, and what it does depends on which node.
      *
      * <p>
-     * The node the run was started on clears everything first. These keys outlive the process that
-     * wrote them -- they are in the shared cache, with a day's expiry -- so a second crawl of the
-     * same catalog at the same version would otherwise inherit the first one's counters and, worse,
-     * its completion flag: the run would be over before it began. 1.x reset the whole dashboard on
-     * the initiating node for exactly this reason, and only on that node, because a node joining a
-     * crawl in progress must not zero the counters it is about to add to.
-     *
-     * <p>
-     * A joining node only sets the clock if nobody has: {@code setIfAbsent} is what stops the
-     * second node restarting the elapsed time.
+     * The initiating node clears first: these keys outlive the process that wrote them, so a
+     * second crawl at the same version would inherit the first one's counters and its completion
+     * flag -- over before it began. Only that node, because a node joining a running crawl must
+     * not zero what it is about to add to, and {@code setIfAbsent} stops it restarting the clock.
      */
     @Override
     public void afterPropertiesSet() throws Exception {

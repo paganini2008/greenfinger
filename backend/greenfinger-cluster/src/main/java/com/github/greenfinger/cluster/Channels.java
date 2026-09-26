@@ -17,19 +17,11 @@
 package com.github.greenfinger.cluster;
 
 /**
- * The channels this application talks on.
- *
- * <p>
- * A channel is a subscription filter: a listener registered on one never sees traffic from
- * another. Splitting by purpose rather than sharing one matters here because the traffic shapes
- * are opposite. A crawl task is unicast to exactly one node and must never be handled twice; a
- * replication record is multicast to every node and must reach all of them; a control message is a
- * handful of bytes that has to be acted on immediately rather than queued behind ten thousand
- * urls.
- *
- * <p>
- * One shared channel would put all three in the same inbound buffer, where a burst of urls delays
- * the stop signal that is trying to end that very burst.
+ * The channels this application talks on. A channel is a subscription filter, and these three are
+ * split because their traffic shapes are opposite: a crawl task is unicast to one node and must not
+ * be handled twice, a replication record is multicast and must reach everybody, and a control
+ * message is a few bytes that must be acted on at once. Sharing one buffer would let a burst of
+ * urls delay the stop signal trying to end that burst.
  * 
  * @Description: Channels
  * @Author: Fred Feng
@@ -37,6 +29,15 @@ package com.github.greenfinger.cluster;
  * @Version 2.0.0
  */
 public final class Channels {
+
+    /**
+     * The application a crawler's traffic is addressed to: its own. The terminal joins the same
+     * cluster under a name of its own and runs no engine, so a url dispatched to it is a url
+     * nothing ever handles -- the crawl then stalls with one unaccounted for.
+     */
+    public static String crawlers(com.chaconneai.spreader.GossipCluster cluster) {
+        return cluster.self().name();
+    }
 
     /** One url, unicast to whichever node the balancer picks. The recursive call itself. */
     public static final String CRAWL = "greenfinger.crawl";

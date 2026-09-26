@@ -39,6 +39,7 @@ import com.github.greenfinger.core.record.ResourceRecordStore.PageState;
 import com.github.greenfinger.core.utils.HashUtils;
 import com.github.greenfinger.core.utils.UuidUtils;
 import lombok.RequiredArgsConstructor;
+import java.util.Objects;
 
 /**
  * The database half of the write path.
@@ -208,7 +209,7 @@ public class JpaResourceRecordStore implements ResourceRecordStore {
         List<ResourceRecord.ImageRecord> images = references.stream()
                 .map(ref -> imageRepository.findById(ref.getImageId())
                         .map(image -> new ResourceRecord.ImageRecord(image, ref)).orElse(null))
-                .filter(java.util.Objects::nonNull).toList();
+                .filter(Objects::nonNull).toList();
         return new ResourceRecord(resource, images);
     }
 

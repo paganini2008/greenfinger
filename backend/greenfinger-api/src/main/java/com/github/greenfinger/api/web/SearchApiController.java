@@ -22,7 +22,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.core.catalog.CatalogDetailsService;
 import com.github.greenfinger.core.model.Catalog;
@@ -33,6 +32,7 @@ import com.github.greenfinger.output.OutputProperties;
 import com.github.greenfinger.core.output.Searcher;
 import com.github.greenfinger.output.vector.VectorHit;
 import com.github.greenfinger.service.CatalogAdminService;
+import com.github.greenfinger.service.StoredListing;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -49,7 +49,7 @@ import lombok.RequiredArgsConstructor;
  * @Date: 30/08/2026
  * @Version 2.0.0
  */
-@RestController
+@ApiEndpoint
 @RequestMapping("${greenfinger.api.prefix:/v2}/search")
 @RequiredArgsConstructor
 public class SearchApiController {
@@ -88,11 +88,48 @@ public class SearchApiController {
             throws Exception {
         List<String> versions = searchableVersions(catalogRef);
         if (versions.isEmpty()) {
-            return ApiResult.failed("Nothing has finished crawling yet");
+            return ApiResult.failed(nothingToSearch(catalogRef));
         }
         Searcher searcher = outputFactory.getSearcher();
         return ApiResult.ok(searcher.search(SearchRequest.builder().keyword(keyword).cat(cat)
-                .catalogVersions(versions).page(page).pageSize(size).cursor(cursor).build()));
+                .catalogVersions(versions).page(page).pageSize(size).cursor(typed(cursor))
+                .build()));
+    }
+
+    /**
+     * The cursor as the stores expect it, rather than as a query string leaves it.
+     *
+     * <p>
+     * A cursor is the previous page's last sort key -- here the score and the id -- and it goes
+     * back out as json and comes back in as query parameters, where everything is a string. The
+     * score has to be a number again: Lucene compares it against a float and Elasticsearch puts it
+     * in {@code search_after} beside a {@code _score} sort. Sending the string made the next page
+     * come back empty while the total still said there was more, which is a lie no test below this
+     * layer could catch, because below this layer the value is still a float.
+     *
+     * <p>
+     * Only the first element is converted. The rest is the tiebreaker, which is an id and stays
+     * text even when it happens to look like a number.
+     */
+    static List<Object> typed(List<Object> cursor) {
+        if (cursor == null || cursor.isEmpty()) {
+            return cursor;
+        }
+        List<Object> typed = new ArrayList<>(cursor);
+        typed.set(0, numberOrText(typed.get(0)));
+        return typed;
+    }
+
+    private static Object numberOrText(Object value) {
+        if (value instanceof Number || value == null) {
+            return value;
+        }
+        try {
+            return Double.valueOf(String.valueOf(value).trim());
+        } catch (NumberFormatException e) {
+            // not a score: let the store say so, with the cursor it was actually given
+            return value;
+        }
     }
 
     /**
@@ -107,7 +144,7 @@ public class SearchApiController {
             @RequestParam(value = "offset", defaultValue = "0") int offset) throws Exception {
         List<String> versions = searchableVersions(catalogRef);
         if (versions.isEmpty()) {
-            return ApiResult.failed("Nothing has finished crawling yet");
+            return ApiResult.failed(nothingToSearch(catalogRef));
         }
         if (StringUtils.isBlank(keyword)) {
             return ApiResult.ok(listing.pages(versions, size, capped(offset)));
@@ -128,7 +165,7 @@ public class SearchApiController {
             @RequestParam(value = "offset", defaultValue = "0") int offset) throws Exception {
         List<String> versions = searchableVersions(catalogRef);
         if (versions.isEmpty()) {
-            return ApiResult.failed("Nothing has finished crawling yet");
+            return ApiResult.failed(nothingToSearch(catalogRef));
         }
         if (StringUtils.isBlank(keyword)) {
             return ApiResult.ok(listing.images(versions, size, capped(offset)));
@@ -157,6 +194,25 @@ public class SearchApiController {
      */
     private static int capped(int offset) {
         return Math.max(0, Math.min(offset, MAX_OFFSET));
+    }
+
+    /**
+     * Why there is nothing to search, which is two different answers.
+     *
+     * <p>
+     * An installation where no crawl has ever finished has nothing anywhere, and "nothing has
+     * finished crawling yet" is the whole truth. A catalog picked from the dropdown that has no
+     * published version is a different thing entirely: the rest of the page is full of results,
+     * and telling that reader nothing has finished crawling is simply false. It has -- for
+     * somebody else.
+     */
+    private String nothingToSearch(String catalogRef) {
+        if (StringUtils.isBlank(catalogRef)) {
+            return "Nothing has finished crawling yet";
+        }
+        Catalog catalog = catalogAdminService.require(catalogRef);
+        return "'" + catalog.getName() + "' has no version being served yet. It appears in search"
+                + " once a crawl of it finishes; other catalogs are unaffected.";
     }
 
     private List<String> searchableVersions(String catalogRef) {

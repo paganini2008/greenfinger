@@ -31,16 +31,10 @@ import lombok.extern.slf4j.Slf4j;
  * How much of the blob store a crawl has taken, and in how many files.
  *
  * <p>
- * Counted from the store rather than from the database, because the two answer different
- * questions. The database says what this node recorded; the store says what is actually occupying
- * the disk or the bucket, including the versions nobody has pruned yet and, on a shared MinIO,
- * the files the other nodes wrote. Somebody asking how much space this is taking wants the
- * second.
- *
- * <p>
- * Walked on demand and never on a timer. Listing a prefix is a directory walk on local disk and a
- * paged list call on MinIO, and both cost real time on a large crawl -- acceptable when a person
- * asked for the number, wrong to pay every few seconds because a page is open.
+ * Counted from the store, not the database: the database says what this node recorded, the store
+ * says what is occupying the disk or bucket -- unpruned versions included, and on a shared MinIO
+ * the other nodes' files too. Walked on demand and never on a timer, since listing a prefix costs
+ * real time on a large crawl.
  *
  * @Description: StorageUsageService
  * @Author: Fred Feng

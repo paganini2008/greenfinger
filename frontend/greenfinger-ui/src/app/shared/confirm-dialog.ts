@@ -12,11 +12,8 @@ export interface ConfirmData {
 }
 
 /**
- * The pause before something irreversible.
- *
- * Used for exactly two things -- deleting a catalog, and deleting crawled versions -- and not for
- * starting a crawl, which is undone by interrupting it. A confirmation asked for everything is a
- * confirmation nobody reads.
+ * The pause before something irreversible: deleting a catalog, and deleting versions. Not for
+ * starting a crawl, which interrupting undoes -- a confirmation asked for everything is unread.
  */
 @Component({
   selector: 'gf-confirm-dialog',
@@ -46,18 +43,9 @@ export interface ConfirmData {
     }
 
     /*
-     * The one place red is allowed.
-     *
-     * The palette is green and white, and it stayed that way here for a while: the button that
-     * empties a catalog looked exactly like the button that saves one, because Material M3
-     * ignores color="warn" on mat-flat-button and the destructive flag only ever reached the
-     * icon. Colour is the last thing between somebody and an irreversible act, and a rule about
-     * the palette is not worth that.
-     *
-     * Outlined rather than filled, though. A red slab is the loudest thing this application can
-     * draw and it would be drawn at the moment somebody is already being careful; the border and
-     * the word are enough to say "this one is different", and the dialog has already said what
-     * it will do.
+     * The one place red is allowed: Material ignores color="warn" on mat-flat-button, so the
+     * button that empties a catalog looked like the one that saves it. Outlined rather than
+     * filled -- a red slab is the loudest thing here, drawn when somebody is already careful.
      */
     .gf-destructive {
       --mdc-filled-button-container-color: transparent;

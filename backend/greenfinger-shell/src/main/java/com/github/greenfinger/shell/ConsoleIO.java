@@ -23,20 +23,21 @@ import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.nio.charset.Charset;
 import org.springframework.stereotype.Component;
+import java.util.Set;
+import java.util.Locale;
 
 /**
  * Reading a line from whoever is at the other end, and saying whether there is anybody there.
  *
  * <p>
- * Two commands need this and nothing else does. {@code catalog-save} asks a question per field, and
- * {@code status} watches for the key that ends the watch. Both have to behave when there is no
- * terminal -- a script pipes a here-document into the first, and redirects the second to a file --
- * and neither may hang waiting for input that will never arrive.
+ * Two commands need it: {@code catalog-save} asks a question per field and {@code status} watches
+ * for the key that ends the watch. Both must behave with no terminal -- piped here-documents,
+ * redirected output -- and never hang on input that will not arrive.
  *
  * <p>
  * {@link Console} first, because the interactive shell reads through it and a second reader on
- * {@code System.in} would take the buffered characters out from under it. The stream is the
- * fallback for the redirected case, where {@code System.console()} is null on this jdk.
+ * {@code System.in} would steal its buffered characters; the stream is the redirected fallback,
+ * where {@code System.console()} is null.
  * 
  * @Description: ConsoleIO
  * @Author: Fred Feng
@@ -47,7 +48,7 @@ import org.springframework.stereotype.Component;
 public class ConsoleIO {
 
     /** The words that end a live view. */
-    private static final java.util.Set<String> QUIT = java.util.Set.of("q", "quit", "exit");
+    private static final Set<String> QUIT = Set.of("q", "quit", "exit");
 
     /** The word that abandons an interactive command. */
     public static final String CANCEL = "cancel";
@@ -136,7 +137,7 @@ public class ConsoleIO {
      */
     public boolean quitRequested() {
         String typed = pollLine();
-        return typed != null && QUIT.contains(typed.trim().toLowerCase(java.util.Locale.ROOT));
+        return typed != null && QUIT.contains(typed.trim().toLowerCase(Locale.ROOT));
     }
 
     public static boolean isCancel(String answer) {

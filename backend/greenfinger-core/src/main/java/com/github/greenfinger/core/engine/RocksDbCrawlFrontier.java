@@ -80,16 +80,13 @@ public class RocksDbCrawlFrontier implements CrawlFrontier {
     }
 
     /**
-     * Counts what a previous run left behind and positions the write sequence past it, so recovered
-     * tasks are handed out before anything newly discovered.
+     * Counts what a previous run left behind and positions the write sequence past it, so
+     * recovered tasks go out before anything newly discovered.
      *
      * <p>
-     * The urls the last run remembered queuing are forgotten here, and only the ones still in the
-     * queue are remembered again. What {@code u:} answers is "has this run queued it", not "has
-     * this version ever held it" -- a refresh writes the same version into the same store and
-     * re-queues the very pages the run before it fetched, which is the whole point of a refresh.
-     * Kept across the restart, that memory would refuse every one of them and a refresh would
-     * crawl nothing.
+     * The urls it remembered queuing are forgotten, and only those still queued remembered again:
+     * {@code u:} answers "has this run queued it", and kept across a restart it would refuse every
+     * page a refresh exists to re-queue.
      */
     private void recover() throws Exception {
         forgetQueuedUrls();
@@ -120,24 +117,10 @@ public class RocksDbCrawlFrontier implements CrawlFrontier {
     }
 
     /**
-     * Queues a task, unless this url has been queued before.
-     *
-     * <p>
-     * Delivery through the cluster is at-least-once, so the same task can arrive twice, and every
-     * path into the queue meets here -- a task from a peer, one the dispatcher kept locally, a
-     * sitemap seed, one recovered from the last run. Queuing it again costs a second fetch, a
-     * second parse and a second request the site did not need to serve, and is then refused by the
-     * database's unique constraint, which is where this used to be discovered.
-     *
-     * <p>
-     * Not the same question as {@code ExistingUrlPathFilter}, which cannot answer it: that one is
-     * set before the task is dispatched, so by the time a duplicate arrives it says "seen" to the
-     * duplicate and to the original alike. This asks whether the queue has already taken it.
-     *
-     * <p>
-     * The store is scoped to this catalog and version, so the key space is this run's and goes
-     * when it does. It is a persisted key rather than a set in memory for the same reason the
-     * queue is: a crawl of a large site holds more urls than a heap wants to.
+     * Queues a task, unless this url has been queued before -- delivery is at-least-once, so
+     * without it a duplicate costs a fetch and parse before the unique constraint refuses it. Not
+     * {@code ExistingUrlPathFilter}'s question, which is set before dispatch and says "seen" to the
+     * original too. Persisted, for the same reason the queue is.
      */
     @Override
     public boolean put(CrawlTask task) throws Exception {

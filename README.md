@@ -120,10 +120,10 @@ vector collection you can ask questions of. One command with one url is enough t
 │   │                                       #   one recursive call, plus the replication that
 │   │                                       #   keeps every node's copy complete
 │   ├── 📂 greenfinger-api                  # the server: REST api, login, and the page it serves
-│   └── 📂 greenfinger-shell                # the command line application
+│   └── 📂 greenfinger-shell                # the one-line crawler and the greenfinger:> prompt
 ├── 📂 deploy                               # what you run -- made by the build, not in git
 │   ├── 📜 greenfinger-cli.sh               # one command, run once
-│   ├── 📜 greenfinger-face.sh              # the greenfinger:> prompt
+│   ├── 📜 greenfinger-shell.sh             # the greenfinger:> prompt
 │   ├── 📜 run-local.sh                     # the server: api and front end, n nodes
 │   ├── 📜 run-docker.sh                    # the same, in containers
 │   ├── 📜 run.conf                         # what every launcher reads
@@ -155,7 +155,7 @@ copy of every file and it is the one you edit:
 
 | In deploy/ | Edited in |
 |---|---|
-| `greenfinger-cli.sh`, `greenfinger-face.sh`, `run.conf`, `.env.example` | `backend/greenfinger-shell/src/main/resources/bin/` |
+| `greenfinger-cli.sh`, `greenfinger-shell.sh`, `run.conf`, `.env.example` | `backend/greenfinger-shell/src/main/resources/bin/` |
 | `run-local.sh`, `run-docker.sh` | `backend/greenfinger-api/src/main/resources/bin/` |
 | `config/` | `backend/greenfinger-shell/src/main/resources/config/` |
 | `docker/Dockerfile`, `dockerignore` | `backend/greenfinger-api/src/main/resources/docker/` |
@@ -170,13 +170,27 @@ delete. `.env` is never copied at all; `.env.example` is what ships.
 ## Quick start
 -----------------------------
 
-Two steps: describe what to crawl, then run it. The first is a set of questions, and only the url
-has no default -- everything else has a value chosen to give a useful crawl on a site you know
-nothing about, so it is mostly return.
+One command, and nothing has to be installed, configured or signed up for first.
 
 ``` shell
 cd deploy
-./greenfinger-face.sh
+./greenfinger-cli.sh --cluster=demo crawl --url=https://books.toscrape.com
+```
+
+That defines a catalog for the url and crawls it: up to 10,000 pages with no depth limit, a second
+apart, images downloaded, the metadata in an H2 file and the pages under `./data`. A dashboard is
+drawn while it runs, and when it ends the catalog id is printed with the commands that take it.
+
+`--cluster=<name>` is required and has no default. A cluster crawls one catalog at a time, so the
+name is what keeps two runs apart -- and `--cluster-port=<port>` (22000) is what lets them run at
+the same moment.
+
+The prompt is the other way round: it crawls nothing itself. It attaches to a cluster that is
+already running and drives it, exactly as the web page does -- so the nodes come first.
+
+``` shell
+./run-local.sh                                       # the nodes
+./greenfinger-shell.sh --cluster=greenfinger-local   # a prompt on them
 
 greenfinger:> catalog-save
 New catalog
@@ -189,37 +203,38 @@ Id: 01a064a8-af7f-7000-b7b3-7628bd8a1fc3
   start now      (no | crawl | update | rebuild) [no]: crawl
 ```
 
-That crawls up to 10,000 pages with no depth limit, a second apart, downloads the images, records
-the metadata in an H2 file and writes the pages under `./data`. Nothing has to be installed and no
-account has to be opened.
+Only the url has no default. Everything else has a value chosen to give a useful crawl on a site
+you know nothing about, so the form is mostly return.
 
 The id it printed is what every other command takes -- never the name, which is editable and would
 make a script correct only until somebody renamed a catalog. `catalog-list` prints the ids.
 
+**The two faces do different jobs.** The one-line form is a crawler, for a cron entry or a deploy
+script: seven verbs and an exit code, and when the command is done the process is gone.
+
 ``` shell
-./greenfinger-cli.sh catalog-list                            # the ids
-./greenfinger-cli.sh catalog-crawl --id=<id>                 # crawl from the start url
-./greenfinger-cli.sh catalog-crawl --id=<id> --node=3        # three processes on this machine
-./greenfinger-cli.sh update --id=<id>                        # take urls that appeared since
-./greenfinger-cli.sh update --id=<id> --refresh=true         # and merge what changed
-./greenfinger-cli.sh rebuild --id=<id>                       # a new version, old one still served
-./greenfinger-cli.sh versions --id=<id>                      # what versions there are
-./greenfinger-cli.sh crawler-report --id=<id>                # what the last one cost
-./greenfinger-cli.sh search --query "some words"             # full text
-./greenfinger-cli.sh search --query "a cat on a wall" --image=true   # pictures, by describing them
-./greenfinger-cli.sh delete --id=<id> --keep-latest=3
-./greenfinger-face.sh                                        # a session, with a prompt
-./greenfinger-cli.sh help                                    # every command
+./greenfinger-cli.sh --cluster=nightly crawl   --id=<id>            # from the start url
+./greenfinger-cli.sh --cluster=nightly crawl   --id=<id> --node=3   # three processes here
+./greenfinger-cli.sh --cluster=nightly update  --id=<id>            # urls that appeared since
+./greenfinger-cli.sh --cluster=nightly merge   --id=<id>            # and revisit what is held
+./greenfinger-cli.sh --cluster=nightly rebuild --id=<id>            # a new version, old one served
+./greenfinger-cli.sh --cluster=nightly resume  --id=<id>            # continue after a pause
+./greenfinger-cli.sh --cluster=nightly pause   --id=<id>
+./greenfinger-cli.sh --cluster=nightly replay  --id=<id> --layers=index+vector
 ```
 
-Every option is long form; there are no one-letter forms. At the prompt a crawl runs behind it: `q`
-then return leaves the live view without stopping the crawl, `status` brings it back, and `pause` is
-what stops it.
+Everything that looks at an installation rather than works it lives at the prompt: `catalog-list`,
+`catalog-show`, `versions`, `crawler-report`, `search`, `index-info`, `vector-info`, `delete`,
+`test-url`, `options`. Ask the one-line form for one of those and it says so rather than ignoring
+it. Every option is long form; there are no one-letter forms.
 
-**Settings are not options.** Which cluster this node joins, where it writes, how many nodes to
-start: `deploy/run.conf`, read by every launcher here -- the prompt, the one-shot command line, the
-server, and both `run-*.sh` scripts. They describe the installation rather than the command, so the
-prompt and the server started side by side are one installation and see each other's catalogs.
+At the prompt a crawl runs behind it: `q` then return leaves the live view without stopping the
+crawl, `status` brings it back, and `pause` is what stops it.
+
+**Settings are not options.** Where a node writes, which database it uses, how many nodes to
+start: `deploy/run.conf`, read by every launcher here. They describe the installation rather than
+the command, so a prompt and a server started side by side see the same catalogs. What changes per
+invocation stays on the command line: which cluster, which catalog, how many nodes and threads.
 Secrets and the addresses of databases and stores stay in `deploy/.env`.
 
 ### Four sites to start with
@@ -236,7 +251,7 @@ cd deploy
 ```
 
 It creates the definitions and stops; press **Crawl** in the front end, or
-`./greenfinger-cli.sh catalog-crawl --id=<id>`, when you want one to run.
+`./greenfinger-cli.sh --cluster=<name> crawl --id=<id>`, when you want one to run.
 
 | Catalog | Why it is here |
 | --- | --- |
@@ -287,18 +302,19 @@ jar, not four programs: the same crawler, the same configuration, the same data 
 
 | | What it is |
 |---|---|
-| `./greenfinger-cli.sh <command>` | One command, printed, done |
-| `./greenfinger-face.sh` | A prompt: type commands, watch a crawl live |
+| `./greenfinger-cli.sh --cluster=<name> <verb>` | A crawler: one command, printed, done |
+| `./greenfinger-shell.sh --cluster=<name>` | A prompt on a cluster somebody else is running |
 | `./run-local.sh` | The nodes here as background processes; `all` adds the front end |
 | `./run-docker.sh` | The same, one container per node, plus the front end container |
 
 ``` shell
 cd deploy
-./greenfinger-face.sh                  # define a catalog, crawl it, watch it
+./greenfinger-cli.sh --cluster=demo crawl --url=https://books.toscrape.com   # crawl, now
 ./run-local.sh                         # the nodes, http://localhost:50080
 ./run-local.sh all                     # and the front end, http://localhost:9700
 GF_NODES=3 ./run-local.sh all          # three nodes sharing the crawl, one page in front
 ./run-docker.sh                        # the same in containers, front end on 9700
+./greenfinger-shell.sh --cluster=greenfinger-local   # a prompt on those nodes
 ./run-local.sh stop                    # or ./run-docker.sh down
 ```
 
@@ -353,9 +369,11 @@ Containers are the same shape again:
 > elects anybody: the port is taken, by a node it does not consider a member. Everything then
 > works except the things that need a leader, and the counters simply stop moving.
 >
-> So set both (`GF_CLUSTER_NAME`, `GF_CLUSTER_PORT`) on any machine that runs more than one.
-> `run-local.sh` (`greenfinger-local`, 22010) and `run-docker.sh` (`greenfinger-docker`, 22020)
-> already differ from the plain launcher (`greenfinger-cluster`, 22000) for exactly this reason.
+> So set both on any machine that runs more than one. `run-local.sh` (`greenfinger-local`, 22010)
+> and `run-docker.sh` (`greenfinger-docker`, 22020) already differ from each other for exactly this
+> reason, and the one-line form has no default at all: it makes you say `--cluster=<name>`, checks
+> its port before anything starts, and refuses rather than queue behind a stranger's crawl.
+> `--join=<name>` is how you ask for the opposite -- crawl inside a cluster that is already there.
 
 ### How the work is shared
 
@@ -366,16 +384,30 @@ is no queue in the middle and no node that only coordinates: the leader crawls l
 else.
 
 The node the command arrived at seeds the entry point and tells the others, and that is the whole
-of its privilege. The leader's only job is publishing the finished version to search -- and even
-that is not a correctness mechanism, since publishing twice writes the same row twice. Asking one
-node is about not doing the same work three times.
+of its privilege.
+
+**The leader is the one writer for administrative changes.** Saving a catalog, deleting a version,
+publishing a finished version to search: every one of those goes to the leader, wherever it was
+asked for, and comes back with what the leader did. On a cluster of one -- which most
+installations are -- that is a plain method call with no network in it.
+
+It has to work that way because what sits behind those writes is a per-node copy: the catalog
+table on H2 or SQLite, the RocksDB directories, the pages on local disk, the embedded index. One
+writer means the leader's table is simply the truth, and none of the machinery concurrent writers
+would need -- write stamps, content hashes, tombstones -- has to exist. A node that joins late
+asks the leader for what it missed, and replication carries the rest.
+
+The crawl's own output does not go through the leader. A url is dispatched to exactly one node, so
+there is nothing to conflict over, and routing pages through one process would double their bytes
+and cap how fast the cluster can crawl.
 
 **Nobody decides the crawl is over.** Whether it has reached `maxFetchSize` or run out of
 `fetchDuration` is a question about counters every node shares, so every node asks it of the same
 numbers and reaches the same answer; the first to notice writes the flag and the reason beside
 those counters, and the others read it on their next tick. That is how 1.x worked -- with Redis
 where this has the cluster cache -- and a leader that judged completion would be a single point of
-failure for a decision that does not need one.
+failure for a decision that does not need one. Writing the finished version down is the leader's
+job; deciding that it is finished is not.
 
 **Quiet counters mean one of two things, and the difference decides whether anything is
 published.** Every url is counted when it is dispatched and counted again when somebody has
@@ -415,7 +447,7 @@ only a search that answers differently depending on which node was asked.
 The index and the vectors are rebuilt from the database, which keeps everything they need:
 
 ``` shell
-./greenfinger-cli.sh replay --id=<id> --layers=index+vector
+./greenfinger-cli.sh --cluster=<name> replay --id=<id> --layers=index+vector
 ```
 
 Files are different. The database keeps a page's metadata and the path its bytes were written to,
@@ -423,7 +455,7 @@ never the bytes -- but it does keep the url the page came from and the source ur
 on it, which is enough to go and get them again:
 
 ``` shell
-./greenfinger-cli.sh replay --id=<id> --layers=file
+./greenfinger-cli.sh --cluster=<name> replay --id=<id> --layers=file
 ```
 
 This fetches, but it discovers nothing: no links are followed, no rows are written, and no page is
@@ -467,6 +499,10 @@ who leads, and what each channel has carried.
 ## Commands
 -----------------------------
 
+What you can type at the `greenfinger:>` prompt, and what the web page does with buttons. The
+one-line form takes the crawl verbs out of this list and nothing else -- `crawl`, `update`,
+`merge`, `rebuild`, `resume`, `pause`, `replay` -- with `catalog-crawl` spelled `crawl` there.
+
 | Command | What it does |
 |---|---|
 | `catalog-save` | Create a catalog, one question at a time |
@@ -493,7 +529,8 @@ who leads, and what each channel has carried.
 | `replay --id=<id> --layers=file` | Fetch back files that were lost, from the urls the rows record |
 | `test-url --url=<url>` | Fetch one url and report what came back |
 | `search --query=<words>` | Full text |
-| `search --query=<words> --image=true` | Find pictures by describing them |
+| `search --query=<words> --mode=meaning` | By what a page is about rather than the words on it |
+| `search --query=<words> --mode=pictures` | Find pictures by describing them |
 | `index-info` | The full text index: where it is, and what is in it |
 | `vector-info` | The vector store: where it is, and what is in it |
 | `options` | Every catalog setting, what it accepts and its default |
@@ -514,26 +551,29 @@ The outputs stack, and `file` is always among them:
 vector store.
 
 ``` shell
-GF_FILE_TARGET=minio ./greenfinger-cli.sh catalog-crawl --id=<id>   # files into MinIO
+GF_FILE_TARGET=minio ./greenfinger-cli.sh --cluster=<name> crawl --id=<id>   # into MinIO
 ```
 
 Or crawl to files first, look at what came back, and only then commit to an index — the database
 already holds everything needed to build one:
 
 ``` shell
-./greenfinger-cli.sh catalog-crawl --id=<id>
-./greenfinger-cli.sh replay        --id=<id> --layers=index+vector
+./greenfinger-cli.sh --cluster=<name> crawl  --id=<id>
+./greenfinger-cli.sh --cluster=<name> replay --id=<id> --layers=index+vector
 ```
 
 ### Removing what a crawl produced
 
+Deleting is the prompt's, not the one-line form's: what it removes cannot be put back, and a
+report to read before agreeing to it is the point.
+
 ``` shell
-./greenfinger-cli.sh delete --id=<id> --version=3 --dry-run=true     # report only
-./greenfinger-cli.sh delete --id=<id> --version=3                   # all four stores
-./greenfinger-cli.sh delete --id=<id> --version=3 --layers=vector
-./greenfinger-cli.sh delete --id=<id> --keep-latest=3               # keep the newest three
-./greenfinger-cli.sh delete --id=<id> --all=true                    # empty it; the index stays
-./greenfinger-cli.sh delete --id=<id> --purge=true                  # and drop the index too
+greenfinger:> delete --id=<id> --version=3 --dry-run=true    # report only
+greenfinger:> delete --id=<id> --version=3                   # all four stores
+greenfinger:> delete --id=<id> --version=3 --layers=vector
+greenfinger:> delete --id=<id> --keep-latest=3               # keep the newest three
+greenfinger:> delete --id=<id> --all=true                    # empty it; the index stays
+greenfinger:> delete --id=<id> --all=true --purge=true       # and drop the index too
 ```
 
 Deleting runs in the reverse of the order writing runs in, because the database is the list of what
@@ -551,7 +591,7 @@ nothing has to be rebuilt or edited inside a jar. `deploy/.env.example` lists ev
 
 | File | What is in it |
 | --- | --- |
-| `application.yml` | Everything common: the crawler, the outputs, the embeddings, the server's port and its accounts |
+| `application.yml` | Everything common: the crawler, the outputs, the embeddings, the server's port. The accounts are their own file, `config/api/users.xml` |
 | `application-dev.yml` | Zero configuration, and the default: an H2 file, pages on local disk, nothing to install |
 | `application-prod.yml` | A real deployment: your own database, and all three outputs on |
 
@@ -744,6 +784,12 @@ When the starter is on a web application, it also contributes endpoints:
 | `POST` | `/v2/crawl/{name}/replay` | Rebuild an output from the database, or fetch lost files back (`?layers=file`) |
 | `GET` | `/v2/search?q=...` | Search |
 
+Plus the actuator's, which need an account like everything else: `/actuator/health` (open, a probe
+has no account), `/actuator/spreader` for this node's view of the cluster, and
+`/actuator/settings` for every greenfinger setting in force on it, secrets masked. That last one
+is what the startup log used to print at info and now prints only at debug -- the merged values
+rather than what any one file says, which is the question no yaml can answer.
+
 
 ## Web interface
 -------------------------
@@ -782,17 +828,29 @@ mapping, a tunnel — and the address they advertise to each other is not one th
 
 ### Signing in
 
-Two accounts, handed out up front in `.env`. There is no registration, no user table and no
-password reset, because this is an operator's tool rather than a public site.
+Two accounts, handed out up front in `deploy/config/api/users.xml`. There is no registration, no
+user table and no password reset, because this is an operator's tool rather than a public site.
 
 | Account | Role | May |
 | --- | --- | --- |
-| `admin` / `admin123` | `ADMIN` | create catalogs, and run crawl / update / rebuild / replay / delete |
-| `tester` / `tester123` | `SUPPORT` | read everything, change nothing |
+| `admin` / `admin123` | `ADMIN` | crawl and search: create catalogs, run crawl / update / rebuild / replay / delete |
+| `tester` / `tester123` | `SUPPORT` | search: read everything, change nothing |
+
+``` xml
+<!-- deploy/config/api/users.xml -- change these before the server is reachable by anybody else -->
+<users>
+  <user name="admin" password="admin123" roles="ADMIN"/>
+  <user name="tester" password="tester123" roles="SUPPORT"/>
+</users>
+```
+
+The file is not in the repository and a rebuild leaves the one you edited alone. A node that has
+none starts on the two above and says so in the log, because an installation nobody can sign in to
+cannot be configured. One account can hold both roles (`roles="ADMIN,SUPPORT"`), and a change takes
+a restart.
 
 ``` shell
-# deploy/.env -- change these before the server is reachable by anybody else
-GF_USERS=admin:admin123:ADMIN,tester:tester123:SUPPORT
+# deploy/.env -- the rest of the server's settings
 GF_SERVER_PORT=8080
 GF_TOKEN_VALIDITY=8h
 GF_CORS_ORIGINS=http://localhost:4200   # only needed for the dev server below
@@ -822,11 +880,11 @@ on. `GET /v2/version` is open without signing in, so the login page can say whic
 | **Monitor** | One catalog watched: the counters of the run in flight, or of the last one, from the same fields either way. Also the only place versions are deleted, behind a dry run and a confirmation. |
 | **Resources** | The rows themselves, in crawl order, for any version — including one that was never published. Where a page's file went, and every picture it carried. |
 | **Search** | Words (Elasticsearch or Lucene, highlighted, cursor-paged past the ten thousandth result), Meaning (text vectors), and Pictures (describe one and get it). The two vector modes page by offset — a similarity ranking exists only for the query that produced it, so there is no cursor to carry. |
-| **System health** | Two halves: the cluster (throughput, channels, buffers, replicated stores, the health checks) and the crawler (what is running, how fast, and what the stores are holding). |
+| **System** | Three halves, in the order somebody asks them: **Health** (is anything wrong, every member asked in turn), **Cluster** (throughput, channels, buffers, replicated stores) and **Settings** (every greenfinger setting in force on that node, searchable, secrets masked). |
 
-Light or dark, or whatever the machine says — one button in the toolbar, remembered per browser.
-Every colour comes from a Material system token, so the switch is a single attribute on the page
-rather than a second palette.
+One theme, green on white — the palette a crawler's own output should not have to compete with.
+Every colour comes from a Material system token rather than a hex value in a component, so the
+whole of it moves from one file.
 
 #### Catalogs
 
@@ -948,8 +1006,9 @@ plain, so the colour carries the identity rather than merely decorating.
 
 ## Documentation
 
-- **[Command line reference](docs/cli-reference.md)** -- the four launchers, and every command
-  they accept with its options.
+- **[Command line reference](docs/cli-reference.md)** -- the crawl verbs, the prompt's commands,
+  and how a terminal attaches to a cluster.
+- **[What changed in 2.0](CHANGELOG.md)** -- against 1.x, and what an upgrade involves.
 - **[Design notes](docs/design-2.0.md)** -- why the system is shaped the way it is.
 - **[Schema scripts](docs/sql/schema-scripts.md)** -- one per database, for creating the schema
   yourself instead of letting Hibernate do it.

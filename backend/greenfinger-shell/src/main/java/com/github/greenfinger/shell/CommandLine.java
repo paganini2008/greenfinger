@@ -22,23 +22,14 @@ import java.util.Locale;
 import lombok.Getter;
 
 /**
- * Parses one command line into a command name and its options.
+ * Parses one command line into a command name and its options. Accepts {@code --id abc},
+ * {@code --id=abc} and bare flags; Spring's {@code ApplicationArguments} takes only
+ * {@code --key=value} and turns the other form's value into a stray positional argument.
  *
  * <p>
- * Accepts what a user would naturally type -- {@code --id abc}, {@code --id=abc}, and a bare
- * {@code --refresh} for a flag. Spring's own {@code ApplicationArguments} understands only the
- * {@code --key=value} form and would silently turn the value of a space-separated pair into a
- * stray positional argument.
- *
- * <p>
- * Long names only. There were five one-letter forms, and they were a standing source of the one
- * bug that never announces itself: a letter expanded to one name here and declared as another on
- * the {@code @Option} annotation is not rejected, it is ignored, and the crawl runs with a default
- * nobody chose. Two of the five were doing exactly that. Options are now typed out.
- *
- * <p>
- * Arguments meant for the framework rather than for us -- anything under {@code --spring.},
- * {@code --logging.} or {@code --debug} -- are recognised and skipped.
+ * Long names only: a one-letter form that expands to one name here and another on the
+ * {@code @Option} is not rejected but ignored, and the crawl runs with a default nobody chose.
+ * Framework arguments ({@code --spring.}, {@code --logging.}, {@code --debug}) are skipped.
  * 
  * @Description: CommandLine
  * @Author: Fred Feng
@@ -105,18 +96,10 @@ public class CommandLine {
     }
 
     /**
-     * Flags that have to reach Spring as properties rather than as command options.
-     *
-     * <p>
-     * {@code --offline} is one: the model store reads it when it is constructed, which happens deep
-     * inside a command that is already running, so a dispatcher that noticed the flag would notice
-     * it too late. Translating it here keeps what a user types short -- {@code --offline} rather
-     * than {@code --greenfinger.embedding.offline=true} -- without the setting having two sources
-     * of truth, since the property remains the only thing anything reads.
-     *
-     * <p>
-     * The original argument is kept rather than replaced, so option parsing and the positional
-     * arguments that name the command are untouched.
+     * Flags that must reach Spring as properties, not command options. {@code --offline} is read
+     * when the model store is constructed, deep inside a running command, so a dispatcher would see
+     * it too late. Translating here keeps the short spelling with the property as the only source
+     * of truth. The original argument is kept, not replaced, so option parsing is untouched.
      */
     public static String[] toSpringArguments(String[] args) {
         List<String> translated = new ArrayList<>(List.of(args));

@@ -33,23 +33,15 @@ import com.github.greenfinger.core.output.FileLayout;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Writes one report per crawl, beside the version it produced.
+ * Writes one report per crawl, beside the version it produced -- per run, not per version, since a
+ * version is crawled once and then updated. {@code settings.json} keeps only the latest and cannot
+ * answer "what happened on Tuesday".
  *
  * <p>
- * Every run, not every version: a version is crawled once and then updated, and each of those is a
- * separate thing that happened with its own numbers. {@code settings.json} keeps only the latest,
- * which answers "how is this version configured" and cannot answer "what happened on Tuesday".
- *
- * <h2>What it is for</h2>
- * Two questions, and the second is the reason it exists at all. <em>Did this run work?</em> --
- * pages saved, images, how long. And <em>what did it not finish?</em> -- urls dispatched against
- * urls handled, with the difference spelled out. A crawl that stopped at a limit, or lost a node
- * part way, ends normally and reports what it left behind; those urls are still on a frontier, so
- * {@code update} picks them up without re-fetching anything already saved.
- *
- * <p>
- * A failure to write the report never fails the crawl. Losing the account of a run that worked
- * would be a poor trade for the run itself.
+ * It answers two questions: did this run work (pages, images, duration), and what did it not finish
+ * (urls dispatched against handled). A run that hit a limit or lost a node ends normally and
+ * reports what it left behind, which is still on a frontier for {@code update} to pick up. Failing
+ * to write the report never fails the crawl.
  * 
  * @Description: CrawlReporter
  * @Author: Fred Feng

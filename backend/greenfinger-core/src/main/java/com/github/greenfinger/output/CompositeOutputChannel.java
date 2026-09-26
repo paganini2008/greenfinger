@@ -37,15 +37,13 @@ import lombok.extern.slf4j.Slf4j;
  * </pre>
  *
  * <p>
- * The text handed to the index and the vector store is read back from the file layer rather than
- * taken from the page still in memory. It costs one read, and it buys the guarantee that replaying
- * a layer later works from exactly the same bytes and produces exactly the same result.
+ * The text given to the index and the vector store is read back from the file layer, not taken from
+ * the page in memory: one read, in exchange for a replay later working from exactly the same bytes.
  *
  * <p>
- * A failure in the file layer stops the page: it is the source everything else is rebuilt from. A
- * failure in the index or the vector store is counted and logged, and the crawl carries on -- one
- * Elasticsearch hiccup must not destroy a whole run, and what was missed can be replayed from the
- * database afterwards.
+ * A file-layer failure stops the page, since everything else is rebuilt from it. An index or vector
+ * failure is counted and logged and the crawl carries on -- one Elasticsearch hiccup must not cost
+ * a whole run, and what was missed can be replayed.
  * 
  * @Description: CompositeOutputChannel
  * @Author: Fred Feng
@@ -97,14 +95,9 @@ public class CompositeOutputChannel implements OutputChannel {
     }
 
     /**
-     * Prepares each destination, and drops the ones that cannot be prepared.
-     *
-     * <p>
-     * A destination that will not open is the same problem as one that will not accept a page, and
-     * gets the same answer: fatal for the file layer, which everything else is built from, and
-     * merely noted for the others. An Elasticsearch that happens to be down should cost the crawl
-     * its index, not its pages -- they are on disk and in the database, and {@code replay} builds
-     * the index from them once it is back.
+     * Prepares each destination and drops the ones that cannot be prepared -- same rule as a failed
+     * write: fatal for the file layer, noted for the others. An Elasticsearch that is down costs
+     * the crawl its index, not its pages, and {@code replay} rebuilds it later.
      */
     @Override
     public void open(CatalogDetails catalogDetails) throws Exception {

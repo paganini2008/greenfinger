@@ -1,0 +1,43 @@
+# The greenfinger:> prompt, in a container.
+#
+# A terminal has to be on the same network as the nodes it drives. The cluster port lives inside
+# the docker network and is not published, because gossip advertises container addresses and a
+# host cannot route to them -- so a prompt started on the host would join nothing. This image is
+# how it gets inside:
+#
+#     docker build -f docker/Dockerfile.shell -t greenfinger-shell:local .
+#     docker run --rm -it --network greenfinger greenfinger-shell:local \
+#         --cluster=greenfinger-docker --cluster-port=22020
+#
+# run-docker.sh shell does both, with the network and the cluster already filled in.
+FROM eclipse-temurin:17-jre
+
+WORKDIR /app
+
+# The same jar greenfinger-shell.sh runs. No data directory and no volume: a terminal keeps
+# nothing -- it joins the cluster, asks the leader, and draws the answer.
+COPY lib/greenfinger-shell-*.jar /app/greenfinger-shell.jar
+COPY config /app/config
+
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=70 -Dfile.encoding=UTF-8"
+
+# --greenfinger.shell.client=true is what makes it a terminal rather than a crawler: no engine, no
+# database, no index. leader-eligible=false keeps it out of the election, because a process that
+# exists while somebody is typing is the worst leader a cluster could have.
+# The address it tells the others to answer on. The shared configuration pins this to 127.0.0.1,
+# which is right for several processes on one machine and wrong in a container: the nodes would
+# reply to their own loopback, this terminal would be suspected for never answering, and every
+# command would time out. A container knows its own address, so it says that.
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/greenfinger-shell.jar \
+  --spring.spreader.advertise-host=\"$(hostname -i | awk '{print $1}')\" \
+  --greenfinger.shell.client=true \
+  --spring.autoconfigure.exclude=org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration,org.springframework.boot.jdbc.autoconfigure.DataSourceTransactionManagerAutoConfiguration,org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration \
+  --spring.spreader.application-name=greenfinger-shell \
+  --spring.spreader.leader-eligible=false \
+  --spring.spreader.multiprocessing.cache.enabled=false \
+  --spring.spreader.multiprocessing.pooling.enabled=false \
+  --spring.banner.location=classpath:banner-shell.txt \
+  --spring.shell.interactive.enabled=true \
+  --spring.config.additional-location=file:/app/config/ \
+  --logging.file.name=/app/logs/greenfinger-shell.log \
+  \"$@\"", "--"]

@@ -64,23 +64,17 @@ import com.github.greenfinger.service.DeletionService;
 import com.github.greenfinger.service.FileRestorer;
 import com.github.greenfinger.service.ClusterSnapshot;
 import com.github.greenfinger.service.ReplayService;
+import com.github.greenfinger.cluster.remote.OperationsServer;
+import com.github.greenfinger.service.ops.LocalOperations;
 
 /**
  * Wires the cluster in, without an annotation to remember.
  *
  * <p>
- * There is no standalone edition to opt out of: a crawl always runs on a cluster, and one process
- * is a cluster of one. So the only conditions are the two that make the wiring possible at all --
- * a crawler in this application, and a cluster underneath it. An application that has the jar but
- * never enabled the crawler gets nothing, which is what keeps the dependency from being a
- * surprise.
- *
- * <p>
- * The cache is a condition rather than a nicety: the counters live in it, and completion is decided
- * by comparing two of them, so without it a crawl would have no way of knowing it had ended. Being
- * a condition means the wiring is simply absent when the cache is off, and the crawl runs on this
- * node alone -- which is right for a test slice and wrong for a deployment, so
- * {@link ClusterConfigurationCheck} says so loudly when it happens for real.
+ * There is no standalone edition to opt out of: one process is a cluster of one. The cache is a
+ * condition rather than a nicety -- the counters live in it and completion compares two of them --
+ * so without it the wiring is absent and the crawl runs on this node alone, which
+ * {@link ClusterConfigurationCheck} says loudly when it happens outside a test.
  * 
  * @Description: GreenfingerClusterAutoConfiguration
  * @Author: Fred Feng
@@ -101,19 +95,9 @@ public class GreenfingerClusterAutoConfiguration {
     }
 
     /**
-     * Also the {@link CrawlCoordinatorFactory}, and registered once.
-     *
-     * <h2>Registered once, deliberately</h2>
-     * Returning this same instance from a second {@code @Bean} method -- the obvious way to
-     * publish it under the interface as well -- makes Spring treat it as a second bean and run its
-     * lifecycle again. Since it implements {@code InitializingBean}, that meant subscribing to the
-     * crawl channel twice, and a listener registered twice receives every message twice: the crawl
-     * fetched every page a second time, and the only visible sign was a message count that did not
-     * match the dispatch count.
-     *
-     * <p>
-     * Primary because core declares its own local factory, and a bean declared in an imported
-     * configuration always exists by the time auto-configuration is consulted.
+     * Also the {@link CrawlCoordinatorFactory}, and registered once: returning the same instance
+     * from a second {@code @Bean} method runs its lifecycle twice, which subscribes to the crawl
+     * channel twice and fetches every page again. Primary, because core declares its own.
      */
     @Bean
     @Primary
@@ -121,9 +105,11 @@ public class GreenfingerClusterAutoConfiguration {
             CrawlRegistry crawlRegistry, ObjectProvider<CrawlerLauncher> launcher,
             ObjectProvider<ReplayService> replayService,
             ObjectProvider<DeletionService> deletionService,
+            ObjectProvider<CatalogCatchUp> catchUp,
+            @Qualifier("catalogStore") ObjectProvider<CatalogStore> catalogStore,
             ApplicationEventPublisher eventPublisher) {
         return new CrawlCluster(cluster, crawlTaskChannel, crawlRegistry, launcher, replayService,
-                deletionService, eventPublisher);
+                deletionService, catchUp, catalogStore, eventPublisher);
     }
 
     /**
@@ -139,15 +125,9 @@ public class GreenfingerClusterAutoConfiguration {
     }
 
     /**
-     * The same components core would have built, with the counters substituted.
-     *
-     * <h2>Why a second bean rather than replacing core's</h2>
-     * Core declares its version {@code @ConditionalOnMissingBean}, which reads as "yield to
-     * anybody who has a better one" -- but that condition is only met by a bean registered
-     * earlier, and auto-configuration is by definition last. So core's bean always exists by the
-     * time this class is consulted, and declaring the same name here is a duplicate definition
-     * rather than an override. Both are registered instead, and this one is marked primary, which
-     * is what every injection point resolves to.
+     * The same components core would have built, with the counters substituted. A second bean
+     * rather than an override: core's {@code @ConditionalOnMissingBean} only yields to a bean
+     * registered earlier, and auto-configuration is last. This one is primary.
      */
     @Bean
     @Primary
@@ -164,7 +144,7 @@ public class GreenfingerClusterAutoConfiguration {
      * Which stores have to be copied, decided once at startup from the jdbc url and the configured
      * blob target rather than guessed per write.
      */
-    @Bean(initMethod = "afterPropertiesSet", destroyMethod = "destroy")
+    @Bean
     public ClusterReplication clusterReplication(GossipCluster cluster,
             ClusterProperties properties, CrawlRegistry crawlRegistry, Environment environment,
             OutputProperties outputProperties, EmbeddingProperties embeddingProperties,
@@ -227,29 +207,31 @@ public class GreenfingerClusterAutoConfiguration {
     }
 
     /**
-     * Where an administrative write goes, and the answer back.
-     *
-     * <p>
-     * Declared whatever the database is. A shared one has nothing to replicate, but the same
-     * gateway is what carries a delete, and a delete removes things from this node's own disk
-     * however the rows are stored.
+     * Where an administrative write goes. Declared whatever the database is: a shared one has
+     * nothing to replicate, but the same gateway carries a delete, which touches local disk.
      */
-    @Bean(initMethod = "afterPropertiesSet", destroyMethod = "destroy")
+    @Bean
     public LeaderChannel leaderChannel(GossipCluster cluster, ClusterProperties properties) {
         return new LeaderChannel(cluster, properties.getLeader().getTimeoutMs(),
                 properties.getLeader().getMaxAttempts());
     }
 
     /**
-     * Catalog writes, performed by the leader and told to the others; reads answered here.
-     *
-     * <p>
-     * Built even when the database is shared, because the handlers have to be registered on every
-     * node -- leadership moves, and a node that took it over without them would refuse every
-     * write. It is only returned as <em>the</em> catalog store when there is something to keep in
-     * step: with one shared table, every node's write is already every node's write.
+     * What a terminal elsewhere in the cluster may ask this node for, when this node is the
+     * leader. Registered on every crawler node, because leadership moves.
      */
-    @Bean(initMethod = "afterPropertiesSet", destroyMethod = "destroy")
+    @Bean
+    public OperationsServer operationsServer(LeaderChannel leaderChannel,
+            LocalOperations operations) {
+        return new OperationsServer(leaderChannel, operations);
+    }
+
+    /**
+     * Catalog writes performed by the leader, reads answered here. Built even on a shared
+     * database, because leadership moves and a node without the handlers would refuse every
+     * write; only used as the catalog store when there is something to keep in step.
+     */
+    @Bean
     public LeaderCatalogStore leaderCatalogStore(
             @Qualifier("catalogStore") CatalogStore catalogStore, ClusterReplication replication,
             LeaderChannel leaderChannel) {
@@ -266,7 +248,7 @@ public class GreenfingerClusterAutoConfiguration {
      * Only when the table is one file per node. A shared database cannot fall behind itself, and
      * a timer pointed at it would spend every interval proving that.
      */
-    @Bean(initMethod = "afterPropertiesSet", destroyMethod = "destroy")
+    @Bean
     @ConditionalOnBean(GossipCluster.class)
     public CatalogCatchUp catalogCatchUp(GossipCluster cluster, LeaderCatalogStore store,
             @Qualifier("catalogStore") CatalogStore catalogStore, ClusterReplication replication,
@@ -288,13 +270,9 @@ public class GreenfingerClusterAutoConfiguration {
     }
 
     /**
-     * Replay across the cluster, when the task pool is available to carry the slices.
-     *
-     * <p>
-     * Conditional on the pool rather than assumed: with the pool switched off this bean is simply
-     * absent and core's own replay runs the whole thing here, which is correct and merely slower.
-     * The bean name is passed to itself because the pool addresses a method by the name of the
-     * bean that holds it, and a bean cannot ask Spring what it is called.
+     * Replay across the cluster, when the task pool can carry the slices; without it core's own
+     * replay runs the whole thing here, correctly and more slowly. The bean name is passed in
+     * because the pool addresses a method by it and a bean cannot ask Spring its own name.
      */
     @Bean
     @Primary
@@ -322,7 +300,7 @@ public class GreenfingerClusterAutoConfiguration {
      * {@code @ConditionalOnMissingBean}, and that condition is met only by a bean registered
      * earlier, which auto-configuration by definition is not.
      */
-    @Bean(initMethod = "afterPropertiesSet", destroyMethod = "destroy")
+    @Bean
     @Primary
     public DeletionService leaderDeletionService(OutputFactory outputFactory,
             OutputProperties outputProperties, WebCrawlerProperties webCrawlerProperties,

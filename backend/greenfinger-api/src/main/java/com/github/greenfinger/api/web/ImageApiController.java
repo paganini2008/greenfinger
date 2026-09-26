@@ -25,7 +25,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 import com.github.greenfinger.core.WebCrawlerException;
 import com.github.greenfinger.core.output.BlobStore;
 import com.github.greenfinger.core.utils.BeanLifeCycleUtils;
@@ -36,37 +35,26 @@ import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Hands back an image the crawl saved.
+ * Hands back an image the crawl saved: the stored blob path
+ * ({@code {catalog}/v0/images/ab/cd/{id}.jpg}) is not a url, so this is the one call that turns it
+ * back into bytes.
  *
  * <p>
- * The images are on disk, or in MinIO, under paths like
- * {@code {catalog}/v0/images/ab/cd/{id}.jpg}. That is a blob store path and not a url, so nothing
- * in a browser can fetch it -- which is why the picture search had nothing to show. This is the
- * one call that turns the stored path back into bytes.
+ * It needs a bearer token like every other GET, which an {@code <img src>} cannot send -- the front
+ * end fetches the bytes and hands the tag an object url. Serving the archived copy is the point of
+ * having archived it: it survives the site rearranging itself, cannot be hotlink-refused, is not
+ * mixed content, and does not tell every crawled origin who is looking.
  *
  * <p>
- * Like every other GET here it needs a bearer token, which an {@code <img src>} cannot send: the
- * front end fetches the bytes itself and hands the tag an object url. Making this endpoint public
- * so a tag could reach it would put every archived image outside the sign-in.
- *
- * <p>
- * Serving the archived copy rather than linking the original address is the point of having
- * archived it: the copy is still there after the site rearranges itself, cannot be refused by
- * hotlink protection, does not become mixed content over https, and does not tell every crawled
- * origin who is looking at the results. The original address is carried in the search payload as
- * well, for a "see it in place" link.
- *
- * <p>
- * The path comes from the caller, so it is checked against the shape the layout actually produces
- * rather than merely scanned for {@code ..} -- a deny list has to anticipate every encoding, and
- * this one only has to describe one filename pattern.
+ * The caller's path is checked against the shape the layout produces rather than scanned for
+ * {@code ..}: a deny list must anticipate every encoding, an allow list describes one pattern.
  *
  * @Description: ImageApiController
  * @Author: Fred Feng
  * @Date: 31/08/2026
  * @Version 2.0.0
  */
-@RestController
+@ApiEndpoint
 @RequestMapping("${greenfinger.api.prefix:/v2}/image")
 @RequiredArgsConstructor
 public class ImageApiController {

@@ -82,7 +82,7 @@ describe('App shell', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('2.0.0');
   });
 
-  it('puts the toolbar and the nav up once somebody is signed in', async () => {
+  it('puts the rail and the account up once somebody is signed in', async () => {
     const auth = TestBed.inject(AuthService);
     auth['_session'].set({
       token: 't',
@@ -95,7 +95,11 @@ describe('App shell', () => {
     await fixture.whenStable();
     const element = fixture.nativeElement as HTMLElement;
 
-    expect(element.querySelector('mat-toolbar')).not.toBeNull();
+    // The masthead is gone: the wordmark is in the rail and what is left of the top strip is the
+    // account. Asserted on the rail and the account rather than on mat-toolbar, which the shell
+    // no longer has.
+    expect(element.querySelector('mat-sidenav.gf-sidenav')).not.toBeNull();
+    expect(element.querySelector('.gf-account')).not.toBeNull();
     // the wordmark is an image, so the name is in its alt text and not in the page's text
     expect(element.querySelector('img.gf-logo')?.getAttribute('alt')).toBe('Greenfinger');
     expect(element.textContent).toContain('Catalogs');

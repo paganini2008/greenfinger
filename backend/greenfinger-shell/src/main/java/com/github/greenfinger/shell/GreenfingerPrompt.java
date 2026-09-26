@@ -24,14 +24,9 @@ import com.github.greenfinger.shell.render.Ansi;
  * The prompt, which says which program is waiting.
  *
  * <p>
- * Spring Shell's own is {@code $>}, and a bare dollar sign in a screenshot or a bug report is
- * indistinguishable from a shell. Naming it costs one line and settles every "which of these was
- * I typing into".
- *
- * <p>
- * Handed to the shell runner directly rather than declared as a {@code ConsoleInputProvider} bean.
- * The bean was created -- and the runner was still built with the autoconfiguration's own, which
- * is where {@code $>} kept coming from.
+ * Spring Shell's own is {@code $>}, indistinguishable from a shell in a screenshot or a bug report.
+ * Handed to the shell runner directly rather than declared as a {@code ConsoleInputProvider} bean:
+ * the bean is created and then ignored, the runner keeping the autoconfiguration's own.
  * 
  * @Description: GreenfingerPrompt
  * @Author: Fred Feng

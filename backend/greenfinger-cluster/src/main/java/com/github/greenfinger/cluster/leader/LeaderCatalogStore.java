@@ -28,31 +28,16 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * Every change to a catalog, performed on the leader; every read, answered from here.
  *
- * <h2>Writes</h2>
- * The node that was asked forwards the call and waits for the answer. The leader performs it
- * against its own table and tells the others, which is what {@link ReplicatedCatalogStore} was
- * already doing -- so the execution half is unchanged and this class is only about where it
- * happens. On the leader the forward is a plain call, which is the ordinary case in a cluster of
- * one.
+ * <p>
+ * The node that was asked forwards the call and waits. One writer is the point: catalog rows are
+ * what everything else is addressed by, and two nodes writing them at once is how two copies stop
+ * agreeing -- with one, nothing has to work out afterwards which copy was newer.
  *
  * <p>
- * One writer is the point. Catalog rows are the state everything else is addressed by -- a crawl
- * opens the version the row names, a search serves the version the row published -- and two nodes
- * writing them at once is how two copies stop agreeing. Nothing here has to work out afterwards
- * which copy was newer, because there is only ever one place a change is made.
- *
- * <h2>Reads</h2>
- * Local, and deliberately. A read that went to the leader would turn every page of the catalog
- * list into a round trip and make the leader the ceiling on how many people can look at the
- * application at once. What that costs is a window after a write in which a node has not heard
- * yet, measured in milliseconds, and it closes by itself.
- *
- * <p>
- * With one exception, because that window is not harmless where it lands: the node that took the
- * request is the node the caller will talk to next. Creating a catalog and immediately crawling
- * it answered "No such catalog", which is true of that node's copy and absurd to the person who
- * had just made it. So a write applies the leader's answer here before returning -- see
- * {@code applyHere}.
+ * Reads stay local, because sending them to the leader would make it the ceiling on how many
+ * people can use the application. The cost is a window of milliseconds after a write, which
+ * closes by itself -- except on the node that took the request, which is the one the caller talks
+ * to next, so a write applies the leader's answer here before returning. See {@code applyHere}.
  *
  * @Description: LeaderCatalogStore
  * @Author: Fred Feng
@@ -175,24 +160,13 @@ public class LeaderCatalogStore implements CatalogStore, ManagedBeanLifeCycle {
     }
 
     /**
-     * Writes what the leader did into this node's own copy, at once.
-     *
-     * <h2>Read your own write</h2>
-     * The broadcast reaches every node including this one, but it is asynchronous, and the node
-     * that took the request is the very node the caller will talk to next. Creating a catalog and
-     * immediately starting a crawl of it answered "No such catalog" for a few milliseconds --
-     * true of this node's copy, absurd to the person who had just made it.
+     * Writes what the leader did into this node's own copy, at once, so a create followed
+     * immediately by a crawl does not answer "No such catalog". It is the same row the broadcast
+     * will bring, so the broadcast becomes a no-op and the ordering cannot invert.
      *
      * <p>
-     * So the answer is applied here before the call returns. It is the same row the broadcast
-     * will bring, so the broadcast becomes a no-op rather than a second write, and the ordering
-     * cannot invert: this is the row the leader produced, not a guess at it.
-     *
-     * <p>
-     * A failure here is logged and stepped over. The write happened -- the leader performed it --
-     * and refusing to return it because this node could not keep up would be a lie about what
-     * took place. The usual reason is a stale row of this node's colliding on the unique name
-     * index, which is the catch-up's business.
+     * A failure here is logged and stepped over: the write did happen, and the usual cause is a
+     * stale row colliding on the name index, which is the catch-up's business.
      */
     private Catalog applyHere(Catalog fromLeader) {
         if (fromLeader == null || gateway.isLeader()) {

@@ -33,27 +33,21 @@ import com.github.greenfinger.core.WebCrawlerException;
 import com.github.greenfinger.core.catalog.CatalogDetailsNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 
 /**
- * Runs a single command given on the command line, then lets the application exit.
+ * Runs a single command given on the command line, then lets the application exit. With no
+ * command it opens the prompt, so one executable serves both launchers.
  *
  * <p>
- * With no command it opens the prompt instead, so the same executable serves both
- * {@code greenfinger-cli.sh catalog-crawl --id=x} and {@code greenfinger-face.sh}.
+ * It opens the prompt itself rather than leaving it to Spring Shell's own runner, which is
+ * {@code @ConditionalOnMissingBean} on {@link ApplicationRunner} -- the moment this class exists
+ * that one backs off, and the shell never starts at all.
  *
  * <p>
- * It has to open the prompt itself rather than standing aside for Spring Shell's own runner, and
- * this is not a preference. That runner is declared {@code @ConditionalOnMissingBean} on
- * {@link ApplicationRunner} -- so the moment this class exists, it backs off, and the shell is
- * never started at all. The application then boots, runs no command, and exits with nothing to
- * say. Reproduced by typing {@code face} and watching a jvm start for twenty seconds and stop.
- *
- * <p>
- * A mistyped catalog name is a mistake, not a defect, and printing a stack trace for it buries the
- * one line that matters. So the two exceptions that mean "what you typed does not work" --
- * {@link WebCrawlerException} and {@link IllegalArgumentException}, both of which carry a message
- * written for a person -- become a single red line and exit code 1. Everything else still gets its
- * stack trace, because everything else is a bug and the trace is the report.
+ * A mistyped catalog name is a mistake, not a defect: {@link WebCrawlerException} and
+ * {@link IllegalArgumentException} carry a message written for a person, so they become one red
+ * line and exit code 1. Everything else keeps its stack trace.
  * 
  * @Description: OneShotCommandRunner
  * @Author: Fred Feng
@@ -86,7 +80,7 @@ public class OneShotCommandRunner implements ApplicationRunner, ExitCodeGenerato
      * Harmless, and still wrong -- {@link WorkerNodeRunner} is what keeps a worker alive, and the
      * prompt has no part in it.
      */
-    @org.springframework.beans.factory.annotation.Value("${greenfinger.shell.worker:false}")
+    @Value("${greenfinger.shell.worker:false}")
     private boolean worker;
 
     private int exitCode = 0;
@@ -151,9 +145,18 @@ public class OneShotCommandRunner implements ApplicationRunner, ExitCodeGenerato
         return message != null && !message.isBlank() ? message : e.getClass().getSimpleName();
     }
 
+    /**
+     * Where to go for the thing that would have answered the question.
+     *
+     * <p>
+     * It used to say "run catalogs", which this form no longer has: a hint that names a command
+     * about to be refused is worse than no hint. The ids live in the prompt and on the page, and
+     * both are named because whoever is at a terminal may well have the other open.
+     */
     static Optional<String> hintFor(Throwable e) {
         if (e instanceof CatalogDetailsNotFoundException) {
-            return Optional.of("Run 'catalogs' to see the names that exist.");
+            return Optional.of("The ids are in the prompt --  ./greenfinger-shell.sh  then"
+                    + " 'catalog-list' -- or on the page.");
         }
         return Optional.empty();
     }

@@ -4,38 +4,62 @@
 #
 # Nothing has to be installed: the metadata goes into an H2 file and the pages onto disk.
 #
-# This is the one-shot face: it runs the command on the line and exits. For a session that stays
-# open -- one jvm, many commands, the greenfinger:> prompt -- run ./greenfinger-face.sh instead.
-# The two are the same program and read the same data; they differ only in how long they live.
+# This is the one-shot face, and it runs the crawl verbs: the things a cron entry, a deploy script
+# or somebody's runbook asks for. A verb, an exit code, no questions.
 #
-# Quick start -- define a catalog by answering questions, then run it:
+#     ./greenfinger-cli.sh crawl --id=<id>             # crawl from the start url
+#     ./greenfinger-cli.sh crawl --url=<url>           # the same, and define it if it is new
+#     ./greenfinger-cli.sh update --id=<id>            # the urls that have appeared since
+#     ./greenfinger-cli.sh merge --id=<id>             # update, revisiting what is already held
+#     ./greenfinger-cli.sh rebuild --id=<id>           # a new version, the whole site again
+#     ./greenfinger-cli.sh replay --id=<id> --layers=index
+#     ./greenfinger-cli.sh resume --id=<id>            # continue after a pause
+#     ./greenfinger-cli.sh pause --id=<id>
+#     ./greenfinger-cli.sh help                        # these verbs, and nothing else
 #
-#     ./greenfinger-face.sh                    # the prompt
+# Everything else the shell can do -- catalogs, versions, reports, search, the state of the index
+# and the vectors, deleting things -- is looking at the installation rather than working it, and
+# lives in the prompt, which is the same program with a session around it:
+#
+#     ./greenfinger-shell.sh                   # the prompt
 #     greenfinger:> catalog-save               # one question per setting
 #     greenfinger:> catalog-crawl --id=<id>    # the id it printed
 #
-# One line at a time instead of the prompt:
+# The prompt is what the page is, at a terminal, and like the page it is a client: it talks to the
+# nodes started by run-local.sh or run-docker.sh and crawls nothing itself. Asking this form for
+# one of those commands is refused by name and points at the prompt, rather than quietly doing
+# nothing -- a script that asked for something is entitled to know it did not happen.
 #
-#     ./greenfinger-cli.sh catalog-list
-#     ./greenfinger-cli.sh catalog-crawl --id=<id>
-#     ./greenfinger-cli.sh update --id=<id> --refresh=true
-#     ./greenfinger-cli.sh delete --id=<id> --keep-latest=3
-#     ./greenfinger-cli.sh options             # every catalog setting and its default
-#     ./greenfinger-cli.sh help                # every command
+# Anything that goes wrong stops the command and exits non-zero: a catalog id that is not there,
+# a crawl already running, an option that makes no sense. There is nothing to ask, so there is
+# nothing to carry on with.
 #
-# Every option is long form, and the catalog is always addressed by its id.
+# Which cluster this run is in, when it is not the usual one:
+#
+#     ./greenfinger-cli.sh --cluster=nightly crawl --id=<id>
+#     ./greenfinger-cli.sh --cluster=other --cluster-port=22001 crawl --id=<id>   # beside it
+#     ./greenfinger-cli.sh --join=nightly   crawl --id=<id>   # crawl inside that cluster
+#
+# A cluster crawls one catalog at a time, so a run that makes its own needs a port nobody holds --
+# refused at once when somebody does, rather than discovered as a crawl that waits. --join says
+# the opposite on purpose: be part of what is already there.
+#
+# Every option is long form. A catalog is addressed by its id, or by --url: a url with nothing
+# behind it yet becomes a catalog carrying the installation's defaults, and is then crawled, so a
+# script with a url and no setup gets pages out of one command. --name says what to call it;
+# without one it takes the registrable domain.
 #
 # Which cluster this node joins and where it writes are not options: they are in run.conf beside
 # this script -- GF_CLUSTER_NAME, GF_CLUSTER_HOSTS, GF_DATA_STORE, GF_WORKER_ROOT -- and the same
-# file is read by greenfinger-face.sh, run-local.sh and run-docker.sh. They
+# file is read by greenfinger-shell.sh, run-local.sh and run-docker.sh. They
 # describe the installation rather than the command, and a run that has to be reproduced tomorrow
 # is the normal case here. A one-off is still a one-off:
 #
-#     GF_DATA_STORE=/var/gf ./greenfinger-cli.sh catalog-list
+#     GF_DATA_STORE=/var/gf ./greenfinger-cli.sh crawl --id=<id>
 #
 # More than one process on this machine:
 #
-#     ./greenfinger-cli.sh catalog-crawl --id=<id> --node=3
+#     ./greenfinger-cli.sh crawl --id=<id> --node=3
 #
 # `--node` is read here, before the jvm starts, because starting processes is not something a
 # command inside one can do. It is left on the line as well: the crawl command declares it, so
@@ -78,22 +102,48 @@ drop_empty_gf() {
 #                      data/ beside this script, so it never depends on where you happened to cd
 #   GF_WORKER_ROOT     where extra local nodes keep theirs, when --node asks for more than one
 #
-# What the caller already exported is put back afterwards, so `GF_DATA_STORE=/tmp/x ./greenfinger-cli.sh
-# catalog-list` is still a one-off. `export -p` rather than an associative array: bash 4, and
-# macOS ships 3.2.
-if [[ -f "${SCRIPT_DIR}/run.conf" ]]; then
-  # `declare -x` rather than `export` is what `export -p` prints, and `declare` inside a function
-  # makes a *local* -- so evaluating it here would set a variable that vanishes on return, and the
-  # caller's one-off would be silently ignored. Rewritten to `export`, which is global wherever it
-  # is run.
+# Settings, in one place per reader and in one order.
+#
+#   run.conf   the launcher: how many processes, on which ports, with how much heap, and where
+#              each one's directories go. Shell questions, answered before a jvm exists.
+#   .env       the application: everything application.yml resolves with ${GF_...}, secret or not.
+#              Spring imports this file too, so a main class started from an IDE reads the same
+#              values with no launcher in sight -- which is why nothing the application reads is
+#              allowed to live in run.conf.
+#   the shell  whatever the caller already exported, which beats both.
+#
+# `set -a` because these names are the same GF_* the yaml reads: they have to be exported before
+# the jvm starts. The caller's values are captured with `export -p`, whose output is made to be
+# read back, rather than an associative array -- that is bash 4 and macOS ships 3.2. `declare -x`
+# is what `export -p` prints, and `declare` inside a function makes a *local*, so it is rewritten
+# to `export` before being evaluated or the caller's one-off vanishes on return.
+load_settings() {
+  local preset
+  # Beside this launcher, which is the installation it belongs to. GREENFINGER_ENV names another
+  # one -- a second configuration on the same machine, or a file kept outside the directory
+  # because deploy/ is a build output and anything in it is replaced by the next build.
+  ENV_FILE="${GREENFINGER_ENV:-${SCRIPT_DIR}/.env}"
   preset="$(export -p | grep -E ' GF_[A-Za-z0-9_]+=' | sed 's/^declare -x /export /' || true)"
   set -a
-  # shellcheck disable=SC1091
-  source "${SCRIPT_DIR}/run.conf"
+  if [[ -f "${SCRIPT_DIR}/run.conf" ]]; then
+    # shellcheck disable=SC1091
+    source "${SCRIPT_DIR}/run.conf"
+    # An installation from before the split may still have the application's own settings in here.
+    # They work -- this is sourced either way -- but only a launcher will ever see them, so say so
+    # once rather than let somebody wonder why the IDE disagrees with the script.
+    if grep -qE '^\s*(GF_CLUSTER_NAME|GF_CLUSTER_PORT|GF_CLUSTER_HOSTS|GF_DATA_STORE|GF_IDLE_TIMEOUT|GF_COMPLETION_CHECK_INTERVAL|GF_MAX_CONSECUTIVE_FAILURES)=[^[:space:]]' "${SCRIPT_DIR}/run.conf"; then
+      echo "run.conf still sets values the application reads; move them to .env -- only the launchers can see them here." >&2
+    fi
+  fi
+  if [[ -f "${ENV_FILE}" ]]; then
+    # shellcheck disable=SC1090
+    source "${ENV_FILE}"
+  fi
   set +a
   eval "${preset}"
   drop_empty_gf
-fi
+}
+load_settings
 
 DATA_STORE="${GF_DATA_STORE:-}"
 CLUSTER_NAME="${GF_CLUSTER_NAME:-}"
@@ -103,24 +153,71 @@ WORKER_ROOT="${GF_WORKER_ROOT:-}"
 LOG_DIR="${GF_LOG_DIR:-${SCRIPT_DIR}/logs}"
 export GF_LOG_DIR="${LOG_DIR}"
 
-# --as-worker is the one thing still read off the line, and it is not a setting: the prompt passes
-# it when it forks a node, so that node knows to take a worker directory and open no prompt of its
-# own. Nobody types it.
+# Which cluster, read off the line. run.conf still says what an installation normally does; these
+# are for the invocation that differs -- a crawl of its own beside one that is already running, or
+# deliberately joining one. --as-worker is not typed by anybody: the launcher passes it to the
+# nodes it forks, so they take a worker directory and open no prompt.
+#
+#   --cluster=<name>        which cluster this run is; required, there is no default
+#   --cluster-port=<port>   and its port; 22000 unless said otherwise
+#   --cluster-hosts=a,b     where to knock, for a cluster that is not on this machine
+#   --join=<name>           crawl as part of the cluster already on the port, instead of making
+#                           one. This process fetches pages like every other node in it; what it
+#                           does not do is contend for leadership, because it is here for one
+#                           command and then gone. The terminal's --cluster is a different thing:
+#                           that one watches and drives, and crawls nothing.
+#
 AS_WORKER=0
+JOIN=0
+# Whether the cluster was named at all, which --join needs: a name is half of what identifies a
+# cluster, and joining one under the wrong name lands beside it rather than in it.
+CLUSTER_NAMED=0
+[[ -n "${GF_CLUSTER_NAME:-}" ]] && CLUSTER_NAMED=1
 ARGS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --as-worker) AS_WORKER=1; shift ;;
-    --data-store|--data-store=*|--cluster|--cluster=*|--cluster-hosts|--cluster-hosts=*|--worker-dir|--worker-dir=*)
+    --join) JOIN=1; shift ;;
+    --join=*) JOIN=1; CLUSTER_NAMED=1; export GF_CLUSTER_NAME="${1#*=}"; shift ;;
+    --cluster=*) CLUSTER_NAMED=1; export GF_CLUSTER_NAME="${1#*=}"; shift ;;
+    --cluster) CLUSTER_NAMED=1; export GF_CLUSTER_NAME="${2:-}"; shift 2 ;;
+    --cluster-port=*) export GF_CLUSTER_PORT="${1#*=}"; shift ;;
+    --cluster-port) export GF_CLUSTER_PORT="${2:-}"; shift 2 ;;
+    --cluster-hosts=*) export GF_CLUSTER_HOSTS="${1#*=}"; shift ;;
+    --cluster-hosts) export GF_CLUSTER_HOSTS="${2:-}"; shift 2 ;;
+    --data-store|--data-store=*|--worker-dir|--worker-dir=*)
       echo "'${1%%=*}' is not an option any more: it is configuration, and it lives in" >&2
       echo "run.conf beside this script -- ${SCRIPT_DIR}/run.conf" >&2
-      echo "Set GF_DATA_STORE, GF_CLUSTER_NAME, GF_CLUSTER_HOSTS or GF_WORKER_ROOT there." >&2
+      echo "Set GF_DATA_STORE or GF_WORKER_ROOT there." >&2
       exit 1
       ;;
     *) ARGS+=("$1"); shift ;;
   esac
 done
 set -- ${ARGS[@]+"${ARGS[@]}"}
+
+# The port, 22000 unless another is named. Holding one is what makes a leader, and it is machine
+# wide, so the port is what actually tells one cluster from another: run-local has 22010 and
+# run-docker 22020 for that reason. Two clusters of this launcher's own, at once, is a matter of
+# giving the second one a port -- and the check below is what stops a run joining somebody else's
+# by accident.
+export GF_CLUSTER_PORT="${GF_CLUSTER_PORT:-22000}"
+
+if ! [[ "${GF_CLUSTER_PORT}" =~ ^[0-9]+$ ]]; then
+  echo "--cluster-port takes a port number. Got '${GF_CLUSTER_PORT}'." >&2
+  exit 1
+fi
+
+if [[ "${AS_WORKER}" != "1" && -z "${GF_CLUSTER_NAME:-}" ]]; then
+  echo "Say which cluster this is: --cluster=<name>." >&2
+  echo >&2
+  echo "A cluster crawls one catalog at a time, so the name is how two runs are kept apart --" >&2
+  echo "and how a second pair of hands finds the first. There is no default on purpose." >&2
+  echo >&2
+  echo "  ./greenfinger-cli.sh --cluster=nightly crawl --url=https://example.com" >&2
+  echo "  ./greenfinger-cli.sh --join=nightly crawl --id=<id>   # join that one" >&2
+  exit 1
+fi
 
 # --node is a crawl option, so it can appear anywhere after the command word. Read rather than
 # consumed: the command declares it too, and leaving it in place keeps the line the user typed
@@ -186,26 +283,6 @@ if [[ -z "${CONFIG_DIR}" ]]; then
   done
 fi
 
-# Secrets come from a .env file that is never committed, so an api key stays out of the
-# configuration directory and out of the repository. Searched beside the launcher, then in the
-# project root above it, then in the current directory.
-ENV_FILE="${GREENFINGER_ENV:-}"
-if [[ -z "${ENV_FILE}" ]]; then
-  for candidate in "${SCRIPT_DIR}/.env" "${APP_HOME}/.env" "${APP_HOME}/backend/.env" \
-                   "${APP_HOME}/../.env" "./.env"; do
-    if [[ -f "${candidate}" ]]; then ENV_FILE="${candidate}"; break; fi
-  done
-fi
-if [[ -n "${ENV_FILE}" && -f "${ENV_FILE}" ]]; then
-  preset="$(export -p | grep -E ' GF_[A-Za-z0-9_]+=' || true)"
-  set -a
-  # shellcheck disable=SC1090
-  source "${ENV_FILE}"
-  set +a
-  eval "${preset}"
-  drop_empty_gf
-fi
-
 # GF_DATA_STORE is one directory and everything goes under it, split in two:
 #
 #   system/  what the crawler needs while it is crawling -- the frontier, the two dedup stores,
@@ -232,10 +309,9 @@ case "${GF_DB_URL:-}" in
   *) ;;
 esac
 
-# Nodes that agree on this name find each other and share the work. "default" so that two
-# terminals on one machine are one cluster without anybody having to say so, and so that giving
-# it a name is how you keep two crawls apart rather than how you join them up.
-export GF_CLUSTER_NAME="${CLUSTER_NAME:-default}"
+# Nodes that agree on this name find each other and share the work. Required rather than defaulted:
+# it is asked for at the top of this script, so by here it is always set.
+export GF_CLUSTER_NAME="${GF_CLUSTER_NAME}"
 
 # Who to knock on. The configuration default is 127.0.0.1, which finds the other processes on this
 # machine and nothing else -- right for the usual case and useless across machines.
@@ -310,6 +386,83 @@ worker_env() {
 #
 #     GREENFINGER_WORKER_DIR=<dir> ./greenfinger-cli.sh --as-worker
 #
+# ---- this launcher's own cluster ---------------------------------------------------------------
+#
+# greenfinger-cli runs a cluster of its own, and that is not a preference: one crawl at a time is
+# enforced across a cluster, so joining somebody else's would mean queueing behind their crawl --
+# or being refused outright. The three launchers therefore have a port each (this one 22000,
+# run-local 22010, run-docker 22020), and holding a port is what makes a leader.
+#
+# So the port has to be free. Taken means one of two things, and neither is this launcher's
+# cluster: another greenfinger-cli is running, or run.conf points this one at a cluster somebody
+# else started. Checked here, once, before anything is forked -- with --node=3 the workers this
+# script starts join the cluster it is about to make, and they say so with --as-worker.
+cluster_port_free() {
+  local port="$1"
+  # Polled rather than asked once: stopping a cluster and starting it again is the ordinary
+  # sequence, and the old nodes release the port a moment after the stop returns. Ten seconds is
+  # long enough for that and short enough that a port somebody else holds is refused promptly.
+  local waited=0
+  while (( waited < 20 )); do
+    # the whole open-and-close happens in the subshell: closing a descriptor the parent never
+    # opened is a redirection error on exec, and that ends a non-interactive shell outright --
+    # which turned this check into a launcher that exited without saying anything
+    if ! (exec 3<>"/dev/tcp/127.0.0.1/${port}" && exec 3<&-) 2>/dev/null; then
+      return 0
+    fi
+    sleep 0.5
+    (( waited += 1 ))
+  done
+  return 1
+}
+
+if [[ "${AS_WORKER}" != "1" ]]; then
+  CHECK_PORT="${GF_CLUSTER_PORT}"
+  if [[ "${JOIN}" == "1" ]]; then
+    if [[ "${CLUSTER_NAMED}" != "1" ]]; then
+      echo "--join needs the name of the cluster to join: a cluster is a name and a port, and" >&2
+      echo "the wrong name lands beside it rather than in it." >&2
+      echo >&2
+      echo "  ./greenfinger-cli.sh --join=<name> $*" >&2
+      exit 1
+    fi
+    # asked for: this run is another pair of hands in a cluster somebody else started, and one
+    # crawl at a time is then the point rather than the problem
+    if cluster_port_free "${CHECK_PORT}"; then
+      echo "Nothing is on port ${CHECK_PORT}, so there is no cluster to join." >&2
+      echo "Start one, or drop --join to make this run its own:" >&2
+      echo "  ./greenfinger-cli.sh $*" >&2
+      exit 1
+    fi
+    # another pair of hands: it crawls like every other node in that cluster, and never contends
+    # for the port, because a process that exists for one command is a poor leader
+    echo "Joining cluster '${GF_CLUSTER_NAME}' on port ${CHECK_PORT} as another crawler."
+    export GREENFINGER_JOIN=1
+  elif ! cluster_port_free "${CHECK_PORT}"; then
+    echo "Cluster port ${CHECK_PORT} is already held, so this would join somebody else's" >&2
+    echo "cluster rather than run its own -- and a cluster crawls one catalog at a time." >&2
+    echo >&2
+    echo "It is probably one of these:" >&2
+    echo "  another ./greenfinger-cli.sh is still running" >&2
+    echo "  ./run-local.sh (22010) or ./run-docker.sh (22020) with GF_CLUSTER_PORT set in" >&2
+    echo "  ${SCRIPT_DIR}/run.conf, which every launcher reads" >&2
+    echo >&2
+    echo "Give this run a port of its own, wait for that one to finish, or be part of it:" >&2
+    echo "  ./greenfinger-cli.sh --cluster=${GF_CLUSTER_NAME} --cluster-port=$((CHECK_PORT + 1)) $*" >&2
+    echo >&2
+    echo "To crawl as part of that cluster instead -- another node in it -- say so:" >&2
+    echo "  ./greenfinger-cli.sh --join $*" >&2
+    echo >&2
+    echo "To drive the nodes that are already running, that is the other face:" >&2
+    echo "  ./greenfinger-shell.sh" >&2
+    exit 1
+  else
+    # said out loud, so a cluster that is not the one you meant is visible rather than inferred
+    # from a crawl that waits for somebody else's to finish
+    echo "Cluster '${GF_CLUSTER_NAME}' on port ${CHECK_PORT}, started by this launcher."
+  fi
+fi
+
 # It replaces this shell, so whoever started it can stop it with a signal.
 if [[ "${AS_WORKER}" == "1" ]]; then
   if [[ -z "${GREENFINGER_WORKER_DIR:-}" ]]; then
@@ -321,6 +474,7 @@ if [[ "${AS_WORKER}" == "1" ]]; then
       --logging.file.name="${GREENFINGER_LOG:-${LOG_DIR}/worker.log}" \
       ${CONFIG_DIR:+--spring.config.additional-location="file:${CONFIG_DIR}/"} \
       --spring.shell.interactive.enabled=false \
+      ${GREENFINGER_JOIN:+--spring.spreader.leader-eligible=false} \
       --greenfinger.shell.worker=true
 fi
 
@@ -338,33 +492,22 @@ if [[ -d "${CONFIG_DIR}" ]]; then
   SPRING_ARGS+=(--spring.config.additional-location="file:${CONFIG_DIR}/")
 fi
 # This launcher is the one-shot face: a command on the line, run once, and the process is gone.
-# The prompt is greenfinger-face.sh, which is this script with GREENFINGER_FACE=1 set -- one
-# implementation, two entry points, so the jar, the configuration, the data store and the extra
-# nodes are found the same way whichever one you typed.
-#
-# `face` on the line still works, and means the same thing.
-if [[ "${1:-}" == "face" ]]; then
-  shift
-  GREENFINGER_FACE=1
+# The prompt is greenfinger-shell.sh, which is a different thing now -- a client that joins the
+# cluster and asks the nodes, rather than a node itself.
+if [[ "${1:-}" == "face" || "${GREENFINGER_FACE:-0}" == "1" ]]; then
+  echo "The prompt is ./greenfinger-shell.sh now, and it is a client: it talks to the nodes" >&2
+  echo "started by ./run-local.sh (or ./run-docker.sh) rather than crawling here." >&2
+  exit 1
 fi
 
-if [[ "${GREENFINGER_FACE:-0}" == "1" ]]; then
-  # The prompt reads its own lines, so a command word left on the launcher line would be run once
-  # and the session would end on it -- the opposite of what asking for the prompt meant. Say so
-  # and open the prompt anyway, which is what was asked for.
-  if [[ $# -gt 0 ]]; then
-    echo "The prompt takes its commands from the prompt. Type '$*' after greenfinger:>," >&2
-    echo "or run it once with: ./greenfinger-cli.sh $*" >&2
-    echo >&2
-    set --
-  fi
-else
-  # Nothing to run and no prompt to open: say what there is rather than starting a jvm that
-  # would sit there waiting for input this face never reads.
-  if [[ $# -eq 0 ]]; then
-    set -- help
-  fi
-  SPRING_ARGS+=(--spring.shell.interactive.enabled=false)
+# Nothing to run and no prompt to open: say what there is rather than starting a jvm that would
+# sit there waiting for input this face never reads.
+if [[ $# -eq 0 ]]; then
+  set -- help
+fi
+SPRING_ARGS+=(--spring.shell.interactive.enabled=false)
+if [[ "${GREENFINGER_JOIN:-0}" == "1" ]]; then
+  SPRING_ARGS+=(--spring.spreader.leader-eligible=false)
 fi
 
 # One process is the ordinary case and nothing about it changes: no worker is started, no data

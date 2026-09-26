@@ -24,29 +24,19 @@ import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import lombok.experimental.UtilityClass;
 
 /**
- * How text is cut into terms.
- *
- * <p>
- * {@code standard} is the default and stays the default. What is crawled is mostly English, and
- * for English the standard analyzer is not a compromise -- it is the right answer. The other two
- * exist because a crawler that cannot segment Chinese at all is a crawler with a hole in it, not
- * because Chinese is the expected case.
+ * How text is cut into terms. {@code standard} is the default and right for English; on CJK it
+ * falls back to single characters, so everything is found and nothing ranks well.
  *
  * <ul>
- * <li>{@code standard} tokenizes on word boundaries, which is what English wants. On CJK it falls
- * back to single characters: everything is found and nothing ranks well, because a one-character
- * term matches half the corpus.</li>
- * <li>{@code smartcn} is a real Chinese segmenter with a dictionary, and is the embedded
- * counterpart of installing IK into an Elasticsearch server. Worth turning on for a catalog whose
- * site is Chinese, and worth leaving off for one whose site is not.</li>
- * <li>{@code cjk} is bigrams: no dictionary, so nothing to fall out of date, and it covers
- * Japanese and Korean too. The middle answer for a corpus that is genuinely mixed.</li>
+ * <li>{@code smartcn}: a real Chinese segmenter with a dictionary, the embedded counterpart of IK
+ * on an Elasticsearch server.</li>
+ * <li>{@code cjk}: bigrams -- no dictionary to fall out of date, and it covers Japanese and Korean
+ * too. The middle answer for a genuinely mixed corpus.</li>
  * </ul>
  *
  * <p>
- * One setting for the whole node today. One index per catalog means it could be one per catalog,
- * which is what a machine crawling an English site and a Chinese one would want; that is a catalog
- * column and an interview question, and neither exists yet.
+ * One setting per node today; one index per catalog means it could be per catalog, which needs a
+ * catalog column and an interview question.
  * 
  * @Description: LuceneAnalyzers
  * @Author: Fred Feng

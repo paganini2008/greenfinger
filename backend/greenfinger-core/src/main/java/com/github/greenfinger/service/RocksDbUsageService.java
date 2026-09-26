@@ -34,24 +34,15 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * What the three RocksDB stores under a catalog are holding.
+ * What the three RocksDB stores under a catalog are holding: the frontier says what is left to
+ * fetch and the two dedup filters what has been seen -- the half of a crawl's state no page shows,
+ * and the half that keeps a disk full after a catalog is forgotten.
  *
  * <p>
- * The frontier says what is left to fetch; the two dedup filters say what has been seen. They are
- * the half of a crawl's state that no page shows and no log mentions, and they are also the half
- * that quietly keeps a disk full after a catalog has been forgotten about.
- *
- * <h2>Two numbers, measured two different ways</h2>
- * The size on disk is a file walk and always works. The key count means opening the database, and
- * RocksDB allows exactly one process to have it open -- so while a crawl of this catalog is
- * running, the count is not available and this says so rather than guessing or, worse, failing.
- * The size is still reported in that case, because it is the number somebody worried about disk
- * came for.
- *
- * <p>
- * The count is {@code rocksdb.estimate-num-keys}, and estimate is not a hedge: it is what the
- * property is called and what it is. It counts entries not yet compacted away, so a store that
- * has had a lot deleted reads high until compaction catches up.
+ * The size on disk is a file walk and always works. The key count needs the database open, and
+ * RocksDB allows one process at a time, so during a crawl it is reported as unavailable rather than
+ * guessed. The count is {@code rocksdb.estimate-num-keys}, which counts entries not yet compacted
+ * away, so a store with many deletions reads high until compaction catches up.
  *
  * @Description: RocksDbUsageService
  * @Author: Fred Feng

@@ -38,21 +38,21 @@ import com.github.greenfinger.core.report.CrawlReportStore;
 import com.github.greenfinger.output.OutputProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import java.util.function.LongSupplier;
+import com.github.greenfinger.core.output.IndexAdmin;
 
 /**
  * Writes the {@code crawler_report} row for a version, once the run that built it is over.
  *
  * <p>
- * Written by the node that started the run, and by that node only. Every node writes its own file
- * report because a file report is that node's account of its own share; this is the opposite kind
- * of document -- one per version, describing the whole crawl -- and three nodes each writing their
- * own idea of "the whole crawl" would be three rows disagreeing about the same number.
+ * Written by the node that started the run and by that node only: a file report is each node's
+ * account of its own share, but this is one row per version describing the whole crawl, and three
+ * of those would disagree about the same number.
  *
  * <p>
- * Everything it can find out, it writes down, including the things that are empty: a section that
- * is missing reads as "nobody looked", and a section that says zero reads as what happened. That
- * is the whole point of keeping it -- somebody asking in six months why a version is the size it
- * is needs an answer, and "the index section is absent" is not one.
+ * Everything it can find out it writes down, empty sections included -- a missing section reads as
+ * "nobody looked", a zero reads as what happened, and somebody asking in six months why a version
+ * is this size needs the second.
  * 
  * @Description: CrawlReportRecorder
  * @Author: Fred Feng
@@ -278,7 +278,7 @@ public class CrawlReportRecorder {
         // not know which provider that machine was configured with
         index.put("uris", indexConfig.getUris());
         index.put("directory", indexConfig.getLucene().getDirectory());
-        index.put("index", com.github.greenfinger.core.output.IndexAdmin
+        index.put("index", IndexAdmin
                 .indexOf(indexConfig.getPrefix(), catalogDetails.getId()));
         index.put("analyzer", "lucene".equalsIgnoreCase(indexConfig.getProvider())
                 ? indexConfig.getLucene().getAnalyzer()
@@ -320,7 +320,7 @@ public class CrawlReportRecorder {
         }
     }
 
-    private long count(java.util.function.LongSupplier supplier) {
+    private long count(LongSupplier supplier) {
         try {
             return supplier.getAsLong();
         } catch (Exception e) {

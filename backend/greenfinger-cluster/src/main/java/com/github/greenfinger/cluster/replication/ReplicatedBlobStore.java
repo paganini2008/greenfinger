@@ -23,25 +23,18 @@ import com.github.greenfinger.core.output.BlobStore;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Copies pages and images to the other nodes, for the one blob store that is not shared.
+ * Copies pages and images to the other nodes, for the local blob store, which is a directory per
+ * node -- a picture fetched on node B is otherwise a broken image on node A, since search serves
+ * the archived copy. MinIO is one shared bucket and needs none of it.
  *
  * <p>
- * MinIO is one bucket every node writes to and reads from, so nothing here applies to it. A local
- * directory is one per node, and then a picture fetched on node B is a broken image on node A --
- * which is exactly what the picture search shows, since it serves the archived copy rather than
- * the site's own url.
+ * Written only if absent. Delivery is at least once, and rewriting is wasted io plus a chance for a
+ * reader to catch a half written file. The check is exact rather than a guess because a path is
+ * derived from an id derived from the content: the same path always means the same bytes.
  *
- * <h2>Written only if it is not already there</h2>
- * Delivery is at least once: a frame whose acknowledgement was lost is sent again, and the
- * receiver's own deduplication has a time window rather than a memory. So the same picture can
- * arrive twice, and rewriting it is wasted io and a chance for a reader to catch a half written
- * file. The check is a complete answer rather than a guess because a path here is derived from an
- * id that is derived from the content: the same path always means the same bytes.
- *
- * <h2>This is the expensive channel</h2>
- * A page is a few kilobytes but a crawl of a picture-heavy site moves megabytes a second, all of
- * it multicast to every node. That is the cost of not having shared storage, and it is why the
- * startup report recommends MinIO rather than treating the two as equivalent.
+ * <p>
+ * This is the expensive channel -- a picture-heavy crawl multicasts megabytes a second -- which is
+ * why the startup report recommends MinIO.
  * 
  * @Description: ReplicatedBlobStore
  * @Author: Fred Feng

@@ -29,6 +29,8 @@ import com.github.greenfinger.core.model.ContentMode;
 import com.github.greenfinger.core.model.OutputType;
 import com.github.greenfinger.core.utils.UuidUtils;
 import lombok.RequiredArgsConstructor;
+import java.util.Set;
+import com.github.greenfinger.core.WebCrawlerConstants;
 
 /**
  * The catalog store. Definitions and crawled metadata live in the same database, so the two cannot
@@ -67,7 +69,7 @@ public class JpaCatalogStore implements CatalogStore {
             catalog.setSearchVersion(-1);
         }
         if (catalog.getOutputTypesValue() == null) {
-            catalog.setOutputTypes(java.util.Set.of(OutputType.FILE));
+            catalog.setOutputTypes(Set.of(OutputType.FILE));
         }
         if (catalog.getDownstreamContentValue() == null) {
             catalog.setContentMode(ContentMode.TEXT_IMAGE);
@@ -88,27 +90,16 @@ public class JpaCatalogStore implements CatalogStore {
     }
 
     /**
-     * One catalog per name, enforced here rather than left to {@code uk_catalog_name}.
+     * One catalog per name, enforced here rather than left to {@code uk_catalog_name}. Every
+     * dialect but SQLite creates that constraint; Hibernate's community dialect emits neither it
+     * nor a unique index, so a SQLite deployment would accept two catalogs of one name and
+     * {@code findByName} would answer with whichever it reached first. Nodes may use different
+     * databases, and a collision one node refuses and another accepts is exactly the divergence
+     * replication then has to repair.
      *
      * <p>
-     * The constraint is declared on the entity and H2, MySQL, PostgreSQL and the rest all create
-     * it. SQLite does not: Hibernate's community dialect emits neither the unique constraint nor
-     * a unique index for it, so the generated schema -- and {@code docs/sql/schema-sqlite.sql},
-     * which is generated from the same entities -- has no uniqueness of any kind. A deployment on
-     * SQLite would therefore accept two catalogs called the same thing, and
-     * {@code findByName} would answer with whichever the query happened to reach first.
-     *
-     * <p>
-     * That matters more in a cluster than on one machine. Nodes are free to use different
-     * databases, and a name collision that one node refuses and another accepts is precisely the
-     * divergence the replication in {@code greenfinger-cluster} then has to repair. Checking here
-     * makes every dialect behave like the strictest of them.
-     *
-     * <p>
-     * A check and then a write is not atomic, and on the dialects that create the constraint the
-     * constraint is still what makes it safe. This closes the gap on the one that does not; two
-     * catalogs created in the same millisecond on two connections to one SQLite file remain
-     * possible in theory, and the reconciler in the cluster module is what notices.
+     * Check-then-write is not atomic; on the other dialects the constraint is still what makes it
+     * safe, and two catalogs created in the same millisecond on one SQLite file remain possible.
      */
     private void requireNameIsFree(Catalog catalog) {
         if (catalog.getName() == null) {
@@ -200,7 +191,7 @@ public class JpaCatalogStore implements CatalogStore {
     @Transactional(readOnly = true)
     public List<Catalog> findRunning() {
         return catalogRepository.findByRunningStateNotNull().stream()
-                .filter(c -> !com.github.greenfinger.core.WebCrawlerConstants.RUNNING_STATE_NONE
+                .filter(c -> !WebCrawlerConstants.RUNNING_STATE_NONE
                         .equalsIgnoreCase(c.getRunningState()))
                 .toList();
     }

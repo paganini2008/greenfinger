@@ -36,28 +36,19 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * One crawl's components, and the two clocks that end it.
+ * One crawl's components, and the two clocks that end it. The launcher builds one per run and
+ * destroys it at the end, so initialisation resets these fields and the counters, which in a
+ * cluster outlive the process.
  *
- * <h2>A fresh one per run</h2>
- * 1.x made this bean {@code prototype} so that every crawl -- update, crawl or rebuild -- got a
- * context that had just run {@code afterPropertiesSet}. The same holds here by construction: the
- * launcher builds one per run and destroys it when the run ends. What that initialisation resets
- * is not only these fields but the counters themselves, which in a cluster outlive the process.
+ * <p>
+ * Completion is noticed here, not decided here: the checkers read the shared dashboard, so every
+ * node reaches the same answer and the first to notice writes the flag. {@code maxFetchSize} is
+ * asked on the crawl thread (its counter only moves when a page goes past) and
+ * {@code fetchDuration} by the clock (time passes regardless).
  *
- * <h2>Completion is not decided here, it is noticed here</h2>
- * Whether the crawl is over is a property of the shared state, not of this node: the two checkers
- * are handed the dashboard and answer a question about it, so every node reaches the same answer
- * and the first one to notice writes the flag. {@code maxFetchSize} is asked on the crawl's own
- * thread, because the counter it watches can only move when a page goes past. {@code fetchDuration}
- * is asked by the clock, because time passes whether or not anything is being fetched.
- *
- * <h2>The watchdog, and why quiet is ambiguous</h2>
- * The clock also watches for the counters standing still, which means one of two opposite things.
- * A small site runs out of urls: everything dispatched has been handled, and the quiet is the
- * crawl being done -- that is a completion and the version is published. Or a node stopped
- * answering while holding urls and the counters will never meet -- that is an intervention, and
- * publishing it would put half a version in front of searches. The two are told apart by whether
- * the counters agree, which is why that comparison exists without being a third checker.
+ * <p>
+ * The clock also watches for counters standing still, which is ambiguous -- see
+ * {@link #idleTimeoutReached}.
  *
  * @Description: DefaultWebCrawlerExecutionContext
  * @Author: Fred Feng
@@ -239,16 +230,10 @@ public class DefaultWebCrawlerExecutionContext implements WebCrawlerExecutionCon
     }
 
     /**
-     * The counters have stood still for the whole idle timeout. That means one of two opposite
-     * things, and which one decides whether the version is published.
-     *
-     * <p>
-     * If every url that was dispatched has been handled, there is nothing queued or in flight
-     * anywhere: the site simply ran out of urls, and the quiet is the crawl being finished. That
-     * is a completion, and it does not wait for {@code fetchDuration} -- a small site is done when
-     * it is done. If the two do not agree, some urls were held by a node that stopped answering,
-     * or the network went away mid-crawl; those pages will never arrive, and publishing what did
-     * would put half a version in front of searches.
+     * The counters have stood still for the whole idle timeout, which means one of two opposite
+     * things. Dispatched == handled: the site ran out of urls and the crawl is finished, published
+     * without waiting for {@code fetchDuration}. Otherwise a node died holding urls, and
+     * publishing would put half a version in front of searches.
      */
     void watch() {
         long idleTimeout = webCrawlerProperties.getIdleTimeout().toMillis();

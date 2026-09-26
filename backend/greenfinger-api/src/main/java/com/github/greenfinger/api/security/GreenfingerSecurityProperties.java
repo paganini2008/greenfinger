@@ -25,14 +25,8 @@ import lombok.Setter;
  * Who may sign in, and for how long.
  *
  * <p>
- * The accounts are handed out up front and written into the configuration -- there is no
- * registration, no user table and no password reset, because greenfinger is an operator's tool
- * rather than a public site. One line in {@code .env} is the whole user directory.
- *
- * <p>
- * {@link #users} is a single string rather than a list of objects for exactly that reason:
- * environment variables have no way to express a list, and every value in this project comes from
- * {@code .env}.
+ * The accounts live in {@code users.xml} rather than here -- see {@link PreAllocatedUsers}. This
+ * class only says where that file is, and how long a session lasts.
  *
  * @Description: GreenfingerSecurityProperties
  * @Author: Fred Feng
@@ -48,9 +42,10 @@ public class GreenfingerSecurityProperties {
     private boolean enabled = true;
 
     /**
-     * The pre-allocated accounts, as {@code username:password:role[|role]}, separated by commas.
+     * Where the accounts are. Relative to the working directory, which is the directory the
+     * launcher is in and {@code /app} in a container -- the same place {@code config/} is mounted.
      */
-    private String users = "admin:admin123:ADMIN,tester:tester123:SUPPORT";
+    private String usersFile = "config/api/users.xml";
 
     /** How long a token stays valid without being used. Each request renews it. */
     private Duration tokenValidity = Duration.ofHours(8);

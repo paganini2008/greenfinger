@@ -35,19 +35,19 @@ import com.github.greenfinger.output.vector.EmbeddingClient;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.github.greenfinger.core.model.ExtractorType;
+import com.github.greenfinger.core.model.ContentMode;
+import com.github.greenfinger.core.component.state.CountingType;
+import com.github.greenfinger.core.component.extractor.ThreadWait;
 
 /**
- * Rebuilds the index or the vector store from the database, without crawling anything again.
+ * Rebuilds the index or the vector store from the database, without crawling again: the rows
+ * keep every version's metadata and the paths to its files, so an index dropped by accident or
+ * documents lost while Elasticsearch was down can be restored from what is on hand.
  *
  * <p>
- * The database keeps every version's metadata and the paths to its files, so an index that was
- * dropped by accident, a vector collection that was recreated, or documents lost while
- * Elasticsearch was briefly down can all be restored from what is already on hand.
- *
- * <p>
- * It is an overwrite rather than an append, and that is safe for exactly one reason: every id is a
- * name-based UUID derived from natural keys, so replaying produces the same ids as the original
- * write and lands on top of it instead of beside it.
+ * An overwrite rather than an append, safe because every id is a name-based UUID of a natural
+ * key -- a replay produces the same ids and lands on top of the original write.
  * 
  * @Description: ReplayService
  * @Author: Fred Feng
@@ -81,19 +81,9 @@ public class ReplayService {
     }
 
     /**
-     * Make the version search can see be the one that was just rebuilt.
-     *
-     * <p>
-     * Without this a replay put every page into the index and search still returned nothing, which
-     * is as confusing a state as this system has: the documents are there, they match, and the
-     * catalog is skipped because it says it has no published version. That is not hypothetical --
-     * it is what a catalog looks like after the node that was going to publish it went away
-     * between the last page and the publish, and before this there was no way out of it except
-     * crawling the whole site again.
-     *
-     * <p>
-     * Never backwards. Replaying an old version is a repair of that version, not a decision to
-     * serve it: a catalog searching v3 that has v1 rebuilt keeps searching v3.
+     * Make the version search can see be the one that was just rebuilt -- otherwise a replay
+     * fills the index and search still returns nothing, because the catalog says it has no
+     * published version. Never backwards: replaying v1 while v3 is served is a repair of v1.
      */
     protected void publishReplayed(String catalogId, int version, Set<OutputType> layers,
             long replayed) throws Exception {
@@ -114,18 +104,9 @@ public class ReplayService {
     }
 
     /**
-     * The same rebuild, over a range of the version's pages rather than all of them.
-     *
-     * <p>
-     * A range because this is the one operation in the system with a scatter-gather shape: the
-     * work is known in advance, it fans out once, and the expensive part -- embedding -- is pure
-     * arithmetic over a page that is already on disk. So it can be cut into slices and given to
-     * several nodes, and a slice that fails can simply be done again: every id downstream is a
-     * name-based UUID of the natural key, so a repeat lands on top of itself.
-     *
-     * <p>
-     * Ordering is by the store's own page order, which is stable for a version that is not being
-     * crawled -- and a version being crawled is not a version anybody should be replaying.
+     * The same rebuild over a range of the version's pages, so the work can be cut into slices
+     * and handed to several nodes; a failed slice is simply done again. Ordered by the store's own
+     * page order, which is stable for any version that is not being crawled.
      *
      * @param offset how many pages to skip
      * @param limit  how many to do; {@code Integer.MAX_VALUE} for the rest
@@ -275,7 +256,7 @@ public class ReplayService {
         }
 
         @Override
-        public com.github.greenfinger.core.component.extractor.ThreadWait getThreadWait() {
+        public ThreadWait getThreadWait() {
             return delegate.getThreadWait();
         }
 
@@ -290,7 +271,7 @@ public class ReplayService {
         }
 
         @Override
-        public com.github.greenfinger.core.component.state.CountingType getCountingType() {
+        public CountingType getCountingType() {
             return delegate.getCountingType();
         }
 
@@ -310,7 +291,7 @@ public class ReplayService {
         }
 
         @Override
-        public com.github.greenfinger.core.model.ExtractorType getExtractor() {
+        public ExtractorType getExtractor() {
             return delegate.getExtractor();
         }
 
@@ -345,7 +326,7 @@ public class ReplayService {
         }
 
         @Override
-        public com.github.greenfinger.core.model.ContentMode getContentMode() {
+        public ContentMode getContentMode() {
             return delegate.getContentMode();
         }
 

@@ -65,7 +65,12 @@ class ReplicationDeliveryTest {
         Node self = mock(Node.class);
         Node other = mock(Node.class);
         Node third = mock(Node.class);
+        // the crawlers, which is what the channel counts: a terminal in the same cluster is a
+        // member and is not one of these
+        when(self.name()).thenReturn("greenfinger");
+        when(cluster.self()).thenReturn(self);
         when(cluster.members()).thenReturn(List.of(self, other, third));
+        when(cluster.membersOf("greenfinger")).thenReturn(List.of(self, other, third));
         when(cluster.multicastOn(eq(Channels.RECORD), any(), any(byte[].class), eq(false)))
                 .thenAnswer(invocation -> {
                     sends.incrementAndGet();
@@ -151,6 +156,7 @@ class ReplicationDeliveryTest {
     void queuesNothingAlone() {
         Node self = mock(Node.class);
         when(cluster.members()).thenReturn(List.of(self));
+        when(cluster.membersOf("greenfinger")).thenReturn(List.of(self));
         ReplicationChannel channel = channel();
 
         channel.replicate(aRow("c1"));
@@ -167,6 +173,7 @@ class ReplicationDeliveryTest {
         channel.replicate(aRow("c1"));
         Node self = mock(Node.class);
         when(cluster.members()).thenReturn(List.of(self));
+        when(cluster.membersOf("greenfinger")).thenReturn(List.of(self));
 
         channel.retryPending();
 

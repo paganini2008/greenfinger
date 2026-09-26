@@ -398,7 +398,7 @@ class ClusterMessagingTest {
         a.start();
         b.start();
         try {
-            a.announce(ControlMessage.started("cat-1", "crawl", 0, false));
+            a.announce(ControlMessage.started("cat-1", "crawl", 0, false, null));
 
             TestCluster.await(() -> !onA.isEmpty() && !onB.isEmpty(), 10_000L,
                     "the announcement did not reach both nodes");

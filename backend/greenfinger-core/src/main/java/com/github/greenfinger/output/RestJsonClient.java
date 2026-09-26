@@ -27,6 +27,7 @@ import org.apache.commons.lang3.StringUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.greenfinger.core.WebCrawlerException;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 /**
  * A small JSON-over-HTTP client, shared by the Elasticsearch, Qdrant and embedding integrations.
@@ -136,10 +137,10 @@ public class RestJsonClient {
     public JsonNode delete(String url, Object body) {
         try {
             return send(request(url)
-                    .method("DELETE", java.net.http.HttpRequest.BodyPublishers
+                    .method("DELETE", HttpRequest.BodyPublishers
                             .ofString(objectMapper.writeValueAsString(body)))
                     .header("Content-Type", "application/json").build(), url);
-        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+        } catch (JsonProcessingException e) {
             throw new WebCrawlerException("Cannot serialise request body for " + url, e);
         }
     }

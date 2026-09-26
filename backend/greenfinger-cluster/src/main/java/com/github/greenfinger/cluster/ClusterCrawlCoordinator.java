@@ -28,24 +28,18 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 /**
- * The recursive call, made across the cluster.
+ * The recursive call, made across the cluster: every url found goes out as one unicast, round robin
+ * and including this node, and the engine on the other side calls the same function. There is no
+ * join anywhere, because the parent page has no use for what its children found.
  *
  * <p>
- * Every url found on a page goes out as one unicast, round robin, this node included. The engine
- * on the other side receives it and calls the same function -- that is the whole of the
- * distribution, and it is why there is no join anywhere: the parent page has no use for what its
- * children found.
+ * A dispatch that finds nobody -- alone, resting, or a failed send -- falls back to this node's own
+ * frontier, so nothing is ever dropped for want of a peer.
  *
- * <h2>Nothing is ever dropped for want of a peer</h2>
- * A dispatch that finds nobody -- alone in the cluster, resting, a send that failed -- falls back
- * to this node's own frontier. So a single process behaves exactly as it did before this class
- * existed, and a cluster that loses every peer mid-crawl keeps going rather than stalling.
- *
- * <h2>When it is over is not this node's decision</h2>
- * An empty frontier here says nothing about the crawl: a peer may be holding a thousand urls. The
- * answer comes from the leader over the control channel, and until it arrives the loop waits. What
- * the leader compares is the pair of counters this class maintains -- one url counted the moment
- * it is dispatched, and counted again when somebody has finished with it.
+ * <p>
+ * An empty frontier here says nothing about the crawl, since a peer may hold a thousand urls; the
+ * answer comes from the leader, which compares the two counters this class maintains -- one on
+ * dispatch, one when somebody has finished with the url.
  * 
  * @Description: ClusterCrawlCoordinator
  * @Author: Fred Feng

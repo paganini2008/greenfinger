@@ -29,6 +29,8 @@ import com.github.greenfinger.shell.ConsoleIO;
 import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.core.component.state.Dashboard;
 import com.github.greenfinger.core.engine.CrawlFrontier;
+import com.github.greenfinger.service.ops.DashboardSnapshot;
+import com.github.greenfinger.service.ops.GreenfingerOperations.Live;
 
 /**
  * Refreshes the dashboard in place while a crawl runs.
@@ -39,10 +41,9 @@ import com.github.greenfinger.core.engine.CrawlFrontier;
  * at a slower cadence and the log stays readable.
  *
  * <p>
- * How many lines to move back over is counted from what was actually printed rather than worked
- * out in advance. The block changes height while it is up -- a node joins and the per-node table
- * grows a row -- and a redraw that moves back by yesterday's height leaves a trail of half-erased
- * tables behind it.
+ * How far to move back is counted from what was actually printed, not worked out in advance: the
+ * block changes height while it is up -- a node joins and the table grows a row -- and moving back
+ * by the old height leaves a trail of half-erased tables.
  * 
  * @Description: LiveDashboard
  * @Author: Fred Feng
@@ -51,9 +52,7 @@ import com.github.greenfinger.core.engine.CrawlFrontier;
  */
 public class LiveDashboard implements AutoCloseable {
 
-    private final CatalogDetails catalogDetails;
-    private final Dashboard dashboard;
-    private final CrawlFrontier frontier;
+    private final Supplier<Live> frames;
     private final PrintStream out;
     private final DashboardRenderer renderer = new DashboardRenderer();
     private final ScheduledExecutorService scheduler;
@@ -63,11 +62,29 @@ public class LiveDashboard implements AutoCloseable {
     /** What each node did, when the caller asked for that. Null for the totals alone. */
     private volatile Supplier<Map<String, Map<String, Long>>> perNode;
 
+    /**
+     * The last frame drawn. A caller watching a crawl on another node asks this rather than the
+     * node: the view already fetches a frame a second, and polling for "is it over" five times a
+     * second would be five requests a second to the leader to ask what it has just been told.
+     */
+    private volatile Live last;
+
+    /**
+     * The crawl running in this process: the counters and the frontier are read afresh on every
+     * frame, because they are the live objects.
+     */
     public LiveDashboard(CatalogDetails catalogDetails, Dashboard dashboard, CrawlFrontier frontier,
             PrintStream out) {
-        this.catalogDetails = catalogDetails;
-        this.dashboard = dashboard;
-        this.frontier = frontier;
+        this(() -> new Live(DashboardSnapshot.of(dashboard), remaining(frontier), null, false),
+                out);
+    }
+
+    /**
+     * A crawl running somewhere else: every frame is one answer from the node that has it, which
+     * is how the terminal watches a crawl it is not running.
+     */
+    public LiveDashboard(Supplier<Live> frames, PrintStream out) {
+        this.frames = frames;
         this.out = out;
         this.scheduler = Executors.newSingleThreadScheduledExecutor(runnable -> {
             Thread thread = new Thread(runnable, "greenfinger-dashboard");
@@ -114,10 +131,22 @@ public class LiveDashboard implements AutoCloseable {
         }
     }
 
+    /** Whether the last frame said the run had ended. */
+    public boolean finished() {
+        Live frame = last;
+        return frame != null && frame.finished();
+    }
+
     private void draw() {
         try {
-            String block = renderer.render(catalogDetails, dashboard, remaining(),
-                    perNode != null ? perNode.get() : null);
+            Live frame = frames.get();
+            if (frame == null || frame.dashboard() == null) {
+                return;
+            }
+            last = frame;
+            String block = renderer.render(frame.dashboard().getCatalogDetails(),
+                    frame.dashboard(), frame.remaining(),
+                    perNode != null ? perNode.get() : frame.perNode());
             StringBuilder str = new StringBuilder();
             if (Ansi.enabled() && drawn.get()) {
                 str.append(Ansi.redraw(lastHeight.get()));
@@ -142,9 +171,10 @@ public class LiveDashboard implements AutoCloseable {
         return lines;
     }
 
-    private long remaining() {
+    /** A queue length is worth a dash: the store can be closed under a crawl that just ended. */
+    private static long remaining(CrawlFrontier frontier) {
         try {
-            return frontier.remaining();
+            return frontier != null ? frontier.remaining() : -1L;
         } catch (Exception e) {
             return -1L;
         }

@@ -9,6 +9,14 @@ import { expect, type Page } from '@playwright/test';
  */
 
 export const ADMIN = { username: 'admin', password: 'admin123' };
+
+/**
+ * The catalog the read-only specs look at: one crawled with index, vectors and images on.
+ *
+ * `globalSetup` makes it if it is not there, so a fresh machine can run these. Point
+ * `GF_E2E_CATALOG` at another one to read a real installation's data instead.
+ */
+export const CORPUS = process.env['GF_E2E_CATALOG'] ?? 'e2e-corpus';
 export const SUPPORT = { username: 'tester', password: 'tester123' };
 
 export async function signIn(page: Page, who: { username: string; password: string }) {

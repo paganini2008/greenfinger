@@ -33,27 +33,18 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.LinkedHashMap;
 
 /**
- * The counters for a crawl that several processes are sharing.
- *
- * <h2>Increments are accumulated, not sent</h2>
- * A crawl produces counter traffic in proportion to how fast it fetches: two or three increments
- * per page, and a fast site gives hundreds of pages a second per node. A cache write from a node
- * that does not hold the cluster port is a round trip, and the cluster's measured ceiling for
- * those is in the low thousands per second -- shared between every component, not just this one.
- * Sending each increment would make the counters the bottleneck of the crawl, which would be an
- * absurd thing for a progress display to be.
+ * The counters for a crawl several processes share.
  *
  * <p>
- * So increments land in a local array and one scheduled write carries the accumulated delta:
- * {@code incr(key, n)} rather than n calls to {@code incr(key, 1)}. Cost becomes a fixed handful
- * of writes a second per node no matter how fast the crawl runs, and the dashboard is at most one
- * flush interval behind. It is a dashboard.
+ * Increments accumulate locally and one scheduled write carries the delta -- {@code incr(key, n)}
+ * rather than n calls. A remote cache write is a round trip and the cluster's ceiling is in the low
+ * thousands a second, shared by every component, so sending each increment would make a progress
+ * display the bottleneck of the crawl. The dashboard is at most one flush behind.
  *
- * <h2>Which is why the order of the two url counters matters</h2>
- * Completion is decided by comparing dispatched against handled, and the child urls of a page are
- * dispatched before that page is reported handled. Because both increments go into the same batch
- * and the batch is written in one call per counter, an observer never sees a page reported
- * finished while the urls it discovered are still unaccounted for.
+ * <p>
+ * That batching is also why completion works: child urls are dispatched before their page is
+ * reported handled, and both land in one batch, so no observer sees a page finished while the urls
+ * it found are unaccounted for.
  * 
  * @Description: ClusterGlobalStateManager
  * @Author: Fred Feng
@@ -241,14 +232,9 @@ public class ClusterGlobalStateManager implements GlobalStateManager {
     }
 
     /**
-     * Whether the crawl has stopped moving -- across the cluster, not on this node.
-     *
-     * <p>
-     * A node's own writes are the wrong thing to time. A node that has handed its share to a peer
-     * and is waiting for work writes nothing while the peer fetches happily, and timing that would
-     * have it declare the crawl stalled in the middle of a busy crawl. So this watches the shared
-     * counters instead and remembers when they last changed: what it measures is the cluster being
-     * idle, which is what the caller is asking about.
+     * Whether the crawl has stopped moving across the cluster. Timing a node's own writes would be
+     * wrong -- a node waiting for work writes nothing while its peer fetches happily -- so this
+     * remembers when the shared counters last changed.
      */
     @Override
     public boolean isTimeout(long delay, TimeUnit timeUnit) {

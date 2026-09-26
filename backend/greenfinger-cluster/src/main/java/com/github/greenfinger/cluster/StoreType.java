@@ -23,17 +23,15 @@ import org.apache.commons.lang3.StringUtils;
  * this node have to be copied to the others?
  *
  * <p>
- * The answer is not about the technology but about who holds the bytes. A file-backed store gives
- * every process its own copy -- SQLite, H2 in file or memory mode, RocksDB, a local blob
- * directory -- so a row written here does not exist there, and the write has to be sent. A server
- * every node dials -- MySQL, PostgreSQL, SQL Server, Oracle, an H2 in server mode, MinIO,
- * Elasticsearch, Qdrant -- already holds one copy for all of them, and copying would mean writing
- * the same row twice.
+ * Not a question about the technology but about who holds the bytes. A file-backed store -- SQLite,
+ * H2 in file or memory mode, RocksDB, a local blob directory -- gives every process its own copy,
+ * so writes must be sent. A server every node dials already holds one copy for all of them, and
+ * copying would write each row twice.
  *
  * <p>
- * Note that "file-backed" is a property of the url, not of the product: {@code jdbc:h2:./data/db}
- * has to be replicated and {@code jdbc:h2:tcp://host/db} must not be, and the two differ by four
- * characters. That is why this is derived from the url rather than from a configured name.
+ * "File-backed" is a property of the url, not the product: {@code jdbc:h2:./data/db} must be
+ * replicated and {@code jdbc:h2:tcp://host/db} must not, four characters apart -- which is why this
+ * is derived from the url rather than a configured name.
  * 
  * @Description: StoreType
  * @Author: Fred Feng

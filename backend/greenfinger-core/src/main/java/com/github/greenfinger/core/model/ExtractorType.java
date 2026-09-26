@@ -26,10 +26,8 @@ import com.fasterxml.jackson.annotation.JsonValue;
  * How a page is fetched.
  *
  * <p>
- * It was a free-text column, which meant a typo was only discovered at the moment the crawl went to
- * build its extractor -- after the catalog had been saved, after the run had been launched, and
- * with the whole of the configuration already committed. As an enum the same typo is refused where
- * it is typed, and the accepted values can be listed to whoever is typing them.
+ * An enum, not a free-text column: a typo is refused where it is typed rather than when the crawl
+ * builds its extractor, and the accepted values can be listed to whoever is typing them.
  *
  * <p>
  * The 1.x spellings {@code default} and {@code resttemplate} are still accepted for

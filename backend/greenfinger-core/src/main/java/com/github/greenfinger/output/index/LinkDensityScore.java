@@ -28,15 +28,11 @@ import org.apache.lucene.search.IndexSearcher;
  * Pushes detail pages above listings, by the same arithmetic the Elasticsearch script does.
  *
  * <p>
- * A listing matches a search term as readily as the page it links to, and is almost never what
- * someone wanted. The two are told apart without any classification: anchor text over total text --
- * link density, the metric boilerplate detection has used since Boilerpipe -- is near one for a
- * listing and near zero for an article, and is unaffected by how long the page happens to be, which
- * a raw link count is not.
- *
- * <p>
- * The result is a multiplier between 0.5 and 1.5, so it reorders documents of similar relevance and
- * cannot float an irrelevant page above a relevant one.
+ * A listing matches as readily as the page it links to and is almost never wanted. No
+ * classification is needed: anchor text over total text -- link density, Boilerpipe's metric -- is
+ * near one for a listing and near zero for an article, and unlike a raw link count it does not
+ * depend on page length. The result is a multiplier between 0.5 and 1.5, so it reorders documents
+ * of similar relevance without floating an irrelevant one above a relevant one.
  * 
  * @Description: LinkDensityScore
  * @Author: Fred Feng

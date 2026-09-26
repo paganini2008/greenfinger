@@ -30,11 +30,8 @@ const HISTORY = 120;
 const POLL_MILLIS = 2000;
 
 /**
- * One catalog, watched: the counters of the run in flight, or of the last one.
- *
- * Also the only place versions can be deleted, and deliberately the only place. The list page is
- * where an operator moves quickly; an irreversible operation belongs on the page they had to open
- * on purpose, next to the numbers that say what is about to go.
+ * One catalog, watched. Also the only place versions can be deleted: an irreversible operation
+ * belongs on a page somebody opened on purpose, beside the numbers that say what is about to go.
  */
 @Component({
   selector: 'gf-monitor',
@@ -75,27 +72,16 @@ export class MonitorPage {
   protected readonly deleteLayers = signal<DeleteLayer[]>(['all']);
 
   /**
-   * Which of the two irreversible things is being asked for.
-   *
-   * They differ by one thing: whether the catalog itself survives. Both remove every version --
-   * the rows, the files, the index and the vectors -- so "empty" leaves a catalog that has been
-   * defined and never crawled, ready to be crawled again, and "entirely" leaves nothing at all.
-   *
-   * Offered only when nothing is being kept. Keeping the three newest versions and deleting the
-   * catalog underneath them is not a thing anybody means.
+   * Both remove every version; they differ by whether the catalog itself survives. Offered only
+   * when nothing is being kept -- keeping three versions and deleting the catalog under them is
+   * not a thing anybody means.
    */
   protected readonly deleteMode = signal<'empty' | 'entirely'>('empty');
   protected readonly keepLatest = signal<number>(3);
 
   private poll?: Subscription;
 
-  /**
-   * Whether the reports have been read since the run ended.
-   *
-   * Reading them when the crawl stops is not enough on its own: a short crawl can be over before
-   * this page opens, and then there is no stopping to notice. The page would sit there with a
-   * finished run and no sign of it.
-   */
+  /** Reading them when the crawl stops is not enough: a short crawl ends before the page opens. */
   private reportsRead = false;
 
   /** Every run of this catalog, newest first. */
@@ -103,11 +89,8 @@ export class MonitorPage {
   protected readonly selectedReport = signal<CrawlReport | null>(null);
 
   /**
-   * One entry per run, oldest on the left, for the bar chart.
-   *
-   * Deduplicated by the moment the run started: every node writes its own copy of the report and
-   * they are copied to each other, so a three node cluster leaves three files describing one
-   * crawl. Charting all three would draw the same run three times.
+   * One entry per run, deduplicated by start time: every node writes its own copy of the report,
+   * so a three node cluster leaves three files describing one crawl.
    */
   protected readonly runs = computed(() => {
     const byStart = new Map<number, CrawlReport>();
@@ -139,13 +122,7 @@ export class MonitorPage {
       .sort((a, b) => b.value - a.value);
   });
 
-  /**
-   * The url outcomes of the selected run as segments of one bar.
-   *
-   * Dispatched is the whole, and the segments are what became of them: handled, and the remainder
-   * that was left queued when the run ended. Drawn together because the interesting question is
-   * the ratio, and two numbers side by side do not answer it at a glance.
-   */
+  /** Dispatched is the whole; the segments are what became of them. The question is the ratio. */
   protected readonly urlSegments = computed(() => {
     const report = this.selectedReport() ?? this.runs()[this.runs().length - 1];
     if (!report?.urls) {
@@ -198,11 +175,8 @@ export class MonitorPage {
   });
 
   /**
-   * Pages and images as they were on each poll, for the two live charts.
-   *
-   * The api reports running totals and keeps no history of its own, so this is the history: it
-   * begins when the page is opened and is lost when it is closed. That is the honest cost of not
-   * writing a time series for something almost nobody watches for more than a few minutes.
+   * The api reports running totals and keeps no history, so this is the history: it begins when
+   * the page opens and is lost when it closes.
    */
   protected readonly pageHistory = signal<number[]>([]);
   protected readonly imageHistory = signal<number[]>([]);
@@ -218,11 +192,8 @@ export class MonitorPage {
   });
 
   /**
-   * What became of every url this run has touched, as one bar.
-   *
-   * Seven numbers that are each printed above as a counter, drawn together because the counters
-   * answer "how many" and only the bar answers "out of what" -- a crawl that filtered out nine
-   * urls in ten is a scope problem, and nine separate numbers never say so.
+   * The same seven counters printed above, drawn together: they answer "how many" and only the bar
+   * answers "out of what". Nine urls in ten filtered out is a scope problem no column shows.
    */
   protected readonly outcomes = computed(() => {
     const summary = this.summary();
@@ -243,11 +214,8 @@ export class MonitorPage {
   });
 
   /**
-   * The site is pushing back, said while there is still time to do something about it.
-   *
-   * Before this the only sign was the reason the run was abandoned, which arrives twenty failures
-   * too late to lower the rate. Three in a row rather than one, because a single 404 on a dead
-   * link is not a site refusing anybody.
+   * The site is pushing back, said while there is still time to lower the rate. Three in a row
+   * rather than one: a single 404 on a dead link is not a site refusing anybody.
    */
   protected readonly refusing = computed(() => {
     const run = this.summary();
@@ -301,14 +269,8 @@ export class MonitorPage {
   );
 
   /**
-   * Why the last run stopped, in English.
-   *
-   * The server says `reached maxFetchSize: savedResourceCount = 63 > 60`, which is exactly right
-   * and is a log line. It names a field, an internal counter and an inequality, and a person
-   * reading a page wants the sentence those three things add up to.
-   *
-   * Anything this does not recognise is passed through untouched rather than mangled: a reason
-   * nobody anticipated is still better read raw than summarised wrongly.
+   * Why the last run stopped, in English: the server's own reason is a log line naming a field and
+   * an inequality. Anything unrecognised is passed through raw rather than summarised wrongly.
    */
   protected readonly stoppedBecause = computed(() => {
     const reason = this.summary()?.completionReason ?? '';
@@ -517,14 +479,9 @@ export class MonitorPage {
   protected readonly canDeleteEntirely = computed(() => this.keepLatest() === 0);
 
   /**
-   * What the three choices actually send.
-   *
-   * Keeping nothing is a whole-catalog operation and names no versions at all: the api reads an
-   * absent version and an absent keepLatest as "all of it", and sending keepLatest 0 instead asks
-   * for each version by name -- which is refused for the one search is currently serving, so both
-   * whole-catalog choices would fail on a catalog that has ever finished a crawl. Keeping some is
-   * the ordinary case and does name them. Purge is what separates emptying from deleting: it is
-   * the catalog row itself, and it goes only when the operator chose to delete entirely.
+   * Keeping nothing names no versions at all -- the api reads that as "all of it", where
+   * keepLatest 0 would name each one and be refused for the version search is serving. Purge is
+   * what separates emptying from deleting.
    */
   private deleteOptions(dryRun: boolean) {
     const wholeCatalog = this.keepLatest() === 0;

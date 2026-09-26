@@ -20,6 +20,7 @@ import com.github.greenfinger.core.component.dedup.ContentDedupFilter;
 import com.github.greenfinger.core.component.dedup.ExistingUrlPathFilter;
 import com.github.greenfinger.core.component.dedup.UrlPathFilterExporter;
 import lombok.extern.slf4j.Slf4j;
+import java.nio.charset.StandardCharsets;
 
 /**
  * The two dedup filters, told to the rest of the cluster as they learn.
@@ -29,13 +30,11 @@ import lombok.extern.slf4j.Slf4j;
  * dispatched round robin, a url discovered on two different pages usually lands on two different
  * nodes, and without this both would fetch it: one page, fetched twice, written twice.
  *
- * <h2>It is best effort, and that is survivable</h2>
- * Replication is asynchronous, so two nodes can decide the same url is new within the same
- * millisecond and both fetch it. What that costs is one wasted request -- not a duplicate row, not
- * a duplicate file, not a duplicate vector -- because every id downstream is derived from the url:
- * the second write lands on the same row, the same path and the same point, and overwrites itself.
- * The filter is an optimisation with a correctness backstop underneath it, which is why "mostly
- * agreed, quickly" is the right trade rather than a lock per url.
+ * <p>
+ * Best effort, and survivably so: replication is asynchronous, so two nodes can both decide a url
+ * is new. That costs one wasted request and nothing else, because every id downstream is derived
+ * from the url and the second write overwrites itself. The filter is an optimisation with a
+ * correctness backstop, which is why "mostly agreed, quickly" beats a lock per url.
  * 
  * @Description: ReplicatedDedup
  * @Author: Fred Feng
@@ -171,7 +170,7 @@ public final class ReplicatedDedup {
                 String fingerprint = delegate.fingerprint(text);
                 if (fingerprint != null) {
                     channel.replicate(ReplicationBatch.Entry.of(OP_CONTENT, scope, fingerprint,
-                            text.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+                            text.getBytes(StandardCharsets.UTF_8)));
                 }
             }
             return duplicate;

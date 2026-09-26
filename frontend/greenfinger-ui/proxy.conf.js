@@ -12,7 +12,11 @@
  * Production needs none of this: the same jar serves the page and the api from one origin, which
  * is why the front end only ever uses the relative prefix.
  */
-const port = process.env.GF_API_PORT || '50080';
+const { setting } = require('./tools/env.cjs');
+
+// .env beside this file, then the environment, then 50080 -- which is where run-local.sh puts the
+// first node. See tools/env.cjs.
+const port = setting('GF_API_PORT', '50080');
 
 const api = {
   target: `http://localhost:${port}`,

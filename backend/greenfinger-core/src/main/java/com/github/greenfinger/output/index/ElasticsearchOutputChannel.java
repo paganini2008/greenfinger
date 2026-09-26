@@ -33,6 +33,7 @@ import com.github.greenfinger.output.OutputProperties;
 import com.github.greenfinger.output.RestJsonClient;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import com.github.greenfinger.core.output.IndexAdmin;
 
 /**
  * Full text search. One index per catalog, named {@code <prefix>-<catalogId>}, holding every
@@ -40,20 +41,14 @@ import lombok.extern.slf4j.Slf4j;
  * than by separate indices.
  *
  * <p>
- * That one field, of the form {@code <catalogId>:<version>}, does three jobs: a search across
- * catalogs whose current versions differ is a single any-of match, promoting a finished version is
- * a change of the value being matched, and deleting a version is one term query. The vector store
- * carries the identical field, and so does the embedded Lucene index, so all three are queried the
- * same way.
+ * That field, {@code <catalogId>:<version>}, does three jobs: a cross-catalog search is one any-of
+ * match, promoting a version changes the value matched, and deleting one is a term query. The
+ * vector store and the embedded index carry the identical field.
  *
  * <p>
- * The index is named from the catalog's id and never its name, because a name is editable and an
- * index named after one would be orphaned by a rename with nothing left to say what it had held.
- *
- * <p>
- * Talks the REST api directly rather than through the official client, because the client refuses
- * a server whose major version it does not match, and the calls used here are identical across
- * Elasticsearch 7, 8 and 9.
+ * Named from the catalog id, never its name, which is editable -- a rename would orphan the index
+ * with nothing left to say what it held. Talks REST rather than the official client, which refuses
+ * a server whose major version it does not match.
  * 
  * @Description: ElasticsearchOutputChannel
  * @Author: Fred Feng
@@ -93,7 +88,7 @@ public class ElasticsearchOutputChannel implements OutputChannel {
     public void open(CatalogDetails catalogDetails) {
         this.catalogDetails = catalogDetails;
         this.baseUrl = StringUtils.stripEnd(config.getUris().split(",")[0].trim(), "/");
-        this.indexName = com.github.greenfinger.core.output.IndexAdmin.indexOf(config.getPrefix(),
+        this.indexName = IndexAdmin.indexOf(config.getPrefix(),
                 catalogDetails.getId());
         if (!client.exists(baseUrl + "/" + indexName)) {
             client.put(baseUrl + "/" + indexName, mapping());

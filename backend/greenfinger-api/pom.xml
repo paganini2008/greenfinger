@@ -6,7 +6,7 @@
   <parent>
     <groupId>com.github.paganini2008</groupId>
     <artifactId>greenfinger-backend</artifactId>
-    <version>2.0.0-SNAPSHOT</version>
+    <version>${revision}</version>
   </parent>
 
   <artifactId>greenfinger-api</artifactId>
@@ -182,7 +182,6 @@
             rebuild, which is the rule greenfinger-shell's own configuration follows.
           -->
           <exclude>bin/**</exclude>
-          <exclude>config/**</exclude>
           <exclude>docker/**</exclude>
         </excludes>
       </resource>

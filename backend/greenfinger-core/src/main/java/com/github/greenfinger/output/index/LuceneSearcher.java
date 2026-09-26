@@ -51,21 +51,17 @@ import com.github.greenfinger.core.output.SearchResponse;
 import com.github.greenfinger.core.output.SearchResult;
 import com.github.greenfinger.core.output.Searcher;
 import com.github.greenfinger.output.OutputProperties;
+import java.util.Arrays;
 
 /**
- * Searches the embedded index.
+ * Searches the embedded index -- everything the Elasticsearch searcher does, same order and
+ * weights: title over body, detail pages over listings, marked passages, and a cursor so the tenth
+ * page costs what the first does.
  *
  * <p>
- * Everything the Elasticsearch searcher does, in the same order and with the same weights: the
- * title above the body, detail pages above listings, matching passages marked, and a cursor so
- * paging past the tenth page costs the same as the first.
- *
- * <h2>Reading several catalogs at once</h2>
- * One index per catalog means a search across three catalogs opens three readers, and they are
- * combined into a {@link MultiReader} rather than searched one at a time and merged afterwards.
- * That is not a convenience: term statistics are what BM25 scores with, and gathering them per
- * index would score a word that is rare overall but common in one small catalog as though it were
- * common everywhere. Combined first, the numbers are the corpus's.
+ * Several catalogs are read through one {@link MultiReader} rather than searched separately and
+ * merged: BM25 scores from term statistics, and gathering them per index would treat a word that is
+ * rare overall but common in one small catalog as common everywhere.
  * 
  * @Description: LuceneSearcher
  * @Author: Fred Feng
@@ -164,7 +160,7 @@ public class LuceneSearcher implements Searcher {
             }
             TopFieldDocs all = searcher.search(query, from + pageSize, sort, true);
             top = new TopFieldDocs(all.totalHits,
-                    java.util.Arrays.copyOfRange(all.scoreDocs,
+                    Arrays.copyOfRange(all.scoreDocs,
                             Math.min(from, all.scoreDocs.length), all.scoreDocs.length),
                     all.fields);
         }
@@ -201,23 +197,38 @@ public class LuceneSearcher implements Searcher {
     }
 
     /**
-     * Where the next page starts.
-     *
-     * <p>
-     * The document id is deliberately the highest legal one rather than the hit's own. Lucene only
-     * consults it when a document ties with the cursor on every sort field, and the last sort field
-     * is the document's unique id -- so the only document that can tie is the one the cursor names,
-     * and the highest value is what skips exactly that one. Carrying the real Lucene document
-     * number instead would have worked until the first merge renumbered it.
+     * Where the next page starts. The document id is the highest legal one, not the hit's own:
+     * Lucene consults it only on a tie across every sort field, the last of which is the unique id,
+     * so this skips exactly the cursor's document. A real Lucene doc number would break on a merge.
      */
     private FieldDoc afterOf(List<Object> cursor, IndexSearcher searcher) {
         if (cursor.size() < 2) {
             throw new WebCrawlerException("That cursor did not come from this search.");
         }
-        float score = cursor.get(0) instanceof Number number ? number.floatValue() : 0f;
+        float score = scoreOf(cursor.get(0));
         BytesRef id = new BytesRef(String.valueOf(cursor.get(1)));
         int highest = Math.max(0, searcher.getIndexReader().maxDoc() - 1);
         return new FieldDoc(highest, score, new Object[] {score, id});
+    }
+
+    /**
+     * The score the cursor carries, whether it arrived as a number or as text.
+     *
+     * <p>
+     * It arrives as text whenever the cursor came in on a query string, which is every call from
+     * the page. This used to fall through to zero, and zero is not a harmless default: the sort is
+     * by score descending, so every real hit counts as sorting before the cursor and the next page
+     * comes back empty. Silently, with the total still saying there are more.
+     */
+    private float scoreOf(Object value) {
+        if (value instanceof Number number) {
+            return number.floatValue();
+        }
+        try {
+            return Float.parseFloat(String.valueOf(value).trim());
+        } catch (NumberFormatException e) {
+            throw new WebCrawlerException("That cursor did not come from this search.", e);
+        }
     }
 
     private void addIfPresent(List<String> highlights, String[] fragments, int index) {

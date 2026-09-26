@@ -24,20 +24,14 @@ import com.github.greenfinger.output.OutputProperties;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Semantic and cross modal search.
+ * Semantic and cross modal search. Two things a vector store cannot do itself: over-fetch and
+ * re-rank so detail pages come above listings (no equivalent of function_score), and keep one hit
+ * per page, since twenty chunks of an article are one result to a reader.
  *
  * <p>
- * Two things happen here that a vector store cannot do on its own. It over-fetches and re-ranks, so
- * that detail pages come above listings -- a listing's chunks match a query as readily as the
- * article they link to, and a vector store has no equivalent of Elasticsearch's function_score.
- * And it keeps one hit per page, since twenty chunks of the same article are one result to a
- * reader.
- *
- * <p>
- * Searching for images by words is not the same call as searching for text: the two live in
- * different spaces, so the query has to be encoded by the model that produced the image vectors --
- * {@link EmbeddingClient#queryToImageVector} -- and passing a text-space vector to the image
- * collection would return noise rather than an error.
+ * Images searched by words are a different call -- the query must be encoded by the model that
+ * produced the image vectors ({@link EmbeddingClient#queryToImageVector}), because a text-space
+ * vector against the image collection returns noise rather than an error.
  * 
  * @Description: VectorSearcher
  * @Author: Fred Feng

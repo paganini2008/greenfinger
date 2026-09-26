@@ -36,29 +36,18 @@ import org.springframework.security.core.userdetails.UserDetails;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Issues and checks sign-in tokens.
- *
- * <h2>Nothing is stored</h2>
- * A token carries who it is for, what they may do and when it stops working, and it is signed. A
- * node checks it by recomputing the signature -- it does not have to have issued it, or to have
- * heard of it. That is what lets a browser be sent to whichever node is free, which is the whole
- * point of putting nginx or kong in front of several of them.
+ * Issues and checks sign-in tokens. Nothing is stored: a token carries who it is for, what they may
+ * do and when it expires, signed, and any node checks it by recomputing the signature. A per-process
+ * map of random tokens would make a token valid only on the node that issued it, so the first
+ * balanced request after signing in answers "Sign in first".
  *
  * <p>
- * The previous version kept a map of random tokens per process, which meant a token was only valid
- * on the node that issued it: the request after signing in, balanced onto a second node, came back
- * "Sign in first". No proxy configuration fixes that, because the state is in the wrong place.
+ * Every node must share {@code GF_TOKEN_SECRET}, or each rejects the others' tokens. Without one a
+ * random secret is generated and warned about: single node works, but tokens die with the process.
  *
- * <h2>The secret</h2>
- * Every node has to share it, or each will reject the others' tokens. Set {@code GF_TOKEN_SECRET}.
- * Without one a random secret is generated at startup and a warning is logged: single node still
- * works, but tokens stop working when the process restarts and are not accepted by its peers.
- *
- * <h2>Signing out</h2>
- * A signed token cannot be un-signed, so signing out is recorded in a small local set until the
- * token would have expired anyway. That set is this node's, so signing out is honoured here and
- * not on a peer -- the fix is short-lived tokens rather than a shared blacklist, which would put
- * the state back where it was.
+ * <p>
+ * A signed token cannot be un-signed, so signing out is kept in a small local set until it would
+ * have expired -- honoured on this node only. The answer is short tokens, not a shared blacklist.
  *
  * @Description: TokenStore
  * @Author: Fred Feng

@@ -31,15 +31,13 @@ import lombok.extern.slf4j.Slf4j;
  * Loads the local models at startup rather than partway through a crawl.
  *
  * <p>
- * Only when they will actually be used: the local provider selected, and a vector output actually
- * configured. The default configuration asks for files alone, so the quick start still downloads
- * nothing and starts instantly -- but a run that is going to want the models pays for them before
- * it fetches its first page, instead of stalling several minutes in to download half a gigabyte.
+ * Only when they will be used -- local provider, vector output configured -- so the default
+ * files-only quick start still downloads nothing, while a run that wants them pays before its first
+ * page instead of stalling to download half a gigabyte.
  *
  * <p>
- * A failure here is logged, not thrown. A model that will not load should not stop the application
- * from starting; it should stop the crawl that needs it, with the reason in front of the person
- * who asked for it.
+ * A failure is logged, not thrown: a model that will not load should stop the crawl that needs it,
+ * with the reason in front of whoever asked, not the application.
  * 
  * @Description: EmbeddingWarmUp
  * @Author: Fred Feng

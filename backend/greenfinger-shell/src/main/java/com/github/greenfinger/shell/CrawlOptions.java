@@ -26,15 +26,13 @@ import com.github.greenfinger.core.WebCrawlerException;
  * The options one command was given, by name.
  *
  * <p>
- * Only the one-line form builds one of these: at the prompt Spring Shell binds straight to the
- * method parameters. It exists because the two forms must reach the same methods, and a map of
- * strings is the smallest thing that can carry what was typed across to them.
+ * Only the one-line form builds one -- at the prompt Spring Shell binds straight to the method
+ * parameters -- and it exists because both forms must reach the same methods.
  *
  * <p>
- * Names are matched ignoring case, {@code -} and {@code _}, so {@code max-size}, {@code max_size}
- * and {@code maxSize} are one option. There is no longer a properties file behind this: a catalog
- * is defined by {@code catalog-save}, which asks, and the definition then lives in the database
- * where a crawl launched from anywhere reads the same one.
+ * Names are matched ignoring case, {@code -} and {@code _}, so {@code max-size} and {@code maxSize}
+ * are one option. No properties file stands behind it: a catalog is defined by
+ * {@code catalog-save} and lives in the database, where every launcher reads the same one.
  * 
  * @Description: CrawlOptions
  * @Author: Fred Feng

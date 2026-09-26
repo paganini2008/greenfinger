@@ -102,7 +102,8 @@ class OneShotCommandRunnerTest {
             error = console.errorOutput();
         }
 
-        assertThat(error).contains("catalogs");
+        // the hint points at the prompt, which is where the ids are listed now
+        assertThat(error).contains("greenfinger-shell.sh");
     }
 
     @Test
@@ -254,7 +255,7 @@ class OneShotCommandRunnerTest {
         private final List<String> dispatched = new ArrayList<>();
 
         RecordingCommands(RuntimeException failure) {
-            super(null, null, null, null, null, null, null, null, null, null, null);
+            super(null, null, null, null, null, null);
             this.failure = failure;
         }
 

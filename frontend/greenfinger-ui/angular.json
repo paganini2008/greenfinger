@@ -70,8 +70,7 @@
           },
           "defaultConfiguration": "development",
           "options": {
-            "proxyConfig": "proxy.conf.js",
-            "port": 9700
+            "proxyConfig": "proxy.conf.js"
           }
         },
         "test": {

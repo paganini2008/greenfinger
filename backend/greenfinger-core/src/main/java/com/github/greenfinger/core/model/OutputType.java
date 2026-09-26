@@ -93,14 +93,9 @@ public enum OutputType {
     }
 
     /**
-     * Parses the same form, taking it literally.
-     *
-     * <p>
-     * {@link #parse} adds {@link #FILE} whether it was asked for or not, which is right for a
-     * crawl -- a crawl that wrote no files would have nothing for the other layers to be rebuilt
-     * from. It is wrong for a replay, where the file layer means "go and fetch every page again":
-     * silently adding it would turn {@code replay --layers index} into a second crawl of the whole
-     * site. So a replay asks for exactly what it was given, and gets files only by naming them.
+     * Parses the same form, taking it literally. {@link #parse} always adds {@link #FILE}, which is
+     * right for a crawl and wrong for a replay, where the file layer means "fetch every page
+     * again" -- it would turn {@code replay --layers index} into a second crawl of the site.
      */
     public static Set<OutputType> parseExact(String text) {
         Set<OutputType> types = new LinkedHashSet<>();

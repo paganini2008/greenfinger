@@ -34,6 +34,8 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexNotFoundException;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -41,6 +43,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.LockObtainFailedException;
 import com.github.greenfinger.core.WebCrawlerException;
 import lombok.extern.slf4j.Slf4j;
 
@@ -48,24 +51,14 @@ import lombok.extern.slf4j.Slf4j;
  * The open Lucene indices of this process: one writer and one searcher per directory, shared.
  *
  * <p>
- * Lucene takes a lock on a directory for as long as a writer is open, so a second writer on the
- * same index is not slow, it is a {@code LockObtainFailedException}. Every path into an index --
- * the crawl writing it, a replay rewriting it, a search reading it, a delete removing a version
- * from it -- therefore has to go through one object, and this is it.
- *
- <h2>One per directory, for the whole process</h2>
- * The lock is the file system's, not this object's, so two of these on one root would deadlock
- * each other exactly as two processes would -- and there are two natural places to build one: the
- * plain output factory and the cluster's. {@link #shared} is therefore how they are obtained, and
- * the static cache it keeps is not a convenience but the shape of the resource: one jvm, one set
- * of writers per directory, however many callers there are.
+ * A writer holds a file system lock on its directory, so a second writer is not slow but a
+ * {@code LockObtainFailedException} -- and two of these on one root deadlock each other as two
+ * processes would. Every path in (crawl, replay, search, delete) goes through this one object,
+ * obtained from {@link #shared}, whose static cache is the shape of the resource.
  *
  * <p>
- * Searchers come from a {@link SearcherManager}, which is what makes a search see a crawl that is
- * still running: the writer publishes its segments on commit, and {@code maybeRefresh} picks them
- * up without reopening anything that has not changed. A searcher is borrowed and given back --
- * never closed by the borrower -- because the readers underneath it are shared with whoever else
- * is searching at that moment.
+ * Searchers come from a {@link SearcherManager}, which lets a search see a crawl that is still
+ * running. Borrowed and given back, never closed: the readers underneath are shared.
  * 
  * @Description: LuceneIndexes
  * @Author: Fred Feng
@@ -94,12 +87,8 @@ public class LuceneIndexes implements AutoCloseable {
     }
 
     /**
-     * Closes one shared root, and forgets it so the next caller opens it afresh.
-     *
-     * <p>
-     * One root rather than all of them, because "all of them" is not this caller's to decide: two
-     * applications in one jvm -- which is what a test run is -- each configure their own
-     * directories, and one shutting down must not take the other's writers with it.
+     * Closes one shared root and forgets it. One rather than all: two applications in one jvm --
+     * which is what a test run is -- must not close each other's writers.
      */
     public static void closeShared(String directory) {
         Path root = Paths.get(directory).toAbsolutePath().normalize();
@@ -129,9 +118,19 @@ public class LuceneIndexes implements AutoCloseable {
 
     /**
      * One index's writer, opened on first use and kept until this object is closed.
+     *
+     * @throws WebCrawlerException when this process could only open the index to read, meaning
+     *         another one is writing it -- said here, because a null would surface three frames
+     *         away from the reason.
      */
     public IndexWriter writer(String name) {
-        return opened(name).writer;
+        Open index = opened(name);
+        if (index.writer == null) {
+            throw new WebCrawlerException("The index at " + root.resolve(name)
+                    + " is being written by another process, so this one can only read it."
+                    + " Stop the node that holds it, or run this against its api instead.");
+        }
+        return index.writer;
     }
 
     /**
@@ -145,6 +144,11 @@ public class LuceneIndexes implements AutoCloseable {
             return null;
         }
         Open index = opened(name);
+        if (index.searchers == null) {
+            // the directory is there and empty: a catalog whose index has been created but never
+            // written, which is not an error and has no documents to return
+            return null;
+        }
         index.searchers.maybeRefresh();
         return index.searchers.acquire();
     }
@@ -154,7 +158,7 @@ public class LuceneIndexes implements AutoCloseable {
             return;
         }
         Open index = open.get(name);
-        if (index == null) {
+        if (index == null || index.searchers == null) {
             return;
         }
         try {
@@ -169,7 +173,7 @@ public class LuceneIndexes implements AutoCloseable {
      */
     public void commit(String name) throws IOException {
         Open index = open.get(name);
-        if (index != null) {
+        if (index != null && index.writer != null) {
             index.writer.commit();
             index.searchers.maybeRefresh();
         }
@@ -232,15 +236,30 @@ public class LuceneIndexes implements AutoCloseable {
         }
     }
 
+    /**
+     * The index, to write if this process can and to read if it cannot.
+     *
+     * <p>
+     * An {@code IndexWriter} takes the directory's lock whether or not anything is written, so a
+     * read-only command could not open an index belonging to a running node -- the same courtesy
+     * H2's AUTO_SERVER has given the database since 1.x. Reading a directory somebody else is
+     * writing is safe: a segment is never mutated, so a reader sees the last commit.
+     */
     private Open opened(String name) {
         return open.computeIfAbsent(name, key -> {
+            Path directory = root.resolve(key);
             try {
-                Path directory = root.resolve(key);
                 Files.createDirectories(directory);
-                return new Open(FSDirectory.open(directory), analyzer);
+                Directory dir = FSDirectory.open(directory);
+                try {
+                    return new Open(dir, analyzer);
+                } catch (LockObtainFailedException locked) {
+                    log.info("The index at {} is being written elsewhere; opening it to read.",
+                            directory);
+                    return Open.toRead(dir);
+                }
             } catch (IOException e) {
-                throw new WebCrawlerException("Could not open the index at "
-                        + root.resolve(key), e);
+                throw new WebCrawlerException("Could not open the index at " + directory, e);
             }
         });
     }
@@ -253,13 +272,8 @@ public class LuceneIndexes implements AutoCloseable {
     }
 
     /**
-     * The default codec, with room for the vectors people actually have.
-     *
-     * <p>
-     * A {@link FilterCodec} rather than a format of our own: everything about how a vector is
-     * stored and searched stays Lucene's, and the one number that is a policy rather than a
-     * format -- how wide a vector may be -- is answered differently. An index written this way is
-     * read back by the same codec, which is why it is named and looked up rather than anonymous.
+     * The default codec, with room for the vectors people actually have. A {@link FilterCodec},
+     * so everything stays Lucene's except the one number that is a policy rather than a format.
      */
     private static final String DEFAULT_CODEC = "Lucene912";
     private static final String HNSW_FORMAT = "Lucene99HnswVectorsFormat";
@@ -297,13 +311,8 @@ public class LuceneIndexes implements AutoCloseable {
     }
 
     /**
-     * Lucene's own hnsw format, answering one question differently.
-     *
-     * <p>
-     * It delegates rather than extends because the format is final, and it keeps the format's own
-     * name: the name is what an index records and what a reader looks up, so writing under it
-     * means anything that can read a Lucene index can read this one. Only the ceiling changes,
-     * and only while writing -- reading never asks.
+     * Lucene's own hnsw format with a higher ceiling. Delegates because the format is final, and
+     * keeps its name -- that is what a reader looks up, so any Lucene tool can read this index.
      */
     private static final class WideHnswFormat extends KnnVectorsFormat {
 
@@ -342,13 +351,9 @@ public class LuceneIndexes implements AutoCloseable {
             this.directory = directory;
             IndexWriterConfig config = new IndexWriterConfig(analyzer);
             config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
-            // Lucene's own limit is 1024 floats a vector, which is a sensible default and not a
-            // law: the format lets an index raise it, and every embedding model worth pointing at
-            // this has outgrown it. qwen3-embedding produces 2560, so with the stock limit every
-            // flush failed with "dimensions must be <= [1024]" and the crawl went on to report
-            // itself finished with an empty vector store behind it. Raised here rather than
-            // guarded against, because refusing the model is not the answer when holding it costs
-            // nothing but the disk it is written to.
+            // Lucene's 1024 floats a vector is a default, not a law, and every model worth
+            // using has outgrown it -- qwen3-embedding is 2560, which failed every flush while
+            // the crawl reported itself finished with an empty vector store.
             config.setCodec(WIDE_VECTORS);
             // a crawl writes the same page again on an update, and by url-derived id: replacing
             // rather than appending is what keeps a re-crawl from doubling the index
@@ -357,6 +362,24 @@ public class LuceneIndexes implements AutoCloseable {
             // applyAllDeletes true: a version deleted a moment ago must not still be searchable,
             // and these indices are small enough that the cost of honouring that is nothing
             this.searchers = new SearcherManager(writer, true, true, null);
+        }
+
+        /**
+         * The same index with no writer: a reader on the last commit, nothing locked. An empty
+         * directory has no commit, which is not an error -- it comes back with no searcher.
+         */
+        private static Open toRead(Directory directory) throws IOException {
+            try {
+                return new Open(directory, DirectoryReader.open(directory));
+            } catch (IndexNotFoundException empty) {
+                return new Open(directory, (DirectoryReader) null);
+            }
+        }
+
+        private Open(Directory directory, DirectoryReader reader) throws IOException {
+            this.directory = directory;
+            this.writer = null;
+            this.searchers = reader != null ? new SearcherManager(reader, null) : null;
         }
 
         private void close() {

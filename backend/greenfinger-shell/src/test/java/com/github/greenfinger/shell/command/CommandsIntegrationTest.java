@@ -144,7 +144,9 @@ class CommandsIntegrationTest {
     void statusListsWhatHasBeenCrawledWhenNothingIsRunning() throws Exception {
         crawl("cli-status");
         try (ConsoleCapture console = new ConsoleCapture()) {
-            crawlCommands.dispatch("status", null, new CrawlOptions());
+            // called directly, the way the prompt calls it: status is not a crawl verb, so the
+            // one-line form no longer runs it
+            crawlCommands.status(null);
             assertThat(console.output()).contains("cli-status").contains("Nothing is crawling");
         }
     }
@@ -182,9 +184,9 @@ class CommandsIntegrationTest {
     void deleteDryRunReportsPerLayer() throws Exception {
         String id = crawl("cli-delete");
         try (ConsoleCapture console = new ConsoleCapture()) {
-            crawlCommands.dispatch("delete", null,
-                    new CrawlOptions().override("id", id).override("version", 0)
-                            .override("layers", "db,file").override("dryRun", true));
+            // the prompt's own signature: id, version, keep-latest, all, purge, layers,
+            // dry run, force
+            crawlCommands.delete(id, 0, null, null, null, "db,file", true, null);
             String output = console.output();
             assertThat(output).contains("Would delete").contains("db").contains("file")
                     .contains("Dry run");
@@ -197,8 +199,7 @@ class CommandsIntegrationTest {
         String id = crawl("cli-delete-keep");
         crawlCommands.dispatch("rebuild", null, new CrawlOptions().override("id", id));
         try (ConsoleCapture console = new ConsoleCapture()) {
-            crawlCommands.dispatch("delete", null, new CrawlOptions().override("id", id)
-                    .override("keepLatest", 1).override("dryRun", true));
+            crawlCommands.delete(id, null, 1, null, null, null, true, null);
             assertThat(console.output()).contains("v0").doesNotContain("v1");
         }
     }
@@ -210,16 +211,14 @@ class CommandsIntegrationTest {
         try (ConsoleCapture console = new ConsoleCapture()) {
             // --force because the only version there is, is the one search is serving: removing
             // everything a catalog has is still not something to do by accident
-            crawlCommands.dispatch("delete", null, new CrawlOptions().override("id", id)
-                    .override("all", true).override("force", true));
+            crawlCommands.delete(id, null, null, true, null, null, null, true);
             assertThat(console.output()).contains("Deleted")
                     .contains("the index is still there, empty");
         }
 
         String other = crawl("cli-delete-purge");
         try (ConsoleCapture console = new ConsoleCapture()) {
-            crawlCommands.dispatch("delete", null, new CrawlOptions().override("id", other)
-                    .override("purge", true).override("force", true));
+            crawlCommands.delete(other, null, null, null, true, null, null, true);
             assertThat(console.output()).contains("index was dropped")
                     .contains("catalog-delete --id=" + other);
         }
@@ -228,8 +227,9 @@ class CommandsIntegrationTest {
     @Test
     void deleteNeedsToBeToldWhichVersions() throws Exception {
         String id = crawl("cli-delete-args");
-        assertThatThrownBy(() -> crawlCommands.dispatch("delete", null,
-                new CrawlOptions().override("id", id))).isInstanceOf(UsageException.class)
+        assertThatThrownBy(
+                () -> crawlCommands.delete(id, null, null, null, null, null, null, null))
+                        .isInstanceOf(UsageException.class)
                         .hasMessageContaining("--keep-latest").hasMessageContaining("--purge");
     }
 
@@ -246,14 +246,19 @@ class CommandsIntegrationTest {
     @DisplayName("a catalog is addressed by id, and a name is not one")
     void refusesAnythingThatIsNotAnId() {
         define("cli-by-name");
+        // three ways to name a catalog now -- an id, a name, or a url that creates one -- so
+        // naming none of them is a usage question rather than a lookup that failed
         assertThatThrownBy(
                 () -> crawlCommands.dispatch("catalog-crawl", null, new CrawlOptions()))
-                        .isInstanceOf(CatalogDetailsNotFoundException.class)
-                        .hasMessageContaining("catalog id");
+                        .isInstanceOf(com.github.greenfinger.shell.UsageException.class)
+                        .hasMessageContaining("--url");
+        // the message names the id that was not found and nothing else: core is asked this by
+        // the page as well, and telling a browser to run 'catalog-list' was advice it could not
+        // take. Where to find the ids is the shell's hint, beside the red line.
         assertThatThrownBy(() -> crawlCommands.dispatch("catalog-crawl", null,
                 new CrawlOptions().override("id", "cli-by-name")))
                         .isInstanceOf(CatalogDetailsNotFoundException.class)
-                        .hasMessageContaining("catalog-list");
+                        .hasMessageContaining("cli-by-name");
     }
 
     @Test
@@ -274,12 +279,14 @@ class CommandsIntegrationTest {
     }
 
     @Test
-    void anUnknownCommandSaysSoAndPointsAtHelp() {
+    void anUnknownCommandSaysSoAndNamesTheVerbsItDoesRun() {
         assertThatThrownBy(() -> crawlCommands.dispatch("nonsense", null, new CrawlOptions()))
                 .isInstanceOf(UsageException.class)
                 .hasMessageContaining("Unknown command")
                 .hasMessageContaining("nonsense")
-                .hasMessageContaining("help");
+                // the seven it does run, rather than "type help" -- on a one-liner there is
+                // nowhere to type it
+                .hasMessageContaining("rebuild");
     }
 
     @Test
@@ -309,12 +316,12 @@ class CommandsIntegrationTest {
     void versionsAndTheStoredReport() throws Exception {
         String id = crawl("cli-versions");
         try (ConsoleCapture console = new ConsoleCapture()) {
-            crawlCommands.dispatch("versions", null, new CrawlOptions().override("id", id));
+            catalogCommands.versions(id);
             assertThat(console.output()).contains("v0").contains("searchable")
                     .contains("crawler-report");
         }
         try (ConsoleCapture console = new ConsoleCapture()) {
-            crawlCommands.dispatch("crawler-report", null, new CrawlOptions().override("id", id));
+            catalogCommands.report(id, null);
             String output = console.output();
             assertThat(output).contains("cli-versions").contains("dashboard").contains("cluster")
                     .contains("database").contains("storage").contains("settings");
@@ -358,15 +365,19 @@ class CommandsIntegrationTest {
     }
 
     @Test
-    @DisplayName("search needs something published before it can look")
+    @DisplayName("search needs something published before it can look, whatever was typed")
     void searchWithNothingCrawled() throws Exception {
         try (ConsoleCapture console = new ConsoleCapture()) {
-            queryCommands.search("anything", null, 5, null);
+            queryCommands.search("anything", null, 5, null, null);
             assertThat(console.output()).contains("finished crawling");
         }
-        assertThatThrownBy(() -> queryCommands.search(null, null, 5, null))
-                .isInstanceOf(UsageException.class)
-                .hasMessageContaining("Give something to search for");
+        // An empty query used to be refused here with "give something to search for", while the
+        // page answered the same empty box by listing everything. It lists everything now too,
+        // and with nothing crawled both forms say the same thing: there is nothing to list.
+        try (ConsoleCapture console = new ConsoleCapture()) {
+            queryCommands.search(null, null, 5, null, null);
+            assertThat(console.output()).contains("finished crawling");
+        }
     }
 
     @Test
