@@ -21,7 +21,7 @@ import java.util.List;
 import com.github.greenfinger.core.model.Catalog;
 import com.github.greenfinger.core.output.BlobStore;
 import com.github.greenfinger.core.output.FileLayout;
-import com.github.greenfinger.core.utils.BeanLifeCycleUtils;
+import com.github.greenfinger.utils.BeanLifeCycleUtils;
 import com.github.greenfinger.output.OutputFactory;
 import lombok.Builder;
 import lombok.Getter;

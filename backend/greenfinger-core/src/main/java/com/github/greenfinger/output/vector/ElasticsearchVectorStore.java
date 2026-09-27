@@ -128,10 +128,10 @@ public class ElasticsearchVectorStore implements VectorStore {
                 document.put(FIELD_CATALOG_VERSION, point.getPayload().get(FIELD_CATALOG_VERSION));
                 document.put(FIELD_CATALOG_ID, point.getPayload().get(FIELD_CATALOG_ID));
                 document.put("payload", point.getPayload());
-                ndjson.append(client.objectMapper().writeValueAsString(
+                ndjson.append(client.getObjectMapper().writeValueAsString(
                         Map.of("index", Map.of("_index", collection, "_id", point.getId()))))
                         .append('\n')
-                        .append(client.objectMapper().writeValueAsString(document)).append('\n');
+                        .append(client.getObjectMapper().writeValueAsString(document)).append('\n');
             }
         } catch (Exception e) {
             throw new WebCrawlerException("Could not encode " + points.size() + " vector(s)", e);

@@ -18,6 +18,7 @@ package com.github.greenfinger.cluster.replication;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import com.github.greenfinger.utils.JsonUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.greenfinger.core.catalog.CatalogDetails;
@@ -54,7 +55,7 @@ public class ReplicatedIndexChannel implements OutputChannel {
 
     private final OutputChannel delegate;
     private final ReplicationSink channel;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = JsonUtils.MAPPER;
 
     private CatalogDetails catalogDetails;
 

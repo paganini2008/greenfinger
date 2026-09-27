@@ -50,13 +50,13 @@ import com.github.greenfinger.core.model.OutputType;
 import com.github.greenfinger.service.CrawlerLauncher;
 import com.github.greenfinger.service.DeleteReport;
 import com.github.greenfinger.service.ops.CatalogSnapshot;
-import com.github.greenfinger.service.ops.GreenfingerOperations;
-import com.github.greenfinger.service.ops.GreenfingerOperations.DeleteAsk;
-import com.github.greenfinger.service.ops.GreenfingerOperations.Live;
-import com.github.greenfinger.service.ops.GreenfingerOperations.Overview;
-import com.github.greenfinger.service.ops.GreenfingerOperations.ReplayAnswer;
-import com.github.greenfinger.service.ops.GreenfingerOperations.ReplayAsk;
-import com.github.greenfinger.service.ops.GreenfingerOperations.StartAsk;
+import com.github.greenfinger.service.ops.UIOperations;
+import com.github.greenfinger.service.ops.UIOperations.DeleteAsk;
+import com.github.greenfinger.service.ops.UIOperations.Live;
+import com.github.greenfinger.service.ops.UIOperations.Overview;
+import com.github.greenfinger.service.ops.UIOperations.ReplayAnswer;
+import com.github.greenfinger.service.ops.UIOperations.ReplayAsk;
+import com.github.greenfinger.service.ops.UIOperations.StartAsk;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import java.util.function.Consumer;
@@ -86,7 +86,7 @@ public class CrawlCommands {
      * What this face asks of a crawler. On a crawler node it is the services in this process; at
      * the {@code greenfinger-shell} prompt it is the leader of the cluster, asked over gossip.
      */
-    private final GreenfingerOperations ops;
+    private final UIOperations ops;
 
     /**
      * The engine, when this process has one. Absent at the prompt, which runs no crawl of its own
@@ -375,7 +375,8 @@ public class CrawlCommands {
             description = "What is running. A live view at the prompt, a snapshot from the"
                     + " command line")
     public void status(@Option(longName = "all",
-            description = "true | false; true adds a row per node. Default false") Boolean all) {
+            description = "true | false. A row per node, on by default. false for the totals"
+                    + " alone") Boolean all) {
         Overview overview = ops.overview();
         if (overview.running().isEmpty()) {
             print(Ansi.dim("Nothing is crawling."));
@@ -383,7 +384,9 @@ public class CrawlCommands {
             return;
         }
         String catalogId = overview.running().get(0);
-        boolean perNode = Boolean.TRUE.equals(all);
+        // on unless asked otherwise: the totals cannot say whether the work is being shared, and
+        // nobody finds a flag they do not know to look for
+        boolean perNode = !Boolean.FALSE.equals(all);
         if (oneShot) {
             snapshot(catalogId, perNode);
             return;
@@ -828,7 +831,7 @@ public class CrawlCommands {
         table.row("rebuild --id=<id>", "New version, crawl the whole site again");
         table.row("pause --id=<id>", "Stop a running crawl where it is");
         table.row("status", "Watch what is running; q stops watching");
-        table.row("status --all=true", "The same, with a row per node");
+        table.row("status --all=false", "The totals alone, without the row per node");
         table.row("delete --id=<id> --version=<n>", "Remove one version");
         table.row("delete --id=<id> --all=true", "Every version; the index stays, empty");
         table.row("delete --id=<id> --purge=true", "Every version, and drop the index too");

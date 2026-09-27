@@ -18,6 +18,14 @@ package com.github.greenfinger.core.component;
 
 import java.io.File;
 import java.util.ArrayList;
+import com.github.greenfinger.core.WebCrawlerException;
+import com.github.greenfinger.core.document.DocumentContentParsers;
+import java.util.stream.Collectors;
+import java.util.Set;
+import java.util.Locale;
+import java.util.LinkedHashSet;
+import java.util.Arrays;
+import org.apache.commons.lang3.StringUtils;
 import java.util.List;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.BeanUtils;
@@ -27,6 +35,7 @@ import com.github.greenfinger.core.WebCrawlerExtractorProperties;
 import com.github.greenfinger.core.WebCrawlerProperties;
 import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.core.model.ExtractorType;
+import com.github.greenfinger.core.component.acceptor.AssetUrlPathAcceptor;
 import com.github.greenfinger.core.component.acceptor.DomainScopeUrlPathAcceptor;
 import com.github.greenfinger.core.component.extractor.AdaptiveExtractor;
 import com.github.greenfinger.core.component.extractor.RenderingDetector;
@@ -54,7 +63,7 @@ import com.github.greenfinger.core.component.state.DefaultGlobalStateManager;
 import com.github.greenfinger.core.component.state.GlobalStateManager;
 import com.github.greenfinger.core.engine.CrawlFrontier;
 import com.github.greenfinger.core.engine.RocksDbCrawlFrontier;
-import lombok.RequiredArgsConstructor;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -65,11 +74,22 @@ import lombok.extern.slf4j.Slf4j;
  * @Version 2.0.0
  */
 @Slf4j
-@RequiredArgsConstructor
+@AllArgsConstructor
 public class DefaultWebCrawlerComponentFactory implements WebCrawlerComponentFactory {
 
     private final WebCrawlerProperties webCrawlerProperties;
     private final WebCrawlerExtractorProperties extractorProperties;
+
+    /**
+     * What can read a linked file. Only the built-in text formats unless the application published
+     * a DocumentContentParser bean; see docs/developer-guide.md.
+     */
+    private final DocumentContentParsers documentContentParsers;
+
+    public DefaultWebCrawlerComponentFactory(WebCrawlerProperties webCrawlerProperties,
+            WebCrawlerExtractorProperties extractorProperties) {
+        this(webCrawlerProperties, extractorProperties, new DocumentContentParsers(List.of()));
+    }
 
     @Override
     public List<CompletionChecker> getCompletionCheckers(CatalogDetails catalogDetails) {
@@ -84,6 +104,10 @@ public class DefaultWebCrawlerComponentFactory implements WebCrawlerComponentFac
         // narrows what is already inside the boundary, these two draw it
         all.add(new DomainScopeUrlPathAcceptor());
         all.add(new StartUrlPrefixUrlPathAcceptor());
+        // a link to a file is not a page to crawl. Pictures still arrive: they are read from the
+        // markup by the page parser, never by following a link
+        all.add(new AssetUrlPathAcceptor(webCrawlerProperties.getSkipExtensions(),
+                fetchableDocumentTypes()));
         List<String> customAcceptors = catalogDetails.getUrlPathAcceptors();
         if (CollectionUtils.isNotEmpty(customAcceptors)) {
             for (String className : customAcceptors) {
@@ -161,6 +185,39 @@ public class DefaultWebCrawlerComponentFactory implements WebCrawlerComponentFac
         return null;
     }
 
+    /**
+     * The document formats a crawl may fetch, which is only ever formats something can read.
+     *
+     * <p>
+     * Empty unless {@code greenfinger.document.enabled} is on. Naming a format with no parser is
+     * refused here, at startup: the alternative is a crawl that fetches every pdf on a site and
+     * stores nothing from any of them, which looks like working and is not. Adding the parser is
+     * one bean -- see docs/developer-guide.md.
+     */
+    private Set<String> fetchableDocumentTypes() {
+        WebCrawlerProperties.Document config = webCrawlerProperties.getDocument();
+        if (!config.isEnabled()) {
+            return Set.of();
+        }
+        Set<String> readable = documentContentParsers.readable();
+        if (StringUtils.isBlank(config.getFileTypes())) {
+            return readable;
+        }
+        Set<String> asked = Arrays.stream(StringUtils.split(config.getFileTypes(), ","))
+                .map(String::trim).map(one -> StringUtils.removeStart(one, "."))
+                .filter(StringUtils::isNotBlank).map(one -> one.toLowerCase(Locale.ROOT))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<String> missing = new LinkedHashSet<>(asked);
+        missing.removeAll(readable);
+        if (!missing.isEmpty()) {
+            throw new WebCrawlerException("greenfinger.document.file-types names " + missing
+                    + ", and nothing here can read " + (missing.size() == 1 ? "it" : "them")
+                    + ". Register a DocumentContentParser bean for it, or take it off the list."
+                    + " Readable now: " + readable);
+        }
+        return asked;
+    }
+
     private boolean isAvailable(String engine) {
         String className = switch (engine) {
             case WebCrawlerConstants.ENGINE_HTMLUNIT -> WebCrawlerConstants.CLASS_HTMLUNIT;
@@ -203,8 +260,17 @@ public class DefaultWebCrawlerComponentFactory implements WebCrawlerComponentFac
                     + " Add htmlunit, playwright or selenium to enable rendering.");
             return engineOf(WebCrawlerConstants.ENGINE_RESTCLIENT);
         }
-        return new AdaptiveExtractor(engineOf(WebCrawlerConstants.ENGINE_RESTCLIENT), browser,
-                () -> engineOf(browser),
+        // The one that was asked for, then whatever else is on the classpath. Being on the
+        // classpath is not the same as being able to start: playwright needs a browser installed,
+        // and where there is none htmlunit renders in the jvm rather than nothing rendering at all.
+        List<AdaptiveExtractor.Choice> choices = new ArrayList<>();
+        choices.add(new AdaptiveExtractor.Choice(browser, () -> engineOf(browser)));
+        for (String candidate : WebCrawlerConstants.BROWSER_FALLBACK_ORDER) {
+            if (!candidate.equals(browser) && isAvailable(candidate)) {
+                choices.add(new AdaptiveExtractor.Choice(candidate, () -> engineOf(candidate)));
+            }
+        }
+        return new AdaptiveExtractor(engineOf(WebCrawlerConstants.ENGINE_RESTCLIENT), choices,
                 new RenderingDetector(config.getMinTextLength(), config.getShellTextLength()));
     }
 

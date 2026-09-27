@@ -16,7 +16,7 @@
 
 package com.github.greenfinger.core.component.extractor;
 
-import com.github.greenfinger.core.utils.ThreadUtils;
+import com.github.greenfinger.utils.ThreadUtils;
 
 /**
  * 

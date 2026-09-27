@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
+import com.github.greenfinger.utils.JsonUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.greenfinger.core.WebCrawlerException;
 import com.github.greenfinger.core.WebCrawlerProperties;
@@ -37,9 +38,9 @@ import com.github.greenfinger.core.model.ExtractorType;
 import com.github.greenfinger.core.model.OutputType;
 import com.github.greenfinger.core.output.BlobStore;
 import com.github.greenfinger.core.output.FileLayout;
-import com.github.greenfinger.core.utils.BeanLifeCycleUtils;
-import com.github.greenfinger.core.utils.UrlPathPatterns;
-import com.github.greenfinger.core.utils.UrlUtils;
+import com.github.greenfinger.utils.BeanLifeCycleUtils;
+import com.github.greenfinger.utils.UrlPathPatternUtils;
+import com.github.greenfinger.utils.UrlUtils;
 import com.github.greenfinger.output.OutputFactory;
 import com.github.greenfinger.output.OutputProperties;
 import lombok.RequiredArgsConstructor;
@@ -64,7 +65,7 @@ public class CatalogAdminService {
     private final OutputProperties outputProperties;
     private final OutputFactory outputFactory;
     private final CrawlRegistry crawlRegistry;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = JsonUtils.MAPPER;
 
     /**
      * Fills in whatever the caller left out, so a url alone is a complete definition.
@@ -87,7 +88,7 @@ public class CatalogAdminService {
             catalog.setCat(Category.OTHER.getRepr());
         }
         if (StringUtils.isBlank(catalog.getPathPattern())) {
-            catalog.setPathPattern(UrlPathPatterns.defaultPathPattern(catalog.getUrl()));
+            catalog.setPathPattern(UrlPathPatternUtils.defaultPathPattern(catalog.getUrl()));
         }
         if (StringUtils.isBlank(catalog.getOutputTypesValue())) {
             catalog.setOutputTypes(OutputType.parse(outputProperties.getTypes()));

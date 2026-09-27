@@ -17,11 +17,11 @@
 package com.github.greenfinger.core.component.extractor;
 
 import java.nio.charset.Charset;
-import com.github.greenfinger.core.utils.BeanLifeCycleUtils;
+import com.github.greenfinger.utils.BeanLifeCycleUtils;
 import com.github.greenfinger.core.ManagedBeanLifeCycle;
 import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.core.engine.CrawlTask;
-import com.github.greenfinger.core.utils.ThreadUtils;
+import com.github.greenfinger.utils.ThreadUtils;
 import lombok.extern.slf4j.Slf4j;
 
 /**

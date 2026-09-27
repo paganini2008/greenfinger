@@ -96,6 +96,13 @@ export class App {
   protected readonly profile = signal('');
   protected readonly isProduction = computed(() => /prod/i.test(this.profile()));
 
+  /**
+   * What the node says about itself, polled beside the crawl banner. The badge carries it because
+   * it is the one thing on every page: a profile alone says which installation this is, and the
+   * colour says whether it is answering.
+   */
+  protected readonly healthy = signal<boolean | null>(null);
+
   private readonly url = toSignal(
     this.router.events.pipe(
       filter((event): event is NavigationEnd => event instanceof NavigationEnd),
@@ -124,6 +131,19 @@ export class App {
         next: (statuses) => this.running.set(statuses.filter((status) => status.running)),
         // a banner that cannot be drawn is not worth a message; the pages report what matters
         error: () => this.running.set([]),
+      });
+
+    interval(5000)
+      .pipe(
+        startWith(0),
+        filter(() => this.auth.signedIn()),
+        switchMap(() => this.api.health()),
+        takeUntilDestroyed(),
+      )
+      .subscribe({
+        next: (report) => this.healthy.set(report.status === 'UP'),
+        // unreachable is not healthy: a badge that stays green while nothing answers is a lie
+        error: () => this.healthy.set(false),
       });
 
     // The width can change without a reload -- a rotated phone, a dragged window -- and the rail

@@ -183,6 +183,25 @@ greenfinger:
   default-max-retry-count: ${GF_MAX_RETRY:1}
   default-max-fetch-depth: ${GF_MAX_DEPTH:-1}
   default-page-encoding: ${GF_PAGE_ENCODING:UTF-8}
+  # Link extensions that are a file rather than a page, and are not followed. A gallery links its
+  # full size picture with <a href="photo.jpg">, and following that can only end in "the server
+  # answered image/jpeg" -- a wasted request that also counts towards max-consecutive-failures.
+  # Pictures are unaffected: the page parser reads those from img, srcset and the meta tags.
+  # Empty keeps the built-in list; "none" turns the check off.
+  skip-extensions: ${GF_SKIP_EXTENSIONS:}
+  # The catalogs an installation starts with, defined once per name and never again -- an edited
+  # or deleted one stays that way. Point it at a file of your own, or leave it blank to define
+  # nothing. See docs/developer-guide.md.
+  initial-catalogs: ${GF_INITIAL_CATALOGS:classpath:initial_catalogs.json}
+  # The files a page links to. Collecting them is always on and free -- a crawled page carries
+  # what it pointed at. Fetching and reading one is off until asked for, and only formats a
+  # DocumentContentParser can read may be named: txt, markdown and the other already-text ones
+  # out of the box, pdf/Word/Excel when the application adds a bean. Naming a format nothing
+  # reads fails at startup rather than crawling and storing nothing. See docs/developer-guide.md.
+  document:
+    enabled: ${GF_DOCUMENTS:false}
+    file-types: ${GF_DOCUMENT_TYPES:}
+    max-bytes: ${GF_DOCUMENT_MAX_BYTES:10485760}
   default-extractor: ${GF_EXTRACTOR:adaptive}   # adaptive | restclient | htmlunit | playwright | selenium
   frontier-directory: ${GF_SYSTEM_DATA_DIR:./data/system}/frontier
   dedup:

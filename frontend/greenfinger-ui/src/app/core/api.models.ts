@@ -157,6 +157,11 @@ export interface CatalogDetails {
 /** The counters the Monitor page draws: live while a crawl runs, the last run's otherwise. */
 export interface CatalogSummary {
   live: boolean;
+  /**
+   * Counter name, then node, while a crawl is running. Null once it is over: the run report keeps
+   * the totals only.
+   */
+  perNode?: Record<string, Record<string, number>> | null;
   catalogId: string;
   catalogName: string;
   version: number;

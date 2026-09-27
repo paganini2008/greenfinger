@@ -19,7 +19,7 @@ package com.github.greenfinger.core.component.acceptor;
 import org.apache.commons.lang3.StringUtils;
 import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.core.engine.CrawlTask;
-import com.github.greenfinger.core.utils.UrlUtils;
+import com.github.greenfinger.utils.UrlUtils;
 
 /**
  * The boundary a crawl can never cross: a run started on www.a.com must not end up on www.b.com.

@@ -122,8 +122,10 @@ test.describe('the run reports', () => {
     await expect(runs).toBeVisible();
     // a report is written when a crawl finishes, and it is the only place these numbers survive
     await runs.locator('.gf-bar').first().click();
-    await expect(runs.getByText('Ended because')).toBeVisible();
-    await expect(runs.getByText(/url\(s\) dispatched/)).toBeVisible();
+    // 'Ended because' is both a label in the opened run and a column in the all-runs table;
+    // this assertion is about the opened run, so it asks for the label
+    await expect(runs.getByRole('term').filter({ hasText: 'Ended because' })).toBeVisible();
+    await expect(runs.getByText(/url\(s\) dispatched/).first()).toBeVisible();
 
     // dispatched against handled, as a band: the gap is what a run left behind
     await expect(runs.locator('.gf-segbar .gf-seg').first()).toBeVisible();

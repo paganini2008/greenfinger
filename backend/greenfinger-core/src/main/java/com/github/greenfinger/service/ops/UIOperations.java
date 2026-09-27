@@ -34,12 +34,12 @@ import com.github.greenfinger.service.DeleteReport;
  * interfaces a crawl is described by travel as {@link CatalogSnapshot} and
  * {@link DashboardSnapshot}.
  *
- * @Description: GreenfingerOperations
+ * @Description: UIOperations
  * @Author: Fred Feng
  * @Date: 26/09/2026
  * @Version 2.0.0
  */
-public interface GreenfingerOperations {
+public interface UIOperations {
 
     // ---- catalogs ---------------------------------------------------------------------------
 

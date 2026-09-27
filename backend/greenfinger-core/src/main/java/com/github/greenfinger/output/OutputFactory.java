@@ -49,7 +49,7 @@ import com.github.greenfinger.output.vector.QdrantVectorStore;
 import com.github.greenfinger.output.vector.VectorOutputChannel;
 import com.github.greenfinger.output.vector.VectorStore;
 import com.github.greenfinger.output.vector.WeaviateVectorStore;
-import com.github.greenfinger.core.utils.BeanLifeCycleUtils;
+import com.github.greenfinger.utils.BeanLifeCycleUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.github.greenfinger.output.vector.VectorSearcher;

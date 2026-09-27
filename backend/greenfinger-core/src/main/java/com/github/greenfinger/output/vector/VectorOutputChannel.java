@@ -29,7 +29,7 @@ import com.github.greenfinger.core.output.ContentReader;
 import com.github.greenfinger.core.output.OutputChannel;
 import com.github.greenfinger.core.output.OutputPayload;
 import com.github.greenfinger.core.record.ResourceRecord;
-import com.github.greenfinger.core.utils.UuidUtils;
+import com.github.greenfinger.utils.UuidUtils;
 import com.github.greenfinger.output.OutputProperties;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;

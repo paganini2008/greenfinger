@@ -19,20 +19,17 @@ package com.github.greenfinger.core.engine;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 import javax.imageio.ImageIO;
 import org.apache.commons.lang3.StringUtils;
 import com.github.greenfinger.core.WebCrawlerConstants;
 import com.github.greenfinger.core.WebCrawlerProperties;
+import com.github.greenfinger.utils.HttpUtils;
 import com.github.greenfinger.core.engine.CrawledPage.StoredImage;
-import com.github.greenfinger.core.utils.HashUtils;
+import com.github.greenfinger.utils.HashUtils;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -57,13 +54,9 @@ import lombok.extern.slf4j.Slf4j;
 public class ImageFetcher {
 
     private final WebCrawlerProperties.Image config;
-    private final HttpClient httpClient;
 
     public ImageFetcher(WebCrawlerProperties.Image config) {
         this.config = config;
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofMillis(config.getConnectTimeout()))
-                .followRedirects(HttpClient.Redirect.NORMAL).build();
     }
 
     /**
@@ -129,22 +122,18 @@ public class ImageFetcher {
     }
 
     private Optional<StoredImage> fetch(ImageRef ref, String pageUrl) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder(URI.create(ref.getUrl()))
-                .timeout(Duration.ofMillis(config.getReadTimeout()))
-                .header("User-Agent", randomUserAgent()).header("Referer", pageUrl).GET().build();
-        HttpResponse<byte[]> response =
-                httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
-        if (response.statusCode() / 100 != 2) {
+        HttpUtils.Reply reply = HttpUtils.get(ref.getUrl(), config.getReadTimeout(),
+                Map.of("User-Agent", randomUserAgent(), "Referer", pageUrl != null ? pageUrl : ""));
+        if (!reply.isOk()) {
             return Optional.empty();
         }
 
-        String contentType = response.headers().firstValue("content-type").map(String::trim)
-                .map(v -> v.split(";")[0].toLowerCase(Locale.ROOT)).orElse("");
+        String contentType = reply.contentType().trim().split(";")[0].toLowerCase(Locale.ROOT);
         if (!config.getMimeTypes().isEmpty() && !config.getMimeTypes().contains(contentType)) {
             return Optional.empty();
         }
 
-        byte[] bytes = response.body();
+        byte[] bytes = reply.body();
         if (bytes.length == 0
                 || (config.getMaxBytes() > 0 && bytes.length > config.getMaxBytes())) {
             return Optional.empty();

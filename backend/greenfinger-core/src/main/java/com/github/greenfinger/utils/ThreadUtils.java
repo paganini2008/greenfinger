@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.greenfinger.core.utils;
+package com.github.greenfinger.utils;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadLocalRandom;

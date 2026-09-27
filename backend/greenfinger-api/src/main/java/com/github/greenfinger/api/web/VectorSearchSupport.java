@@ -16,7 +16,7 @@
 
 package com.github.greenfinger.api.web;
 
-import com.github.greenfinger.core.utils.BeanLifeCycleUtils;
+import com.github.greenfinger.utils.BeanLifeCycleUtils;
 import com.github.greenfinger.output.OutputFactory;
 import com.github.greenfinger.output.vector.EmbeddingClient;
 import com.github.greenfinger.output.vector.VectorSearcher;

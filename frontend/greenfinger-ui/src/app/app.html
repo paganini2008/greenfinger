@@ -80,10 +80,17 @@
           <!-- Which installation this is. Quiet on dev, because that is where everybody spends
                their day; wheat on prod, because that is where a click cannot be taken back. -->
           @if (profile(); as profile) {
+            <!-- The word is which installation this is; the colour is whether it is answering. -->
             <span
               class="gf-profile"
               [class.gf-profile-live]="isProduction()"
-              [title]="'Spring profile in force on the server: ' + profile"
+              [class.gf-profile-up]="healthy() === true"
+              [class.gf-profile-down]="healthy() === false"
+              [title]="
+                'Spring profile in force on the server: ' +
+                profile +
+                (healthy() === null ? '' : healthy() ? ' \u2014 /actuator/health says UP' : ' \u2014 /actuator/health is not UP')
+              "
             >{{ profile }}</span>
           }
 
@@ -127,11 +134,33 @@
              and the About page it also linked to no longer exists -- a footer that repeats what
              the navigation says is a second navigation nobody asked for. -->
         <footer class="gf-footer">
-          <!-- An empty first column, so the name is centred on the page rather than on what is
-               left of it once the mark has taken its corner. -->
-          <span aria-hidden="true"></span>
+          <!-- What this crawler is, in the words the product uses for itself. Six lines rather
+               than a feature grid: a footer read once should be readable in one pass. -->
+          <p class="gf-footer-tagline">
+            A full-web crawler. Crawl a site, keep every version, search what you kept.
+          </p>
 
-          <span class="gf-footer-name">
+          <ul class="gf-footer-features">
+            <li><strong>Distributed by default.</strong> One crawl, every node pulling its share</li>
+            <li><strong>Never wanders off.</strong> Boundaries that cannot be switched off, robots.txt obeyed</li>
+            <li><strong>Javascript only when needed.</strong> A browser for the shells, plain http for the rest</li>
+            <li><strong>The article, not the navigation.</strong> No model, any language</li>
+            <li><strong>Nothing stored twice.</strong> Url and content both fingerprinted</li>
+            <li><strong>Three outputs, one pass.</strong> Files, full text, vectors</li>
+            <li><strong>Rebuild without recrawling.</strong> Replay a finished crawl into the index or the vectors</li>
+            <li><strong>Versioned.</strong> The old one keeps serving while the new one builds</li>
+            <li><strong>Resumable.</strong> Killed halfway, it carries on</li>
+            <li><strong>Beyond html.</strong> .txt and .md read as pages, pdf and Office pluggable</li>
+            <li><strong>Search three ways.</strong> Words, meaning, or describe a picture</li>
+            <li><strong>No account needed.</strong> The models run locally</li>
+          </ul>
+
+          <div class="gf-footer-line">
+            <!-- An empty first column, so the name is centred on the page rather than on what is
+                 left of it once the mark has taken its corner. -->
+            <span aria-hidden="true"></span>
+
+            <span class="gf-footer-name">
             Greenfinger
             @if (version()) {
               <span class="gf-mono">{{ version() }}</span>
@@ -152,7 +181,8 @@
                        1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01
                        1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
             </svg>
-          </a>
+            </a>
+          </div>
         </footer>
       </mat-sidenav-content>
     </mat-sidenav-container>

@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.nio.file.Path;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import com.github.greenfinger.core.WebCrawlerException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import com.github.greenfinger.core.CatalogFixtures;
@@ -29,6 +30,7 @@ import com.github.greenfinger.core.WebCrawlerConstants;
 import com.github.greenfinger.core.component.extractor.Extractor;
 import com.github.greenfinger.core.WebCrawlerProperties;
 import com.github.greenfinger.core.catalog.CatalogDetails;
+import com.github.greenfinger.core.component.acceptor.AssetUrlPathAcceptor;
 import com.github.greenfinger.core.component.acceptor.MaxFetchDepthUrlPathAcceptor;
 import com.github.greenfinger.core.component.acceptor.PathMatcherUrlPathAcceptor;
 import com.github.greenfinger.core.component.acceptor.RobotRuleUrlPathAcceptor;
@@ -89,15 +91,57 @@ class WebCrawlerComponentFactoryTest {
         assertThat(factory.getUrlPathAcceptors(CatalogFixtures.details()))
                 .hasAtLeastOneElementOfType(RobotRuleUrlPathAcceptor.class)
                 .hasAtLeastOneElementOfType(MaxFetchDepthUrlPathAcceptor.class)
-                .hasAtLeastOneElementOfType(PathMatcherUrlPathAcceptor.class);
+                .hasAtLeastOneElementOfType(PathMatcherUrlPathAcceptor.class)
+                // a link to a file is never a page, whatever the catalog says
+                .hasAtLeastOneElementOfType(AssetUrlPathAcceptor.class);
+    }
+
+    @Test
+    @DisplayName("documents are not fetched until asked for, and then only readable ones")
+    void documentsAreExemptedOnlyWhereAParserExists() {
+        WebCrawlerProperties properties = new WebCrawlerProperties();
+        AssetUrlPathAcceptor off = assetAcceptorOf(properties);
+        // off: a pdf is a file, and a file is not a page
+        assertThat(off.accept(null, null, "https://x/handbook.pdf", null)).isFalse();
+
+        properties.getDocument().setEnabled(true);
+        AssetUrlPathAcceptor on = assetAcceptorOf(properties);
+        // on: markdown has a parser, so it is worth fetching; pdf still has none
+        assertThat(on.accept(null, null, "https://x/notes.md", null)).isTrue();
+        assertThat(on.accept(null, null, "https://x/handbook.pdf", null)).isFalse();
+        // and a picture is never a document whatever is switched on
+        assertThat(on.accept(null, null, "https://x/photo.jpg", null)).isFalse();
+    }
+
+    @Test
+    @DisplayName("asking for a format nothing reads is refused at startup, not crawled quietly")
+    void askingForAFormatNothingReadsIsRefused() {
+        WebCrawlerProperties properties = new WebCrawlerProperties();
+        properties.getDocument().setEnabled(true);
+        properties.getDocument().setFileTypes("pdf, md");
+
+        // a crawl that fetched every pdf on a site and stored nothing from any of them looks like
+        // working and is not
+        assertThatThrownBy(() -> assetAcceptorOf(properties))
+                .isInstanceOf(WebCrawlerException.class).hasMessageContaining("pdf")
+                .hasMessageContaining("DocumentContentParser");
+    }
+
+    private AssetUrlPathAcceptor assetAcceptorOf(WebCrawlerProperties properties) {
+        DefaultWebCrawlerComponentFactory built =
+                new DefaultWebCrawlerComponentFactory(properties, new WebCrawlerExtractorProperties());
+        return built.getUrlPathAcceptors(CatalogFixtures.details()).stream()
+                .filter(AssetUrlPathAcceptor.class::isInstance).map(AssetUrlPathAcceptor.class::cast)
+                .findFirst().orElseThrow();
     }
 
     @Test
     void ignoresACustomAcceptorThatCannotBeLoaded() {
         Catalog catalog = CatalogFixtures.catalog();
         catalog.setUrlPathAcceptor("com.example.NoSuchAcceptor");
-        // the two boundary acceptors, robots, depth and the path matcher; the bad one is dropped
-        assertThat(factory.getUrlPathAcceptors(CatalogFixtures.details(catalog))).hasSize(5);
+        // the two boundary acceptors, the asset check, robots, depth and the path matcher; the
+        // bad one is dropped
+        assertThat(factory.getUrlPathAcceptors(CatalogFixtures.details(catalog))).hasSize(6);
     }
 
     @Test

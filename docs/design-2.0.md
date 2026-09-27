@@ -790,7 +790,7 @@ greenfinger:
 
 ### 12.3 包结构调整
 
-`com.github.greenfinger.core.util` → `com.github.greenfinger.core.utils`，并把 `com.github.greenfinger.core.BeanLifeCycleUtils` 移入。调整后该包含：`BeanLifeCycleUtils`、`CharsetUtils`、`HashUtils`、`ThreadUtils`、`UrlUtils`、`UrlPathPatterns`、`UuidUtils`（新增）。
+`com.github.greenfinger.core.util` → `com.github.greenfinger.utils`（2026-09-27 从 `core.utils` 再上提一级：这些工具类不是 core 的一部分，api、cluster、shell 都在用），并把 `com.github.greenfinger.core.BeanLifeCycleUtils` 移入。调整后该包含：`BeanLifeCycleUtils`、`CharsetUtils`、`HashUtils`、`Http`、`Json`、`ThreadUtils`、`UrlUtils`、`UrlPathPatterns`、`UuidUtils`。
 
 ---
 
@@ -1521,7 +1521,7 @@ size = clamp(总数 / (节点数 × 3), 50, 200)
 改完之后它只是**界面**：改名 `greenfinger-shell.sh`，不加载引擎、不连数据库、不建索引，
 挂到别人的集群上，把命令发给 leader、把答案画出来 —— 和网页做的是同一件事，走的是同一个接口。
 
-支撑它的是一个门面 `GreenfingerOperations`：本地实现 `LocalOperations`（爬虫侧直接调服务层）
+支撑它的是一个门面 `UIOperations`：本地实现 `LocalOperations`（爬虫侧直接调服务层）
 和远程实现 `RemoteOperations`（经 `LeaderGateway` 走一趟 leader）。命令类只认这个接口，
 所以同一份命令代码在一次性爬虫里和在纯终端里行为一致。
 

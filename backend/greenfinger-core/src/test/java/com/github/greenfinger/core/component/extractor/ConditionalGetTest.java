@@ -24,7 +24,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import com.github.greenfinger.core.TestSite;
 import com.github.greenfinger.core.WebCrawlerExtractorProperties;
-import com.github.greenfinger.core.utils.BeanLifeCycleUtils;
+import com.github.greenfinger.utils.BeanLifeCycleUtils;
 
 /**
  * Asking the site whether a page has changed, instead of downloading it to find out.

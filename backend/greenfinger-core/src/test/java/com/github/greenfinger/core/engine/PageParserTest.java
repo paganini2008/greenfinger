@@ -144,4 +144,47 @@ class PageParserTest {
         assertThat(parser.extractImages(document)).isEmpty();
     }
 
+    @Test
+    @DisplayName("the files a page links to are collected, and pages are not mistaken for them")
+    void collectsTheFilesAPageLinksTo() {
+        Document document = parser.parse("""
+                <a href="/handbook.pdf">The handbook</a>
+                <a href="/prices.xlsx?v=2">Prices</a>
+                <a href="/notes.md">Notes</a>
+                <a href="/2020/an-article/">An article</a>
+                <a href="/download?file=x.pdf">Get the pdf</a>
+                <a href="/logo.png">The logo</a>
+                """, "https://example.com/");
+
+        var files = parser.extractDownloadedFiles(document);
+
+        assertThat(files).extracting(DownloadedFile::getFileType)
+                .containsExactlyInAnyOrder("pdf", "xlsx", "md");
+        // the query is not the extension, in either direction
+        assertThat(files).extracting(DownloadedFile::getUrl)
+                .contains("https://example.com/prices.xlsx?v=2")
+                .doesNotContain("https://example.com/download?file=x.pdf");
+        // a picture is the image pipeline's, not a document
+        assertThat(files).extracting(DownloadedFile::getFileType).doesNotContain("png");
+        assertThat(files).extracting(DownloadedFile::getLinkText).contains("The handbook");
+    }
+
+    @Test
+    @DisplayName("a server-side engine's extension is still a page")
+    void engineExtensionsAreHtml() {
+        // .php and friends put the engine's name on the url and answer html. Reading the
+        // extension literally would send every one of them looking for a parser
+        for (String url : new String[] {"https://x/index.php", "https://x/list.jsp",
+                "https://x/page.aspx", "https://x/do/list.do", "https://x/a.htm",
+                "https://x/about", "https://x/2020/a-post/", "https://x/cgi-bin/q.cgi"}) {
+            assertThat(PageParser.fileTypeOf(url)).as(url).isEqualTo(CrawlTask.FILE_TYPE_HTML);
+        }
+        // and a real file keeps its own name
+        assertThat(PageParser.fileTypeOf("https://x/handbook.pdf")).isEqualTo("pdf");
+        assertThat(PageParser.fileTypeOf("https://x/prices.xlsx?v=2")).isEqualTo("xlsx");
+        // a page that hands one out is a page
+        assertThat(PageParser.fileTypeOf("https://x/download?file=a.pdf"))
+                .isEqualTo(CrawlTask.FILE_TYPE_HTML);
+    }
+
 }

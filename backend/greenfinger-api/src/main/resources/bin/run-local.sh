@@ -153,7 +153,7 @@ export GF_LOG_DIR="${LOG_DIR}"
 # a container, and having to remember three different names for it is how one of them gets missed.
 #
 # JAVA_OPTS still wins outright, for the run that needs a flag this does not offer.
-MEMORY="${GF_MEMORY:-1g}"
+MEMORY="${GF_MEMORY:-2g}"
 JAVA_OPTS="${JAVA_OPTS:--Xms256m -Xmx${MEMORY} -Dfile.encoding=UTF-8}"
 
 if ! [[ "${NODES}" =~ ^[0-9]+$ ]] || [[ "${NODES}" -lt 1 ]]; then
@@ -161,9 +161,11 @@ if ! [[ "${NODES}" =~ ^[0-9]+$ ]] || [[ "${NODES}" -lt 1 ]]; then
   exit 1
 fi
 
-# The pid files go with the logs: they are runtime bookkeeping about the same processes, and one
-# directory per concern is what keeps deploy/ down to config, lib, data and logs.
-RUN_DIR="${LOG_DIR}"
+# The pid files get their own directory rather than sharing the log one. They are the only thing
+# here that a stop depends on: lose them and `stop` says "Stopped 0 node(s)" and leaves the nodes
+# running, which is a silent failure. Keeping them out of a directory that is written, rotated and
+# tidied for other reasons is what makes that not happen.
+RUN_DIR="${GF_RUN_DIR:-${SCRIPT_DIR}/run}"
 mkdir -p "${RUN_DIR}"
 
 node_pid_file() { echo "${RUN_DIR}/node-$1.pid"; }

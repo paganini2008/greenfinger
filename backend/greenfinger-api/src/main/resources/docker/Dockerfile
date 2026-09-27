@@ -19,6 +19,29 @@ WORKDIR /app
 # image ends up a release behind. Renamed on the way in so the entry point needs no wildcard.
 COPY lib/greenfinger-api-*.jar /app/greenfinger-api.jar
 COPY docker/static /app/static
+
+# The browser adaptive renders with, installed at build time rather than on the first page that
+# needs it.
+#
+# Playwright Java downloads its browsers on first use, into a cache in the container's writable
+# layer: 1.5GB of Chromium, Firefox and WebKit, fetched while a crawl waits for it and gone again
+# the moment the container is replaced. Installed here instead, once, and
+# PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD stops it reaching for the rest at run time.
+#
+# The headless shell rather than the whole of chromium. greenfinger renders headless -- checked
+# by watching what the container actually executes, which is
+# chromium_headless_shell/chrome-linux/headless_shell -- and the full browser beside it is 641MB
+# nothing ever runs. The day headless becomes optional, this line has to grow a `chromium`.
+#
+# Run from inside the fat jar through the boot launcher, which is how any main class in it is
+# reachable without unpacking. --with-deps brings the shared libraries a headless chromium needs;
+# the base image has none of them.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+RUN java -Dloader.main=com.microsoft.playwright.CLI \
+      -cp /app/greenfinger-api.jar org.springframework.boot.loader.launch.PropertiesLauncher \
+      install --with-deps chromium-headless-shell \
+    && rm -rf /var/lib/apt/lists/*
 # A node keeps its own complete copy of everything, so this is a volume in every deployment worth
 # the name: a container that is replaced without one starts from an empty database and has to be
 # sent the whole crawl again.

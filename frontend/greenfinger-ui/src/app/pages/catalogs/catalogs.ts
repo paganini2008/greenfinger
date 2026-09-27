@@ -58,6 +58,26 @@ export class CatalogsPage {
   protected readonly catalogs = signal<Catalog[]>([]);
   protected readonly statuses = signal<Record<string, CrawlStatus>>({});
   protected readonly categories = signal<string[]>([]);
+
+  /**
+   * One icon per category. The set is fixed by the Category enum on the server, so this is a
+   * lookup rather than a guess; anything the server adds later reads as the generic one.
+   */
+  private static readonly CATEGORY_ICONS: Record<string, string> = {
+    news: 'newspaper',
+    tech: 'memory',
+    business: 'business_center',
+    food: 'restaurant',
+    travel: 'flight',
+    health: 'medical_services',
+    education: 'school',
+    entertainment: 'movie',
+    other: 'category',
+  };
+
+  protected getCategoryIcon(cat: string): string {
+    return CatalogsPage.CATEGORY_ICONS[cat] ?? 'category';
+  }
   protected readonly loading = signal(true);
   protected readonly busyId = signal<string | null>(null);
 
@@ -208,6 +228,69 @@ export class CatalogsPage {
   }
 
   // ---- the verbs ------------------------------------------------------------------------
+
+  /**
+   * Which verb this catalog is actually asking for.
+   *
+   * <p>Crawling a second time does almost nothing and says so only afterwards: the url filter is
+   * kept per version, so the seed is the one url that is not already in it and the run ends with
+   * nothing saved. The card used to offer Crawl for ever and let people find that out. Three
+   * states, and the button is whichever one is true:
+   *
+   * <p>`crawl` nothing has been kept yet, so start from the seed. `update` a version is being
+   * served, so look for what has appeared since. `resume` pages were kept but no version is
+   * served, which is a run that stopped early -- interrupted, paused, or a node that went away --
+   * and the frontier still holds what it had not reached.
+   *
+   * <p>update and resume are the same call: the engine's update carries on from the frontier with
+   * the filter left populated, which is what both words mean. Only the label differs, because
+   * "update" in front of a half-finished crawl reads like there is nothing left to finish.
+   */
+  protected nextVerb(catalog: Catalog): 'crawl' | 'update' | 'resume' {
+    const status = this.statusOf(catalog);
+    const kept = status?.savedResourceCount ?? 0;
+    const served = (status?.searchVersion ?? -1) >= 0;
+    if (served) {
+      return 'update';
+    }
+    return kept > 0 ? 'resume' : 'crawl';
+  }
+
+  protected verbLabel(catalog: Catalog): string {
+    return { crawl: 'Crawl', update: 'Update', resume: 'Resume' }[this.nextVerb(catalog)];
+  }
+
+  protected verbIcon(catalog: Catalog): string {
+    return { crawl: 'travel_explore', update: 'sync', resume: 'play_arrow' }[
+      this.nextVerb(catalog)
+    ];
+  }
+
+  protected verbHint(catalog: Catalog): string {
+    return {
+      crawl: 'Start from the seed and follow links',
+      update: 'Take the pages that have appeared since. Rebuild, in the menu, crawls it all again',
+      resume: 'This crawl stopped before it finished. Carry on from where it left off',
+    }[this.nextVerb(catalog)];
+  }
+
+  /** The button. What it does is whatever the catalog is asking for. */
+  protected go(catalog: Catalog): void {
+    if (this.nextVerb(catalog) === 'crawl') {
+      this.crawl(catalog);
+      return;
+    }
+    this.resumeOrUpdate(catalog);
+  }
+
+  private resumeOrUpdate(catalog: Catalog): void {
+    const resuming = this.nextVerb(catalog) === 'resume';
+    this.run(
+      catalog,
+      this.api.update(catalog.name!),
+      resuming ? 'Carrying on from where it stopped' : 'Update started',
+    );
+  }
 
   protected crawl(catalog: Catalog): void {
     this.run(catalog, this.api.crawl(catalog.name!), 'Crawl started');

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.greenfinger.core.utils;
+package com.github.greenfinger.utils;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -42,13 +42,13 @@ import lombok.experimental.UtilityClass;
  * The first form expands twice so a subdomain pattern also matches the bare domain: on its own it
  * requires a dot before {@code google} and would quietly skip {@code https://google.com/}.
  * 
- * @Description: UrlPathPatterns
+ * @Description: UrlPathPatternUtils
  * @Author: Fred Feng
  * @Date: 29/08/2026
  * @Version 2.0.0
  */
 @UtilityClass
-public class UrlPathPatterns {
+public class UrlPathPatternUtils {
 
     private static final String ANY_SCHEME = "**://";
     private static final String ANY_PATH = "/**";

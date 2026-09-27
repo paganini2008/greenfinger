@@ -352,7 +352,7 @@ fi
 # a container, and having to remember three different names for it is how one of them gets missed.
 #
 # JAVA_OPTS still wins outright, for the run that needs a flag this does not offer.
-MEMORY="${GF_MEMORY:-1g}"
+MEMORY="${GF_MEMORY:-2g}"
 JAVA_OPTS="${JAVA_OPTS:--Xms256m -Xmx${MEMORY} -Dfile.encoding=UTF-8}"
 
 # Every node keeps a complete copy -- its own database file, its own pages, its own dedup stores

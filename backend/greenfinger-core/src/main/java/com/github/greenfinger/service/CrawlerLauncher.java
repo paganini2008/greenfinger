@@ -47,7 +47,7 @@ import com.github.greenfinger.core.model.OutputType;
 import com.github.greenfinger.core.output.BlobStore;
 import com.github.greenfinger.core.output.FileLayout;
 import com.github.greenfinger.core.record.ResourceRecordStore;
-import com.github.greenfinger.core.utils.BeanLifeCycleUtils;
+import com.github.greenfinger.utils.BeanLifeCycleUtils;
 import com.github.greenfinger.output.CompositeOutputChannel;
 import com.github.greenfinger.output.OutputFactory;
 import com.github.greenfinger.output.blob.FileOutputChannel;

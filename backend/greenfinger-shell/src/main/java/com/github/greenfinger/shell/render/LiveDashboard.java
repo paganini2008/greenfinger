@@ -30,7 +30,7 @@ import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.core.component.state.Dashboard;
 import com.github.greenfinger.core.engine.CrawlFrontier;
 import com.github.greenfinger.service.ops.DashboardSnapshot;
-import com.github.greenfinger.service.ops.GreenfingerOperations.Live;
+import com.github.greenfinger.service.ops.UIOperations.Live;
 
 /**
  * Refreshes the dashboard in place while a crawl runs.

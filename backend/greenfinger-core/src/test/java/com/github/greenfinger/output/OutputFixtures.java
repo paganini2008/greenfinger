@@ -33,8 +33,8 @@ import com.github.greenfinger.core.model.ResourceImage;
 import com.github.greenfinger.core.output.FileLayout;
 import com.github.greenfinger.core.output.OutputPayload;
 import com.github.greenfinger.core.record.ResourceRecord;
-import com.github.greenfinger.core.utils.HashUtils;
-import com.github.greenfinger.core.utils.UuidUtils;
+import com.github.greenfinger.utils.HashUtils;
+import com.github.greenfinger.utils.UuidUtils;
 
 /**
  * Builds the objects the output channels consume. The ids are derived exactly as the record store

@@ -24,13 +24,13 @@ import org.springframework.stereotype.Component;
 import com.github.greenfinger.shell.UsageException;
 import com.github.greenfinger.shell.render.Ansi;
 import com.github.greenfinger.shell.render.TextTable;
-import com.github.greenfinger.service.ops.GreenfingerOperations;
-import com.github.greenfinger.service.ops.GreenfingerOperations.CountRow;
-import com.github.greenfinger.service.ops.GreenfingerOperations.Hit;
-import com.github.greenfinger.service.ops.GreenfingerOperations.Info;
-import com.github.greenfinger.service.ops.GreenfingerOperations.InfoRow;
-import com.github.greenfinger.service.ops.GreenfingerOperations.SearchAnswer;
-import com.github.greenfinger.service.ops.GreenfingerOperations.SearchAsk;
+import com.github.greenfinger.service.ops.UIOperations;
+import com.github.greenfinger.service.ops.UIOperations.CountRow;
+import com.github.greenfinger.service.ops.UIOperations.Hit;
+import com.github.greenfinger.service.ops.UIOperations.Info;
+import com.github.greenfinger.service.ops.UIOperations.InfoRow;
+import com.github.greenfinger.service.ops.UIOperations.SearchAnswer;
+import com.github.greenfinger.service.ops.UIOperations.SearchAsk;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -53,7 +53,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class QueryCommands {
 
-    private final GreenfingerOperations ops;
+    private final UIOperations ops;
 
     @Command(name = "search", group = "Search", description = "Search crawled pages")
     public void search(

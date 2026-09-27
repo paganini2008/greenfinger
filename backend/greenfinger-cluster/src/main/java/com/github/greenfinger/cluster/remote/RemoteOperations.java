@@ -22,7 +22,7 @@ import com.github.greenfinger.cluster.leader.LeaderGateway;
 import com.github.greenfinger.core.model.Catalog;
 import com.github.greenfinger.service.DeleteReport;
 import com.github.greenfinger.service.ops.CatalogSnapshot;
-import com.github.greenfinger.service.ops.GreenfingerOperations;
+import com.github.greenfinger.service.ops.UIOperations;
 
 /**
  * The operations, performed by the leader: what the prompt runs, holding no engine, database or
@@ -34,7 +34,7 @@ import com.github.greenfinger.service.ops.GreenfingerOperations;
  * @Date: 26/09/2026
  * @Version 2.0.0
  */
-public class RemoteOperations implements GreenfingerOperations {
+public class RemoteOperations implements UIOperations {
 
     private final LeaderGateway gateway;
 

@@ -24,6 +24,17 @@
       <artifactId>greenfinger-cluster</artifactId>
     </dependency>
 
+    <!--
+      Line editing and history at the prompt. Spring Shell 4 dropped JLine for a provider built on
+      java.io.Console, which cannot do either: the arrow keys arrive as escape sequences and every
+      command has to be typed again in full. One artifact, and it is the one every interactive jvm
+      tool uses.
+    -->
+    <dependency>
+      <groupId>org.jline</groupId>
+      <artifactId>jline</artifactId>
+      <version>3.21.0</version>
+    </dependency>
     <dependency>
       <groupId>org.springframework.shell</groupId>
       <artifactId>spring-shell-starter</artifactId>

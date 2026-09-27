@@ -18,6 +18,7 @@ package com.github.greenfinger.cluster.replication;
 
 import java.util.List;
 import java.util.Optional;
+import com.github.greenfinger.utils.JsonUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -45,7 +46,7 @@ public class ReplicatedCatalogStore implements CatalogStore {
     public static final byte OP_CATALOG = 30;
     public static final byte OP_CATALOG_DELETE = 31;
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = JsonUtils.MAPPER;
 
     private final CatalogStore delegate;
     private final ReplicationSink channel;

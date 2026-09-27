@@ -117,7 +117,8 @@ public class OneShotCommandRunner implements ApplicationRunner, ExitCodeGenerato
             // a worker node: no prompt, and something else is keeping this process alive
             return;
         }
-        new SystemShellRunner(new GreenfingerPrompt(), parser, registry)
+        // the registry twice: the runner dispatches with it, the prompt completes from it
+        new SystemShellRunner(new GreenfingerPrompt(registry), parser, registry)
                 .run(args.getSourceArgs());
     }
 

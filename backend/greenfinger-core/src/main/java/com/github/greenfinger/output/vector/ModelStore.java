@@ -17,15 +17,13 @@
 package com.github.greenfinger.output.vector;
 
 import java.io.InputStream;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
 import com.github.greenfinger.core.WebCrawlerException;
+import com.github.greenfinger.utils.HttpUtils;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -52,14 +50,14 @@ public class ModelStore {
     private static final String HUGGING_FACE = "https://huggingface.co";
 
     private final Path root;
+    /** A model file is large and the far end is a cdn, so the wait is generous. */
+    private static final int RESPONSE_TIMEOUT = (int) Duration.ofMinutes(30).toMillis();
+
     private final boolean offline;
-    private final HttpClient httpClient;
 
     public ModelStore(String modelDirectory, boolean offline) {
         this.root = Path.of(modelDirectory.replaceFirst("^~", System.getProperty("user.home")));
         this.offline = offline;
-        this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30))
-                .followRedirects(HttpClient.Redirect.NORMAL).build();
     }
 
     public Path getRoot() {
@@ -123,17 +121,16 @@ public class ModelStore {
         Path partial = target.resolveSibling(target.getFileName() + ".partial");
         try {
             Files.createDirectories(target.getParent());
-            HttpRequest request = HttpRequest.newBuilder(URI.create(url))
-                    .timeout(Duration.ofMinutes(30)).GET().build();
-            HttpResponse<InputStream> response =
-                    httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
-            if (response.statusCode() != 200) {
-                throw new WebCrawlerException(
-                        "Could not fetch " + url + ": HTTP " + response.statusCode());
-            }
-            try (InputStream in = response.body()) {
-                Files.copy(in, partial, StandardCopyOption.REPLACE_EXISTING);
-            }
+            HttpUtils.send(new HttpGet(url), RESPONSE_TIMEOUT, response -> {
+                if (response.getCode() != 200) {
+                    throw new WebCrawlerException(
+                            "Could not fetch " + url + ": HTTP " + response.getCode());
+                }
+                try (InputStream in = response.getEntity().getContent()) {
+                    Files.copy(in, partial, StandardCopyOption.REPLACE_EXISTING);
+                }
+                return null;
+            });
             // only now does it look cached
             Files.move(partial, target, StandardCopyOption.REPLACE_EXISTING);
             log.info("Cached {} ({} MB)", target.getFileName(), sizeOf(target) / (1024 * 1024));

@@ -1009,6 +1009,8 @@ plain, so the colour carries the identity rather than merely decorating.
 - **[Command line reference](docs/cli-reference.md)** -- the crawl verbs, the prompt's commands,
   and how a terminal attaches to a cluster.
 - **[What changed in 2.0](CHANGELOG.md)** -- against 1.x, and what an upgrade involves.
+- **[Developer guide](docs/developer-guide.md)** -- every seam, what ships behind it, and how to
+  put your own there. Including the document parsers: pdf, Word and Excel are a bean away.
 - **[Design notes](docs/design-2.0.md)** -- why the system is shaped the way it is.
 - **[Schema scripts](docs/sql/schema-scripts.md)** -- one per database, for creating the schema
   yourself instead of letting Hibernate do it.

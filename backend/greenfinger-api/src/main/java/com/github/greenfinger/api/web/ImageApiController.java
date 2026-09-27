@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import com.github.greenfinger.core.WebCrawlerException;
 import com.github.greenfinger.core.output.BlobStore;
-import com.github.greenfinger.core.utils.BeanLifeCycleUtils;
+import com.github.greenfinger.utils.BeanLifeCycleUtils;
 import com.github.greenfinger.output.OutputFactory;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;

@@ -22,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
+import com.github.greenfinger.utils.JsonUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.core.engine.CrawledPage;
@@ -55,7 +56,7 @@ public class FileOutputChannel implements OutputChannel {
 
     private final BlobStore blobStore;
     private final FileLayout layout;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = JsonUtils.MAPPER;
 
     /** Filled in by the launcher, so the settings file records how the run actually went. */
     @Setter

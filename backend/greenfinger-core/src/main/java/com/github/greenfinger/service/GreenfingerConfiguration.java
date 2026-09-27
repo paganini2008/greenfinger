@@ -19,10 +19,15 @@ package com.github.greenfinger.service;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.core.io.ResourceLoader;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import com.github.greenfinger.utils.JsonUtils;
+import org.springframework.beans.factory.InitializingBean;
 import com.github.greenfinger.core.WebCrawlerExtractorProperties;
+import com.github.greenfinger.utils.HttpUtils;
 import com.github.greenfinger.core.WebCrawlerProperties;
 import com.github.greenfinger.core.WebCrawlerSemaphore;
 import com.github.greenfinger.core.catalog.CatalogDetailsService;
@@ -69,7 +74,36 @@ public class GreenfingerConfiguration {
      * Says at startup what every greenfinger setting ended up as, after the yaml, .env and the
      * command line have all had their say.
      */
+    /**
+     * The one http client, configured from the settings that used to belong to page fetching alone.
+     *
+     * <p>
+     * Runs at refresh, so it is in place long before anything crawls. Everything else asks for the
+     * client per request and therefore never holds a stale one.
+     */
     @Bean
+    InitializingBean configureSharedHttpClient(WebCrawlerExtractorProperties extractorProperties) {
+        WebCrawlerExtractorProperties.RestClient config = extractorProperties.getRestClient();
+        return () -> HttpUtils.configure(new HttpUtils.Settings(config.getMaxConnectionTotal(),
+                config.getMaxConnectionPerRoute(), config.getConnectTimeout(),
+                config.getReadTimeout(), config.getConnectionRequestTimeout(),
+                config.isFollowRedirects(), config.getProxyHost(), config.getProxyPort()));
+    }
+
+    /**
+     * The example catalogs, defined on first start. Idempotent by name, so this is a no-op on
+     * every start after it, and an installation points it at its own file or turns it off.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public InitialCatalogs initialCatalogs(CatalogAdminService catalogAdminService,
+            ResourceLoader resourceLoader, WebCrawlerProperties webCrawlerProperties) {
+        return new InitialCatalogs(catalogAdminService, resourceLoader, JsonUtils.MAPPER,
+                webCrawlerProperties.getInitialCatalogs());
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
     public ConfigurationReport configurationReport(
             ApplicationContext applicationContext) {
         return new ConfigurationReport(applicationContext);

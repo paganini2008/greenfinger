@@ -23,26 +23,19 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.hc.client5.http.classic.HttpClient;
-import org.apache.hc.client5.http.config.ConnectionConfig;
-import org.apache.hc.client5.http.config.RequestConfig;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
-import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
-import org.apache.hc.core5.http.HttpHost;
-import org.apache.hc.core5.util.Timeout;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
+import com.github.greenfinger.utils.HttpUtils;
 import com.github.greenfinger.core.ManagedBeanLifeCycle;
 import com.github.greenfinger.core.WebCrawlerConstants;
 import com.github.greenfinger.core.WebCrawlerExtractorProperties;
 import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.core.engine.CrawlTask;
-import com.github.greenfinger.core.utils.ThreadUtils;
+import com.github.greenfinger.utils.ThreadUtils;
 
 /**
  * The default engine: a plain http fetch, for the majority of pages whose content is in the
@@ -62,7 +55,6 @@ public class RestClientExtractor extends AbstractExtractor
         implements NamedExtractor, ManagedBeanLifeCycle {
 
     private final WebCrawlerExtractorProperties extractorProperties;
-    private PoolingHttpClientConnectionManager connectionManager;
     private RestClient restClient;
 
     public RestClientExtractor(WebCrawlerExtractorProperties extractorProperties) {
@@ -85,31 +77,11 @@ public class RestClientExtractor extends AbstractExtractor
         if (restClient != null) {
             return;
         }
-        WebCrawlerExtractorProperties.RestClient config = extractorProperties.getRestClient();
-
-        connectionManager = PoolingHttpClientConnectionManagerBuilder.create()
-                .setMaxConnTotal(config.getMaxConnectionTotal())
-                .setMaxConnPerRoute(config.getMaxConnectionPerRoute())
-                .setDefaultConnectionConfig(ConnectionConfig.custom()
-                        .setConnectTimeout(Timeout.ofMilliseconds(config.getConnectTimeout()))
-                        .setSocketTimeout(Timeout.ofMilliseconds(config.getReadTimeout())).build())
-                .build();
-
-        RequestConfig.Builder requestConfig = RequestConfig.custom()
-                .setConnectionRequestTimeout(
-                        Timeout.ofMilliseconds(config.getConnectionRequestTimeout()))
-                .setResponseTimeout(Timeout.ofMilliseconds(config.getReadTimeout()))
-                .setRedirectsEnabled(config.isFollowRedirects());
-
-        var httpClientBuilder = HttpClients.custom().setConnectionManager(connectionManager)
-                .setDefaultRequestConfig(requestConfig.build());
-        if (StringUtils.isNotBlank(config.getProxyHost()) && config.getProxyPort() > 0) {
-            httpClientBuilder.setProxy(new HttpHost(config.getProxyHost(), config.getProxyPort()));
-        }
-        HttpClient httpClient = httpClientBuilder.build();
-
+        // The one shared client, pool and all: a connection pool per catalog was both wasteful and
+        // a second answer to "how many connections may this process hold". Its settings come from
+        // the same greenfinger.extractor.rest-client this used to read directly.
         ClientHttpRequestFactory requestFactory =
-                new HttpComponentsClientHttpRequestFactory(httpClient);
+                new HttpComponentsClientHttpRequestFactory(HttpUtils.getClient());
         this.restClient = RestClient.builder().requestFactory(requestFactory).build();
     }
 
@@ -223,10 +195,7 @@ public class RestClientExtractor extends AbstractExtractor
 
     @Override
     public void destroy() throws Exception {
-        if (connectionManager != null) {
-            connectionManager.close();
-            connectionManager = null;
-        }
+        // nothing to close: the http client is shared and outlives every extractor built on it
     }
 
 }

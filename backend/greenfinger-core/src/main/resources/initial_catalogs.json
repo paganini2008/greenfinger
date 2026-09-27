@@ -1,0 +1,97 @@
+[
+  {
+    "name": "NASA Astronomy Picture of the Day",
+    "url": "https://apod.nasa.gov/apod/",
+    "cat": "education",
+    "description": "Plain static html and one large public-domain photograph per page: the example that shows the image pipeline doing something.",
+    "maxFetchSize": 200,
+    "depth": 2,
+    "fetchInterval": 1000,
+    "outputTypes": [
+      "FILE",
+      "INDEX"
+    ]
+  },
+  {
+    "name": "Hackaday",
+    "url": "https://hackaday.com/",
+    "cat": "tech",
+    "description": "A busy WordPress site: article text wrapped in a lot of furniture, a dozen images a page. Good for watching the readability extraction and the image filters work.",
+    "maxFetchSize": 200,
+    "depth": 2,
+    "fetchInterval": 1000,
+    "outputTypes": [
+      "FILE",
+      "INDEX"
+    ]
+  },
+  {
+    "name": "Rust Blog",
+    "url": "https://blog.rust-lang.org/",
+    "cat": "tech",
+    "description": "Small, static, entirely article text. The fastest to finish and the one to point an index or a vector store at first.",
+    "maxFetchSize": 200,
+    "depth": 2,
+    "fetchInterval": 1000,
+    "outputTypes": [
+      "FILE",
+      "INDEX",
+      "VECTOR"
+    ]
+  },
+  {
+    "name": "Python Tutorial (Chinese)",
+    "url": "https://docs.python.org/zh-cn/3/tutorial/",
+    "cat": "education",
+    "description": "Seventeen pages of real Chinese prose, about 40,000 CJK characters, and half of the pair that shows what the analyzer choice costs. The analyzer is a node setting, not a catalog one: GF_LUCENE_ANALYZER takes standard, smartcn or cjk, and GF_ES_ANALYZER takes ik_max_word or ik_smart where the IK plugin is installed. A search for 字符串 matches 16 of the 17 pages under standard, which cuts CJK into single characters and so matches almost anything, and 11 under both smartcn and ik_smart, which keep the word whole. The seed url is the boundary, so the rest of docs.python.org stays out of it.",
+    "maxFetchSize": 30,
+    "depth": 2,
+    "fetchInterval": 1000,
+    "outputTypes": [
+      "FILE",
+      "INDEX"
+    ]
+  },
+  {
+    "name": "Python Tutorial (French)",
+    "url": "https://docs.python.org/fr/3/tutorial/",
+    "cat": "education",
+    "description": "The same seventeen pages in French. Same site and same structure as the Chinese catalog, so language is the only thing that differs -- and the trade-off runs the other way: a search for chaîne matches 5 pages under standard and 15 under a Chinese analyzer, which has no idea what to do with accented Latin (smartcn splits it into cha/î/ne, IK drops the î and indexes cha/ne). Whichever analyzer is right for one of these two corpora is wrong for the other, which is why both are here.",
+    "maxFetchSize": 30,
+    "depth": 2,
+    "fetchInterval": 1000,
+    "outputTypes": [
+      "FILE",
+      "INDEX"
+    ]
+  },
+  {
+    "name": "Quotes (rendered)",
+    "url": "https://quotes.toscrape.com/js/",
+    "cat": "education",
+    "description": "The same quotes as the plain site, written into the page by javascript. Plain http gets an empty shell here, so this is the one that shows adaptive handing a page to a browser: the log says 'A page needed rendering' and the run ends with 'Rendered n of n page(s)'. With no browser installed the pages are still stored, empty, which is what makes the failure worth a catalog of its own.",
+    "maxFetchSize": 20,
+    "depth": 2,
+    "fetchInterval": 1000,
+    "extractor": "adaptive",
+    "outputTypes": [
+      "FILE",
+      "INDEX"
+    ]
+  },
+  {
+    "name": "GNU Licenses",
+    "url": "https://www.gnu.org/licenses/",
+    "cat": "other",
+    "description": "Pages that link files. Every licence is published as html and again as a .txt beside it, so this is the one that shows a crawl reading something that is not a page. Needs GF_DOCUMENTS=true; with it off the .txt links are recorded on the page and not fetched. Patterns are host/path, and the crawl is kept to the licence texts so the rest of gnu.org stays out of it. Crawl-delay is 4 seconds in their robots.txt, which fetchInterval respects.",
+    "maxFetchSize": 30,
+    "depth": 1,
+    "fetchInterval": 4000,
+    "pathPattern": "www.gnu.org/licenses/**",
+    "excludedPathPattern": "www.gnu.org/licenses/old-licenses/**,www.gnu.org/licenses/translations**",
+    "outputTypes": [
+      "FILE",
+      "INDEX"
+    ]
+  }
+]

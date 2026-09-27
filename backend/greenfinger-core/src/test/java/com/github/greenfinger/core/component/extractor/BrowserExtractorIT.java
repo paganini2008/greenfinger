@@ -27,7 +27,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.jsoup.Jsoup;
 import com.github.greenfinger.core.TestSite;
 import com.github.greenfinger.core.WebCrawlerExtractorProperties;
-import com.github.greenfinger.core.utils.BeanLifeCycleUtils;
+import com.github.greenfinger.utils.BeanLifeCycleUtils;
 
 /**
  * The browser engines against a page that only renders once its javascript has run.

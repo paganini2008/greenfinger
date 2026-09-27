@@ -13,7 +13,13 @@
 const test = require('node:test');
 const assert = require('node:assert');
 
-const { upstreamHeaders, membersFrom, pinnedNode, withoutNodeParam } = require('./server');
+const {
+  upstreamHeaders,
+  membersFrom,
+  pinnedNode,
+  withoutNodeParam,
+  unreachable,
+} = require('./server');
 
 const upstream = { host: 'localhost', port: 50080 };
 
@@ -117,4 +123,24 @@ test('the members of a cluster are read out of one node health answer', () => {
 test('a health answer that is not what we expect is no members, not a crash', () => {
   assert.deepEqual(membersFrom(Buffer.from('not json'), upstream), []);
   assert.deepEqual(membersFrom(Buffer.from('{}'), upstream), []);
+});
+
+test('a node that is gone is a sentence, not a bare 502', () => {
+  // the page reads `message` out of a json body; text/plain left it showing "502 Bad Gateway",
+  // which reads like the page is broken rather than like the node is
+  const refused = unreachable([{ host: 'greenfinger-1', port: 50080 }], {
+    code: 'ECONNREFUSED',
+    message: 'connect ECONNREFUSED 172.28.0.10:50080',
+  });
+  assert.match(refused, /greenfinger-1:50080/);
+  assert.match(refused, /stopped, or it exited/);
+  // the one a container actually hits, and the one nothing else on the page can tell you
+  assert.match(refused, /memory/);
+
+  const stuck = unreachable([{ host: 'a', port: 1 }], { code: 'ETIMEDOUT', message: 'x' });
+  assert.match(stuck, /stuck rather than one that is gone/);
+
+  // anything else still says which node and what it said
+  const other = unreachable([{ host: 'a', port: 1 }], { code: 'EHOSTUNREACH', message: 'no route' });
+  assert.match(other, /a:1: no route/);
 });

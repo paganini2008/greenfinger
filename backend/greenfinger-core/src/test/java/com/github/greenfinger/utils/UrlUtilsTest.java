@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.greenfinger.core.utils;
+package com.github.greenfinger.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.DisplayName;

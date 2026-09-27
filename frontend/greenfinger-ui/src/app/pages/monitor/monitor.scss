@@ -365,3 +365,50 @@
    a second set here -- same seven outcomes, different hues -- so one page called "filtered out"
    tan and the other called it ochre, and a palette change reached only whichever was edited. */
 
+
+/* ------------------------------------------------------------------------------------------------
+   Every run, under the chart. A bar shows how much a run saved; this shows how each one ended,
+   which is the question somebody opens the reports with.
+   --------------------------------------------------------------------------------------------- */
+
+.gf-runs-table {
+  font-size: 0.82rem;
+}
+
+.gf-runs-row {
+  cursor: pointer;
+
+  &:hover {
+    background: var(--gf-surface-container);
+  }
+}
+
+/* the one the detail above is showing */
+.gf-runs-row-on {
+  background: var(--gf-wheat-soft);
+
+  &:hover {
+    background: var(--gf-wheat-soft);
+  }
+}
+
+/* a run that published nothing: the pages it fetched are not in any search */
+.gf-runs-row-bad .gf-runs-why {
+  color: var(--gf-on-wheat);
+  font-weight: 600;
+}
+
+.gf-runs-why {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 18rem;
+}
+
+.gf-runs-warn {
+  flex: none;
+  font-size: 1rem;
+  width: 1rem;
+  height: 1rem;
+  color: var(--gf-wheat-deep);
+}

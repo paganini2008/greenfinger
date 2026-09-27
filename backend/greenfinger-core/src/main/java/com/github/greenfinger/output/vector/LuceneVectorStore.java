@@ -41,6 +41,7 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHitCountCollectorManager;
+import com.github.greenfinger.utils.JsonUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.greenfinger.core.WebCrawlerException;
@@ -73,7 +74,7 @@ public class LuceneVectorStore implements VectorStore {
     static final String FIELD_PAYLOAD = "payload";
 
     private final OutputProperties.Vector.Lucene config;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = JsonUtils.MAPPER;
     private final VectorSimilarityFunction similarity;
 
     private volatile LuceneIndexes indexes;

@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package com.github.greenfinger.core.utils;
+package com.github.greenfinger.utils;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -25,6 +26,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
@@ -140,17 +142,23 @@ public class UrlUtils {
      * large sites answer with 403; robots.txt then reads as absent and the crawl ignores rules the
      * site was publishing.
      */
-    public InputStream openStream(URL url, int connectTimeout, int readTimeout) throws IOException {
-        URLConnection connection = url.openConnection();
-        connection.setConnectTimeout(connectTimeout);
-        connection.setReadTimeout(readTimeout);
-        connection.setRequestProperty("User-Agent", randomUserAgent());
-        connection.setRequestProperty("Accept", "text/plain,text/xml,application/xml,*/*;q=0.8");
-        connection.setRequestProperty("Accept-Language", "en-US,en;q=0.9");
-        if (connection instanceof HttpURLConnection) {
-            ((HttpURLConnection) connection).setInstanceFollowRedirects(true);
+    /**
+     * robots.txt and sitemaps, over the one shared client rather than a URLConnection of their own.
+     *
+     * <p>
+     * The body is read into memory and handed back as a stream: a sitemap index is a few megabytes
+     * at worst, and a lazy stream that outlives the response handler never returns its connection
+     * to the pool. The connect timeout is no longer a parameter -- it belongs to the shared client.
+     */
+    public InputStream openStream(URL url, int readTimeout) throws IOException {
+        HttpUtils.Reply reply = HttpUtils.get(url.toString(), readTimeout,
+                Map.of("User-Agent", randomUserAgent(), "Accept",
+                        "text/plain,text/xml,application/xml,*/*;q=0.8", "Accept-Language",
+                        "en-US,en;q=0.9"));
+        if (!reply.isOk()) {
+            throw new IOException("HTTP " + reply.status() + " from " + url);
         }
-        return connection.getInputStream();
+        return new ByteArrayInputStream(reply.body());
     }
 
     /** One of the pool, so a site is not handed the same string by every node at once. */

@@ -22,7 +22,7 @@
 #     GF_DB_URL='jdbc:mysql://host.docker.internal:3306/greenfinger' GF_DB_USERNAME=... \
 #     GF_INDEX_PROVIDER=elasticsearch GF_ES_URIS=http://host.docker.internal:9200 \
 #     GF_VECTOR_STORE=qdrant GF_QDRANT_URL=http://host.docker.internal:6333 \
-#     ./run-docker.sh -n 3
+#     ./run-docker.sh
 #
 # Same shape as run-local.sh and for the same reason: a container is a node, not "the server".
 # They find each other by name on a user-defined network, which is what makes the peer list a list
@@ -107,7 +107,7 @@ DOCKER_DIR="${SCRIPT_DIR}/docker"
 # nodes started by run-local.sh nor takes the port they elect on. See the note in run-local.sh.
 CLUSTER_NAME="${GF_CLUSTER_NAME:-greenfinger-docker}"
 CLUSTER_PORT="${GF_CLUSTER_PORT:-22020}"
-NODES="${GF_NODES:-3}"
+NODES="${GF_NODES:-1}"
 BASE_PORT="${GF_BASE_PORT:-50080}"
 # empty means a named volume per node, which survives the container being replaced
 DATA_ROOT="${GF_DATA_ROOT:-}"
@@ -123,7 +123,7 @@ NETWORK="${GF_NETWORK:-greenfinger}"
 
 # Per container, and the same default as the other three launchers. A container with no limit can
 # take the whole machine, and three of them on a laptop is how the middle one gets killed.
-MEMORY="${GF_MEMORY:-1g}"
+MEMORY="${GF_MEMORY:-2g}"
 
 # How much of the container the heap may take.
 #
@@ -328,7 +328,11 @@ for ((i = 1; i <= NODES; i++)); do
   else
     mount="${name}-data:/app/data"
   fi
+  # --init puts tini in front of the jvm as pid 1. The entrypoint execs java, so without this the
+  # jvm is pid 1 and nothing reaps the browser's helper processes when Playwright renders a page:
+  # they finish and stay as zombies for the life of the container. tini reaps them.
   docker run -d \
+    --init \
     --name "${name}" \
     --network "${NETWORK}" \
     --ip "$(node_ip "${i}")" \

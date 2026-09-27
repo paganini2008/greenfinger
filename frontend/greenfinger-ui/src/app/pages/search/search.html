@@ -111,14 +111,14 @@
           <mat-icon>search_off</mat-icon>
           @if (nothingIndexed()) {
             <p>
-              Nothing is indexed yet, so there is nothing here to match &mdash; the query is not
+              Nothing is indexed yet, so there is nothing here to match. The query is not
               the problem. Every catalog on this installation writes files and no index. Turn
               <strong>Index</strong> on in a catalog's outputs, then
               <strong>Replay index and vectors from disk</strong> on its Monitor page puts the
               pages already crawled into it without fetching the site again.
             </p>
           } @else {
-            <p>Nothing matched. Try the Meaning mode &mdash; it finds pages that never say the words.</p>
+            <p>Nothing matched. Try the Meaning mode. It finds pages that never say the words.</p>
           }
         </div>
       }
@@ -152,8 +152,9 @@
             {{ text(hit, 'title') || '(no title)' }}
           </a>
           <div class="gf-result-url gf-truncate">{{ text(hit, 'url') }}</div>
-          @if (text(hit, 'text')) {
-            <p class="gf-result-snippet">{{ text(hit, 'text') }}</p>
+          <!-- chunkText, not text: the passage that actually matched is what the store writes -->
+          @if (text(hit, 'chunkText')) {
+            <p class="gf-result-snippet">{{ text(hit, 'chunkText') }}</p>
           }
           <div class="gf-result-foot">
             @if (ranked()) {
@@ -255,7 +256,7 @@
           <!-- a question was asked and nothing matched, or nothing can answer it -->
           <p>
             Nothing matched. Searching pictures by description needs an embedding provider that
-            reads images; the local one does, Ollama and OpenAI do not.
+            reads images. The local one does, Ollama and OpenAI do not.
           </p>
         } @else {
           <!-- nothing was asked, so this is simply what is there -->

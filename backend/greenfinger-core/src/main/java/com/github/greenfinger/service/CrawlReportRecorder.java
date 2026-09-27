@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import javax.sql.DataSource;
+import com.github.greenfinger.utils.JsonUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.greenfinger.core.catalog.CatalogDetails;
@@ -63,7 +64,7 @@ import com.github.greenfinger.core.output.IndexAdmin;
 @RequiredArgsConstructor
 public class CrawlReportRecorder {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = JsonUtils.MAPPER;
 
     private final CrawlReportStore reportStore;
     private final ResourceRecordStore recordStore;

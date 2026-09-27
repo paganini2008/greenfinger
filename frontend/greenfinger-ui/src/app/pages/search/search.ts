@@ -99,7 +99,7 @@ export class SearchPage {
       value: 'pictures',
       label: 'Pictures',
       icon: 'image_search',
-      hint: 'Describe what is in a picture — a colour, a subject. Not the text printed on it.',
+      hint: 'Describe what is in a picture, a colour or a subject. Not the text printed on it.',
     },
   ];
 

@@ -19,6 +19,7 @@ package com.github.greenfinger.cluster.replication;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import com.github.greenfinger.utils.JsonUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.core.engine.CrawledPage;
@@ -59,7 +60,7 @@ public class ReplicatedRecordStore implements ResourceRecordStore {
     public static final byte OP_DELETE_VERSION = 13;
     public static final byte OP_DELETE_CATALOG = 14;
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = JsonUtils.MAPPER;
 
     private final ResourceRecordStore delegate;
     private final ReplicationSink channel;

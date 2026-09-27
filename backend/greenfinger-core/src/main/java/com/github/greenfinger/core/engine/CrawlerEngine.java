@@ -45,10 +45,10 @@ import com.github.greenfinger.core.component.extractor.FetchedPage;
 import com.github.greenfinger.core.record.ResourceRecord;
 import com.github.greenfinger.core.record.ResourceRecordStore;
 import com.github.greenfinger.core.record.ResourceRecordStore.PageState;
-import com.github.greenfinger.core.utils.CharsetUtils;
-import com.github.greenfinger.core.utils.HashUtils;
-import com.github.greenfinger.core.utils.ThreadUtils;
-import com.github.greenfinger.core.utils.UrlUtils;
+import com.github.greenfinger.utils.CharsetUtils;
+import com.github.greenfinger.utils.HashUtils;
+import com.github.greenfinger.utils.ThreadUtils;
+import com.github.greenfinger.utils.UrlUtils;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -100,6 +100,11 @@ public class CrawlerEngine {
     private final Set<String> visitedThisRun =
             ConcurrentHashMap.newKeySet();
     private final PageParser pageParser;
+
+    /** Extensions that are read as a file rather than crawled as a page. */
+    private final Set<String> documentTypes;
+
+    private final DocumentFetcher documentFetcher;
     private final ImageFetcher imageFetcher;
     private final ResourceRecordStore recordStore;
     private final CrawlCoordinator coordinator;
@@ -157,6 +162,13 @@ public class CrawlerEngine {
         this.imageFetcher = imageFetcher;
         this.recordStore = recordStore;
         this.pageParser = new PageParser(webCrawlerProperties.getImage());
+        // The formats a linked file is fetched and read as. Empty unless documents are switched
+        // on, and never more than what a parser exists for -- which is checked where the
+        // acceptors are built, so by the time a task carries one of these there is something to
+        // read it with.
+        WebCrawlerProperties.Document documents = webCrawlerProperties.getDocument();
+        this.documentTypes = documents.isEnabled() ? contentExtractor.readableTypes() : Set.of();
+        this.documentFetcher = new DocumentFetcher(documents);
     }
 
     /**
@@ -384,6 +396,14 @@ public class CrawlerEngine {
         }
 
         Charset charset = CharsetUtils.toCharset(task.getPageEncoding());
+
+        // A pdf is not markup, and the page extractor refuses it on sight. Routed by what the url
+        // says it is, and only into formats this installation both fetches and can read -- an
+        // extension alone is not enough, or every .php would come down here.
+        if (documentTypes.contains(task.getFileType())) {
+            return handleDocument(task, charset);
+        }
+
         // Only a merge has anything to ask with. Read once and used twice: as the conditional
         // request, and -- if the site sends the page anyway -- as the fingerprint that decides
         // whether it actually changed.
@@ -476,6 +496,9 @@ public class CrawlerEngine {
         // recorded on the page, not just followed: the number of outgoing links is what separates
         // a listing from a detail page when search ranks the two
         page.setLinks(pageParser.extractLinks(document));
+        // what the page links that is not another page. Collected only: fetching one and reading
+        // it is a DocumentContentParser, and only txt and markdown have one that ships
+        page.setDownloadedFiles(pageParser.extractDownloadedFiles(document));
         page.setLinkTextLength(pageParser.linkTextLength(document));
 
         if (catalogDetails.isImageEnabled() && imageFetcher != null) {
@@ -556,6 +579,75 @@ public class CrawlerEngine {
         String fingerprint = context.getContentDedupFilter().fingerprint(text);
         return fingerprint != null
                 && lastCrawl.map(PageState::contentHash).map(fingerprint::equals).orElse(false);
+    }
+
+    /**
+     * A linked file, read rather than crawled.
+     *
+     * <p>
+     * It ends here: a document has no links to follow and no images of its own, so what it
+     * produces is one page of text and nothing is enqueued. A format that comes back empty is not
+     * a failure of the site -- it is a parser this installation does not have -- so it is counted
+     * as filtered rather than invalid.
+     */
+    private boolean handleDocument(CrawlTask task, Charset charset) throws Exception {
+        GlobalStateManager stateManager = context.getGlobalStateManager();
+        fetchesAttempted.incrementAndGet();
+        Optional<byte[]> bytes = documentFetcher.fetch(task.getUrl(), task.getReferer());
+        if (bytes.isEmpty()) {
+            stateManager.incrementCount(task.getTimestamp(), CountingType.INVALID_URL_COUNT);
+            return true;
+        }
+        fetchesSucceeded.incrementAndGet();
+        consecutiveFailures.set(0);
+        stateManager.noteFetchSuccess();
+
+        String text = contentExtractor.extract(task.getFileType(), bytes.get(), task.getUrl(),
+                charset);
+        if (StringUtils.isBlank(text)) {
+            stateManager.incrementCount(task.getTimestamp(), CountingType.FILTERED_URL_COUNT);
+            return true;
+        }
+
+        CatalogDetails catalogDetails = context.getCatalogDetails();
+        CrawledPage page = new CrawledPage();
+        page.setCatalogId(catalogDetails.getId());
+        page.setCatalogName(catalogDetails.getName());
+        page.setCat(task.getCat());
+        page.setVersion(task.getVersion());
+        page.setUrl(task.getUrl());
+        page.setReferer(task.getReferer());
+        page.setDepth(task.getDepth());
+        // what a file is called is the only title it comes with
+        page.setTitle(fileNameOf(task.getUrl()));
+        // no html beside it: the bytes were the document, and what was read out of them is text
+        page.setHtml("");
+        page.setText(text);
+        page.setContentHash(context.getContentDedupFilter().fingerprint(text));
+        page.setFetchedAt(new Date());
+
+        if (context.checkCompletion()) {
+            stateManager.incrementCount(task.getTimestamp(), CountingType.ABANDONED_URL_COUNT);
+            return false;
+        }
+        ResourceRecord record = save(catalogDetails, page, fileLayout, task);
+        if (record == null) {
+            return true;
+        }
+        outputChannel.write(new OutputPayload(catalogDetails, record, page));
+        stateManager.incrementCount(task.getTimestamp(), CountingType.SAVED_RESOURCE_COUNT);
+        if (log.isInfoEnabled()) {
+            log.info("Read {} ({}, {} char(s)) {}", fileNameOf(task.getUrl()), task.getFileType(),
+                    text.length(), task.getUrl());
+        }
+        return true;
+    }
+
+    /** What a file is called, which is the only title a pdf comes with. */
+    private static String fileNameOf(String url) {
+        String path = StringUtils.substringBefore(StringUtils.substringBefore(url, "#"), "?");
+        String name = StringUtils.substringAfterLast(path, "/");
+        return StringUtils.isNotBlank(name) ? name : url;
     }
 
     private Optional<PageState> findPageState(CrawlTask task) {

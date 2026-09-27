@@ -45,6 +45,27 @@ public class WebCrawlerProperties {
     private int defaultMaxRetryCount = 1;
     private long defaultFetchInterval = 1000L;
     private String defaultUrlPathFilter = "rocksdb";
+
+    /**
+     * Link extensions that are files rather than pages, and are not followed. Comma separated;
+     * empty keeps the built-in list and "none" turns the check off. See AssetUrlPathAcceptor.
+     */
+    private String skipExtensions = "";
+
+    /**
+     * Where the catalogs an installation starts with are described. A spring resource location:
+     * the shipped file, one of your own on disk, or blank to define nothing. Loaded once per name
+     * and never again, so an edited or deleted catalog stays that way. See InitialCatalogs.
+     *
+     * <p>
+     * Blank here and set in the configuration that ships beside the launchers, which is what
+     * keeps example data out of every test context: a test builds its own configuration and
+     * should start with the catalogs it made, not with six of ours.
+     */
+    private String initialCatalogs = "";
+
+    /** Files a page links to: whether they are read at all, and which ones are fetched. */
+    private Document document = new Document();
     /**
      * Plain http first, a browser only for the pages that came back as an unrendered shell.
      *
@@ -115,6 +136,33 @@ public class WebCrawlerProperties {
     private Sitemap sitemap = new Sitemap();
     private Content content = new Content();
     private Image image = new Image();
+
+    /**
+     * The files a page links to -- pdf, spreadsheets, markdown.
+     *
+     * <p>
+     * Collecting them is free and always on: {@code CrawledPage.downloadedFiles} says what a page
+     * pointed at. Fetching and reading one is not, and needs two answers: whether to do it at all,
+     * and which formats. A format is only fetchable when something can read it.
+     */
+    @Getter
+    @Setter
+    @ToString
+    public static class Document {
+
+        /** Off by default: reading a linked file is a decision, not a surprise. */
+        private boolean enabled = false;
+
+        /**
+         * The formats to fetch and read, comma separated, empty for every format a parser was
+         * registered for. Naming one nothing can read is refused at startup rather than skipped
+         * quietly -- a crawl that fetched a pdf and stored nothing is worse than one that said so.
+         */
+        private String fileTypes = "";
+
+        /** Bigger than this is not read: a parser holds the whole file in memory. */
+        private long maxBytes = 10 * 1024 * 1024L;
+    }
 
     /**
      * 
@@ -229,7 +277,7 @@ public class WebCrawlerProperties {
          */
         private long maxPageBytes = 64L * 1024 * 1024;
 
-        private int connectTimeout = 10000;
+        /** Connect timeout is the shared client's, one per process: greenfinger.extractor.rest-client. */
         private int readTimeout = 30000;
     }
 
@@ -263,7 +311,7 @@ public class WebCrawlerProperties {
         /** Sitemap indexes point at sitemaps; one level down covers every site that has one. */
         private int maxIndexDepth = 2;
 
-        private int connectTimeout = 10000;
+        /** Connect timeout is the shared client's, one per process: greenfinger.extractor.rest-client. */
         private int readTimeout = 30000;
     }
 

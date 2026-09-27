@@ -34,6 +34,7 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.util.BytesRef;
+import com.github.greenfinger.utils.JsonUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.core.model.OutputType;
@@ -41,7 +42,7 @@ import com.github.greenfinger.core.output.IndexAdmin;
 import com.github.greenfinger.core.output.OutputChannel;
 import com.github.greenfinger.core.output.OutputPayload;
 import com.github.greenfinger.core.record.ResourceRecord;
-import com.github.greenfinger.core.utils.UrlUtils;
+import com.github.greenfinger.utils.UrlUtils;
 import com.github.greenfinger.output.OutputProperties;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -64,7 +65,7 @@ public class LuceneOutputChannel implements OutputChannel {
 
     private final OutputProperties.Index config;
     private final LuceneIndexes indexes;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = JsonUtils.MAPPER;
     private final AtomicLong written = new AtomicLong(0);
     private final AtomicLong sinceCommit = new AtomicLong(0);
 

@@ -56,7 +56,7 @@
 
   @if (error()) {
     <div class="gf-notice gf-notice-warn">
-      <mat-icon>info</mat-icon>
+      <mat-icon>error</mat-icon>
       <span>{{ error() }}</span>
     </div>
   }
@@ -65,6 +65,14 @@
     <div class="gf-notice gf-notice-warn">
       <mat-icon>warning</mat-icon>
       <span>{{ warning }}</span>
+    </div>
+  }
+
+  <!-- Shape, not trouble: the neutral notice, because one node is how this ships. -->
+  @for (note of notes(); track note) {
+    <div class="gf-notice">
+      <mat-icon>info</mat-icon>
+      <span>{{ note }}</span>
     </div>
   }
 
@@ -324,7 +332,7 @@
         @if (!channels().length) {
           <p class="gf-panel-note">
             Nothing has been sent yet. A channel appears once it carries something, so an idle node
-            shows none &mdash; start a crawl and the crawl channel will be the first.
+            shows none. Start a crawl and the crawl channel will be the first.
           </p>
         } @else {
           <div class="gf-table-scroll">
@@ -406,7 +414,7 @@
              the page. They are for the ten minutes a year somebody is debugging replication. -->
         @if (components().length) {
           <details class="gf-details">
-            <summary>Replicated stores &mdash; {{ components().length }} of them</summary>
+            <summary>Replicated stores, {{ components().length }} of them</summary>
             <div class="gf-checks">
               @for (component of components(); track component.name) {
                 <div class="gf-check">

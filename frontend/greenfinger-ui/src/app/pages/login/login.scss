@@ -19,8 +19,10 @@
   color: var(--mat-sys-on-surface);
 
   p {
+    // Wide enough for the whole sentence to sit on one line. It wraps only on a screen too
+    // narrow to hold it, which is the one case where one line would mean unreadably small.
     margin: 0.35rem 0 0;
-    max-width: 26rem;
+    max-width: 36rem;
     color: var(--gf-muted);
     font-size: 0.875rem;
   }

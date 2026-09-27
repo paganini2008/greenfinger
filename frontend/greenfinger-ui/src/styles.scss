@@ -352,6 +352,49 @@ body {
   }
 }
 
+// A category filter: square rather than a pill, and an icon beside the word. The nine categories
+// are a fixed vocabulary, so the icon is part of learning them -- the shape is what tells you this
+// row is a filter and not the rounded chips that label a card.
+.gf-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  // No outline. Ten outlined boxes in a row read as ten input fields, and the row is a filter,
+  // not a form. A quiet fill groups them instead, and the chosen one is the only strong shape.
+  border: 1px solid transparent;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--gf-wheat-soft) 45%, var(--gf-surface));
+  color: var(--gf-on-surface-muted, var(--gf-muted));
+  padding: 0.32rem 0.75rem;
+
+  mat-icon {
+    font-size: 1.05rem;
+    width: 1.05rem;
+    height: 1.05rem;
+    line-height: 1.05rem;
+    opacity: 0.7;
+  }
+
+  &:hover {
+    background: var(--gf-wheat-soft);
+    color: var(--gf-chrome-deep);
+
+    mat-icon {
+      opacity: 1;
+    }
+  }
+
+  &.gf-pill-on {
+    background: var(--gf-green);
+    border-color: var(--gf-green);
+    color: var(--gf-on-green);
+
+    mat-icon {
+      opacity: 1;
+    }
+  }
+}
+
 .gf-pill-on {
   background: var(--gf-green);
   border-color: var(--gf-on-chrome);
@@ -915,6 +958,39 @@ body {
   grid-column: 1 / -1;
 }
 
+// One row per node while a crawl runs. The share bar is the point of the table: a column of
+// numbers makes you do the division, and the question being asked is whether one node is doing
+// all of it.
+.gf-node-table {
+  .gf-share-cell {
+    width: 9rem;
+    min-width: 9rem;
+    white-space: nowrap;
+  }
+
+  .gf-share-bar {
+    display: inline-block;
+    width: 5rem;
+    height: 0.45rem;
+    border-radius: var(--gf-r-pill);
+    background: var(--gf-outline);
+    overflow: hidden;
+    vertical-align: middle;
+
+    span {
+      display: block;
+      height: 100%;
+      background: var(--gf-green);
+    }
+  }
+
+  .gf-share-value {
+    margin-left: 0.5rem;
+    color: var(--gf-muted);
+    font-size: 0.8rem;
+  }
+}
+
 // A denser table than .gf-table, for the panels that really are a grid of numbers: the delete
 // plan, the channel counters. Micro-caps headings and tabular figures, so columns of digits line
 // up on their own and need no rules between them.
@@ -1260,10 +1336,26 @@ body {
   white-space: nowrap;
 }
 
+// Prod keeps the wheat outline so "which installation" is still legible at a glance; health
+// paints the fill over it, so the two facts do not compete for the same badge.
 .gf-profile-live {
   border-color: var(--gf-wheat-deep);
   background: var(--gf-wheat-soft);
   color: var(--gf-on-wheat);
+}
+
+// Green while /actuator/health says UP, red the moment it does not -- including when the request
+// itself fails, because a node that cannot answer is not a healthy one.
+.gf-profile-up {
+  background: var(--gf-green);
+  border-color: var(--gf-green);
+  color: var(--gf-on-green);
+}
+
+.gf-profile-down {
+  background: var(--mat-sys-error);
+  border-color: var(--mat-sys-error);
+  color: var(--mat-sys-on-error);
 }
 
 // A chip that is also a button: the node picker on System health. Same shape as the badges beside
@@ -1300,44 +1392,101 @@ body {
 // The quietest row on the page, and read once -- when something has gone wrong and somebody is
 // looking for where to say so. Two things only: which build this is, and the repository.
 .gf-footer {
-  // Three columns, so the name is centred on the page rather than on what is left beside the
-  // mark.
+  // The same green as the navigation, so the page is held between two pieces of the same chrome
+  // rather than fading out into the paper.
+  background: linear-gradient(165deg, var(--gf-chrome) 0%, var(--gf-chrome-deep) 100%);
+  color: var(--gf-on-chrome);
+  margin-top: 2rem;
+  padding: 1.6rem 1.5rem 1.2rem;
+  font-size: 0.78rem;
+
+  // The mark is excluded: it keeps its white pill and its dark glyph, and a blanket white here
+  // painted the glyph white on white -- an empty circle in the corner.
+  a:not(.gf-footer-mark) {
+    color: var(--gf-on-chrome);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+      text-underline-offset: 0.18em;
+    }
+  }
+}
+
+// The same sentence the sign-in page opens with, so the product introduces itself the same way
+// at both ends of a session.
+.gf-footer-tagline {
+  max-width: 88rem;
+  margin: 0 auto 1.1rem;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--gf-on-chrome);
+}
+
+// What the crawler is. Two columns on a wide page so six lines do not become a long ladder.
+.gf-footer-features {
+  max-width: 88rem;
+  margin: 0 auto 1.2rem;
+  padding: 0;
+  list-style: none;
+  // Columns rather than a grid: a grid aligns the two sides into rows, so one tall line leaves a
+  // hole opposite it. These flow instead, and the two sides end level.
+  columns: 3 18rem;
+  column-gap: 2.5rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--gf-on-chrome) 78%, transparent);
+
+  li {
+    position: relative;
+    padding-left: 1rem;
+    margin-bottom: 0.5rem;
+    break-inside: avoid;
+  }
+
+  // A leaf rather than a disc: the mark in the corner is one too.
+  li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.55em;
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 60% 0 60% 0;
+    background: var(--gf-on-chrome);
+    opacity: 0.75;
+  }
+
+  strong {
+    color: var(--gf-on-chrome);
+    font-weight: 700;
+  }
+}
+
+// Three columns, so the name is centred on the page rather than on what is left beside the mark.
+.gf-footer-line {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 0.5rem;
   max-width: 88rem;
-  width: 100%;
-  margin: 1.5rem auto 0;
-  padding: 0.9rem 0.75rem 1.1rem;
-  background: transparent;
-  border-top: 1px solid var(--gf-outline);
-  font-size: 0.78rem;
-  color: var(--gf-muted);
-
-  a {
-    color: var(--gf-muted);
-    text-decoration: none;
-
-    &:hover {
-      color: var(--gf-chrome-deep);
-      text-decoration: underline;
-      text-underline-offset: 0.18em;
-    }
-  }
-
-  .gf-muted {
-    color: var(--gf-muted);
-  }
+  margin: 0 auto;
+  padding-top: 1rem;
+  border-top: 1px solid color-mix(in srgb, var(--gf-on-chrome) 22%, transparent);
 }
 
 .gf-footer-name {
   text-align: center;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 .gf-footer-name .gf-mono {
-  font-size: 0.72rem;
-  opacity: 0.85;
+  font-size: 0.9rem;
+  font-weight: 600;
+  opacity: 0.9;
 }
 
 

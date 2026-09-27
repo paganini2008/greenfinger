@@ -85,6 +85,28 @@ class AdaptiveExtractorTest {
                 StandardCharsets.UTF_8, null);
     }
 
+    @Test
+    @DisplayName("a browser that will not start is asked for once, and the plain fetch stands")
+    void aBrowserThatWillNotStartIsAskedForOnce() throws Exception {
+        // every image that has not run `playwright install`: the engine is on the classpath, so
+        // the check says yes, and the launch is what fails
+        AtomicInteger attempts = new AtomicInteger();
+        CannedExtractor fast = new CannedExtractor("restclient", SHELL);
+        AdaptiveExtractor extractor = new AdaptiveExtractor(fast, "playwright", () -> {
+            attempts.incrementAndGet();
+            throw new IllegalStateException("no browser installed");
+        }, new RenderingDetector(400, 120));
+
+        // three shell pages, which is three pages that would each have wanted rendering
+        for (int i = 0; i < 3; i++) {
+            assertThat(extractor.extractHtml(null, "https://a.com", "https://a.com/" + i,
+                    StandardCharsets.UTF_8, null)).isEqualTo(SHELL);
+        }
+
+        // one attempt, not one per page: a launch that fails still costs its timeout
+        assertThat(attempts.get()).isEqualTo(1);
+    }
+
     private AdaptiveExtractor adaptive(CannedExtractor fast, String browserName,
             CannedExtractor browser) {
         return new AdaptiveExtractor(fast, browserName, () -> browser,

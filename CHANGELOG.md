@@ -99,6 +99,12 @@ vectors, database), with a preview that counts what would go before anything goe
 the stores written into, and the settings the run used. Storage and RocksDB usage are reported on
 demand.
 
+- Accounts are a file of their own, `config/api/users.xml`, rather than one line of `.env`. Two
+  roles: ADMIN crawls and searches, SUPPORT searches.
+- `/actuator/settings` answers with every greenfinger setting as it ended up after the yaml, the
+  `.env` and the command line had their say, secrets masked. The System page shows it.
+- The prompt has command history, line editing and tab completion, kept across sessions.
+
 ### Changed
 
 **Versions.** `rebuild` opens a new version beside the old one instead of deleting first, and
@@ -146,6 +152,12 @@ unrecognised category becomes `other` rather than an error, so a catalog carried
 `InterruptionChecker` → `CompletionChecker`, same semantics. The `WebCrawling` AOP aspect →
 `WebCrawlerSemaphore` and an explicit check.
 
+- The catalog card offers the verb the catalog is actually asking for -- Crawl when nothing has
+  been kept, Update when a version is being served, Resume when a run stopped early.
+- Links to files -- pictures, archives, documents -- are no longer followed as if they were pages.
+- The container image ships the browser adaptive renders with, so the first page that needs
+  rendering does not wait for a download.
+
 ### Fixed
 
 - A crawl that stopped at its configured `maxFetchSize` was treated as unfinished, so
@@ -157,6 +169,12 @@ unrecognised category becomes `other` rather than an error, so a catalog carried
   closes the window.
 - Urls held by a node that stopped answering are told apart from a crawl that simply ran out of
   urls, so half a version is never published as a whole one.
+- `adaptive` never reached for a browser: the check for one looked up a class by its simple name,
+  which cannot resolve. Every installation crawled plain http and stored pages that render
+  themselves as the shells they arrived as.
+- Paging past the first page of a word search returned nothing while the total still promised
+  more. The cursor arrives from a query string as text, and the score was read as zero.
+- A node that is gone says so. The page in front of it used to answer 502 and nothing else.
 
 ### Removed
 

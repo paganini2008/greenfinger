@@ -27,7 +27,7 @@ import com.github.greenfinger.core.catalog.CatalogStore;
 import com.github.greenfinger.core.model.Catalog;
 import com.github.greenfinger.core.model.ContentMode;
 import com.github.greenfinger.core.model.OutputType;
-import com.github.greenfinger.core.utils.UuidUtils;
+import com.github.greenfinger.utils.UuidUtils;
 import lombok.RequiredArgsConstructor;
 import java.util.Set;
 import com.github.greenfinger.core.WebCrawlerConstants;
