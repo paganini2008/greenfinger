@@ -18,21 +18,16 @@ collection.
 
 ---
 
-## Start here
+## Documentation
 
 | | |
 |---|---|
-| [Introducing Greenfinger 2.0](blogger/greenfinger-2.0-en.md) | The tour, with screenshots. Start here |
-| [Greenfinger 2.0 中文介绍](blogger/greenfinger-2.0-zh.md) | The same tour in Chinese |
-
-## Reference
-
-| | |
-|---|---|
+| [README](https://github.com/paganini2008/greenfinger#readme) | What it does and how to run it. Start here |
 | [Command line reference](cli-reference.md) | Every crawl verb, every prompt command |
 | [Developer guide](developer-guide.md) | Every seam, with a worked example |
 | [Design](design-2.0.md) | How the system is shaped, and why |
 | [Schema scripts](sql/schema-scripts.md) | One per database, generated from the entities |
+| [Changelog](https://github.com/paganini2008/greenfinger/blob/main/CHANGELOG.md) | What changed in 2.0 |
 
 ---
 
