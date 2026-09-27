@@ -784,7 +784,8 @@ public class CrawlCommands {
                 .title("catalog-save asks for these, in this order");
         table.row("url", "http:// or https://", "(required)");
         table.row("name", "unique text", "the domain");
-        table.row("cat", "your own label", "default");
+        table.row("cat", "news | tech | business | food | travel | health | education"
+                + " | entertainment | other", "other");
         table.row("start-url", "a url under --url", "= url");
         table.row("sitemap-url", "a url, or empty to discover it", "(empty)");
         table.row("include", "ant path pattern, ',' for several", "**.<domain>/**");

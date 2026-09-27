@@ -84,9 +84,9 @@
 
             <p class="gf-chart-say">
               <strong>{{ kept() | number }}</strong> kept out of
-              <strong>{{ seen() | number }}</strong> urls seen
+              <strong>{{ seen() | number }}</strong> urls seen.
               @if (keepRate()) {
-                -- one page in every {{ keepRate() | number }}.
+                One page in every {{ keepRate() | number }}.
               }
             </p>
           </section>
