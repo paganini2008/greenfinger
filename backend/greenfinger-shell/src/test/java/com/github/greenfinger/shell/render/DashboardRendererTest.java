@@ -18,6 +18,7 @@ package com.github.greenfinger.shell.render;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -64,6 +65,32 @@ class DashboardRendererTest {
 
     private Dashboard dashboard() {
         return stateManager.getDashboard();
+    }
+
+    @Test
+    @DisplayName("a row per node, read the way the state manager actually keeps it")
+    void perNodeIsTransposed() {
+        // counter, then node: what perNodeCounters() returns. Read the other way round, every row
+        // was named after a counter and every number came out zero
+        Map<String, Map<String, Long>> byCounter = Map.of(
+                CountingType.SAVED_RESOURCE_COUNT.getRepr(), Map.of("node-a", 40L, "node-b", 4L),
+                CountingType.HANDLED_URL_COUNT.getRepr(), Map.of("node-a", 50L, "node-b", 6L));
+
+        Map<String, Map<String, Long>> byNode = DashboardRenderer.byNode(byCounter);
+
+        assertThat(byNode).containsOnlyKeys("node-a", "node-b");
+        assertThat(byNode.get("node-a"))
+                .containsEntry(CountingType.SAVED_RESOURCE_COUNT.getRepr(), 40L)
+                .containsEntry(CountingType.HANDLED_URL_COUNT.getRepr(), 50L);
+        assertThat(byNode.get("node-b"))
+                .containsEntry(CountingType.SAVED_RESOURCE_COUNT.getRepr(), 4L);
+    }
+
+    @Test
+    @DisplayName("nothing per node is empty rather than an exception")
+    void perNodeTakesNothing() {
+        assertThat(DashboardRenderer.byNode(null)).isEmpty();
+        assertThat(DashboardRenderer.byNode(Map.of())).isEmpty();
     }
 
     @Test

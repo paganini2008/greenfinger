@@ -50,6 +50,9 @@ public class CrawlTask implements Serializable {
     private static final long serialVersionUID = 4677871104449251923L;
 
     public static final String ACTION_CRAWL = "crawl";
+
+    /** What a crawl dispatches unless something says otherwise. */
+    public static final String FILE_TYPE_HTML = "html";
     public static final String ACTION_UPDATE = "update";
 
     private String catalogId;
@@ -64,6 +67,13 @@ public class CrawlTask implements Serializable {
     private String url;
     private String cat;
     private String pageEncoding;
+
+    /**
+     * What is at the other end of this url. Everything a crawl dispatches today is html; the field
+     * is what lets a queue carry a pdf the day something fetches one, without every consumer
+     * having to guess from the extension.
+     */
+    private String fileType = FILE_TYPE_HTML;
     private int version;
 
     /** Links traversed from the seed to reach this url. The seed is zero. */
@@ -106,6 +116,9 @@ public class CrawlTask implements Serializable {
         task.setPageEncoding(pageEncoding);
         task.setVersion(version);
         task.setDepth(depth + 1);
+        // what is at the other end, decided from the url. Everything is html unless the extension
+        // says otherwise, and the engine reads the two kinds differently
+        task.setFileType(PageParser.fileTypeOf(childUrl));
         return task;
     }
 

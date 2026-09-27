@@ -28,7 +28,7 @@ import com.github.greenfinger.core.output.OutputChannel;
 import com.github.greenfinger.core.output.OutputPayload;
 import com.github.greenfinger.core.record.ResourceRecord;
 import com.github.greenfinger.core.record.ResourceRecordStore;
-import com.github.greenfinger.core.utils.BeanLifeCycleUtils;
+import com.github.greenfinger.utils.BeanLifeCycleUtils;
 import com.github.greenfinger.output.CompositeOutputChannel;
 import com.github.greenfinger.output.OutputFactory;
 import com.github.greenfinger.output.vector.EmbeddingClient;

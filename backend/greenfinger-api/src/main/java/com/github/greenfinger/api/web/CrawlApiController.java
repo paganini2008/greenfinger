@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -35,6 +36,7 @@ import com.github.greenfinger.core.WebCrawlerException;
 import com.github.greenfinger.core.WebCrawlerSemaphore;
 import com.github.greenfinger.core.engine.CrawlRegistry;
 import com.github.greenfinger.core.model.Catalog;
+import com.github.greenfinger.core.component.state.Dashboard;
 import com.github.greenfinger.core.model.DeleteLayer;
 import com.github.greenfinger.core.model.OutputType;
 import com.github.greenfinger.service.CatalogAdminService;
@@ -161,15 +163,41 @@ public class CrawlApiController {
             row.put("runningState", catalog.getRunningState());
             row.put("indexVersion", details.getVersion());
             row.put("searchVersion", details.getSearchVersion());
-            crawlRegistry.getDashboard(catalog.getId()).ifPresent(dashboard -> {
+            Optional<Dashboard> live = crawlRegistry.getDashboard(catalog.getId());
+            if (live.isPresent()) {
+                Dashboard dashboard = live.get();
                 row.put("savedResourceCount", dashboard.getSavedResourceCount());
                 row.put("savedImageCount", dashboard.getSavedImageCount());
                 row.put("totalUrlCount", dashboard.getTotalUrlCount());
                 row.put("handledUrlCount", dashboard.getHandledUrlCount());
-            });
+            } else {
+                // What the last run of this version produced. Without it a catalog that crawled
+                // and was interrupted looks exactly like one that has never run -- both are
+                // version 0 with nothing being served -- and the page cannot tell somebody
+                // whether there is work to carry on with.
+                Map<String, Object> lastRun =
+                        lastRunOf(catalogAdminService.readLastRun(details).orElse(Map.of()));
+                row.put("savedResourceCount", asLong(lastRun.get("savedResourceCount")));
+                row.put("savedImageCount", asLong(lastRun.get("savedImageCount")));
+            }
             rows.add(row);
         }
         return ApiResult.ok(rows);
+    }
+
+    /**
+     * The counts sit under "lastRun" inside the settings file the version was written with, which
+     * also carries the definition the run used. CatalogSummary reads the same place.
+     */
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> lastRunOf(Map<String, Object> settings) {
+        return settings.get("lastRun") instanceof Map ? (Map<String, Object>) settings.get("lastRun")
+                : Map.of();
+    }
+
+    /** The stored run keeps its numbers as whatever json made of them. */
+    private static long asLong(Object value) {
+        return value instanceof Number number ? number.longValue() : 0L;
     }
 
     /**

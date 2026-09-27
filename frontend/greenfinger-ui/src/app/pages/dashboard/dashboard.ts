@@ -179,12 +179,12 @@ export class DashboardPage {
       {
         icon: 'travel_explore',
         value: crawled ? this.when(crawled.lastIndexed) : 'Not yet',
-        label: crawled ? `Last crawl -- ${crawled.name}` : 'Nothing crawled yet',
+        label: crawled ? `Last crawl: ${crawled.name}` : 'Nothing crawled yet',
       },
       {
         icon: 'edit_calendar',
         value: changed ? this.when(changed.updatedAt) : '--',
-        label: changed ? `Last change -- ${changed.name}` : 'Nothing set up yet',
+        label: changed ? `Last change: ${changed.name}` : 'Nothing set up yet',
       },
       {
         icon: 'manage_search',

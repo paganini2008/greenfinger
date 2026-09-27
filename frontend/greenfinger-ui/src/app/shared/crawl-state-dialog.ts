@@ -29,7 +29,7 @@ export interface CrawlStateData {
   template: `
     <h2 mat-dialog-title class="flex items-center gap-2">
       <mat-icon>storage</mat-icon>
-      Crawl state &mdash; {{ data.catalogName }}
+      Crawl state: {{ data.catalogName }}
     </h2>
     <mat-dialog-content>
       @if (loading()) {

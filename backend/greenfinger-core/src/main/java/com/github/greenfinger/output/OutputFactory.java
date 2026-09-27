@@ -49,7 +49,7 @@ import com.github.greenfinger.output.vector.QdrantVectorStore;
 import com.github.greenfinger.output.vector.VectorOutputChannel;
 import com.github.greenfinger.output.vector.VectorStore;
 import com.github.greenfinger.output.vector.WeaviateVectorStore;
-import com.github.greenfinger.core.utils.BeanLifeCycleUtils;
+import com.github.greenfinger.utils.BeanLifeCycleUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.github.greenfinger.output.vector.VectorSearcher;
@@ -218,9 +218,10 @@ public class OutputFactory implements DisposableBean {
                     client = getEmbeddingClient();
                     long start = System.currentTimeMillis();
                     BeanLifeCycleUtils.afterPropertiesSet(client);
-                    log.info("Embedding client '{}' ready in {} ms, {} dimensions",
-                            client.getName(), System.currentTimeMillis() - start,
-                            client.textDimensions());
+                    // not the dimensions: asking for them loads the text model, which would
+                    // make preload-text-model=false load it anyway. Each model logs its own.
+                    log.info("Embedding client '{}' ready in {} ms", client.getName(),
+                            System.currentTimeMillis() - start);
                     shared = client;
                 }
             }

@@ -22,7 +22,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import com.github.greenfinger.core.WebCrawlerProperties;
-import com.github.greenfinger.core.utils.BeanLifeCycleUtils;
+import com.github.greenfinger.utils.BeanLifeCycleUtils;
 import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.core.component.WebCrawlerComponentFactory;
 import com.github.greenfinger.core.component.acceptor.UrlPathAcceptor;

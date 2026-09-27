@@ -22,7 +22,7 @@ import java.util.Optional;
 import org.springframework.transaction.annotation.Transactional;
 import com.github.greenfinger.core.model.CrawlerReport;
 import com.github.greenfinger.core.report.CrawlReportStore;
-import com.github.greenfinger.core.utils.UuidUtils;
+import com.github.greenfinger.utils.UuidUtils;
 import lombok.RequiredArgsConstructor;
 
 /**

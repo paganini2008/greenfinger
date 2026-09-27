@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import com.github.greenfinger.core.catalog.CatalogDetails;
+import com.github.greenfinger.core.engine.WebCrawlerExecutionContext;
 import com.github.greenfinger.core.catalog.CatalogDetailsService;
 import com.github.greenfinger.core.engine.CrawlRegistry;
 import com.github.greenfinger.core.model.Catalog;
@@ -89,12 +90,22 @@ public class CatalogApiController {
         Catalog catalog = catalogAdminService.require(idOrName);
         CatalogDetails details = catalogDetailsService.loadCatalogDetails(catalog.getId());
         Optional<CatalogSummary> live = crawlRegistry.getDashboard(catalog.getId())
-                .map(dashboard -> new CatalogSummary(dashboard, details));
+                .map(dashboard -> new CatalogSummary(dashboard, details,
+                        perNodeCounters(catalog.getId())));
         if (live.isPresent()) {
             return ApiResult.ok(live.get());
         }
         Map<String, Object> settings = catalogAdminService.readLastRun(details).orElse(Map.of());
         return ApiResult.ok(new CatalogSummary(details, settings));
+    }
+
+    /**
+     * What each node has done, while the crawl is still registered here. Null once it is not,
+     * which is what keeps the finished view the same shape it has always been.
+     */
+    private Map<String, Map<String, Long>> perNodeCounters(String catalogId) {
+        WebCrawlerExecutionContext context = crawlRegistry.getContext(catalogId);
+        return context != null ? context.getGlobalStateManager().perNodeCounters() : null;
     }
 
     @GetMapping("/{idOrName}/running")

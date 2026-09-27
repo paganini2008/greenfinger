@@ -87,6 +87,16 @@ public class CatalogSummary {
     /** Why the run stopped early, or null when it finished on its own terms. */
     private final String completionReason;
 
+    /**
+     * What each node in the cluster did, by counter and then by node, while the crawl is running.
+     *
+     * <p>
+     * The totals above say what the crawl has done. They cannot say whether the work is actually
+     * being shared: one node fetching everything and three sitting idle adds up to exactly the
+     * same totals as four pulling evenly. Empty on a cluster of one, and null once the run is over.
+     */
+    private final Map<String, Map<String, Long>> perNode;
+
     /** Whether the run was cut short rather than reaching one of its own limits. */
     private final boolean interrupted;
 
@@ -101,6 +111,12 @@ public class CatalogSummary {
      * that polls until searchable catches up with version would poll for ever.
      */
     public CatalogSummary(Dashboard dashboard, CatalogDetails catalogDetails) {
+        this(dashboard, catalogDetails, null);
+    }
+
+    public CatalogSummary(Dashboard dashboard, CatalogDetails catalogDetails,
+            Map<String, Map<String, Long>> perNode) {
+        this.perNode = perNode;
         this.live = !dashboard.isCompleted();
         this.catalogId = catalogDetails != null ? catalogDetails.getId() : null;
         this.catalogName = catalogDetails != null ? catalogDetails.getName() : null;
@@ -197,6 +213,8 @@ public class CatalogSummary {
         this.abandonedUrlCount = number(lastRun, "abandonedUrlCount");
         this.remainingUrlCount = number(lastRun, "remainingUrlCount");
         this.completionReason = reason instanceof String text ? text : null;
+        // a finished run's counters are the run report's, and that keeps only the totals
+        this.perNode = null;
         this.elapsedTime = format(this.elapsedMillis);
         this.progress = this.completed ? 1d : 0d;
         this.sizeProgress = this.progress;

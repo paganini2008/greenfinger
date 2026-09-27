@@ -38,8 +38,8 @@ import com.github.greenfinger.core.model.ContentMode;
 import com.github.greenfinger.core.model.ExtractorType;
 import com.github.greenfinger.core.model.OutputType;
 import com.github.greenfinger.core.output.IndexAdmin;
-import com.github.greenfinger.core.utils.BeanLifeCycleUtils;
-import com.github.greenfinger.core.utils.UrlUtils;
+import com.github.greenfinger.utils.BeanLifeCycleUtils;
+import com.github.greenfinger.utils.UrlUtils;
 import com.github.greenfinger.output.OutputFactory;
 import com.github.greenfinger.output.OutputProperties;
 import com.github.greenfinger.core.output.SearchRequest;
@@ -78,7 +78,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @RequiredArgsConstructor
-public class LocalOperations implements GreenfingerOperations {
+public class LocalOperations implements UIOperations {
 
     private final CatalogAdminService catalogAdminService;
     private final CatalogDetailsService catalogDetailsService;
@@ -392,7 +392,8 @@ public class LocalOperations implements GreenfingerOperations {
     }
 
     private SearchAnswer listEverything(String mode, List<String> versions, int size) {
-        StoredListing listing = new StoredListing(recordStore, catalogAdminService);
+        StoredListing listing =
+                new StoredListing(recordStore, catalogAdminService, outputFactory.getBlobStore());
         if ("pictures".equals(mode)) {
             return hits(listing.images(versions, size, 0), "Every picture kept", true);
         }

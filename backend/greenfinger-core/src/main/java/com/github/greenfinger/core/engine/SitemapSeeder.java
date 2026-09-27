@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import com.github.greenfinger.core.WebCrawlerProperties;
-import com.github.greenfinger.core.utils.UrlUtils;
+import com.github.greenfinger.utils.UrlUtils;
 import crawlercommons.robots.BaseRobotRules;
 import crawlercommons.robots.SimpleRobotRulesParser;
 import crawlercommons.sitemaps.AbstractSiteMap;
@@ -113,8 +113,7 @@ public class SitemapSeeder {
     }
 
     private List<String> sitemapsIn(URL robotsTxt) {
-        try (InputStream in = UrlUtils.openStream(robotsTxt, config.getConnectTimeout(),
-                config.getReadTimeout())) {
+        try (InputStream in = UrlUtils.openStream(robotsTxt, config.getReadTimeout())) {
             BaseRobotRules rules = new SimpleRobotRulesParser().parseContent(robotsTxt.toString(),
                     in.readAllBytes(), "text/plain", List.of("greenfinger"));
             return rules.getSitemaps() != null ? rules.getSitemaps() : List.of();
@@ -131,8 +130,7 @@ public class SitemapSeeder {
         try {
             URL url = UrlUtils.toURL(sitemapUrl);
             byte[] content;
-            try (InputStream in = UrlUtils.openStream(url, config.getConnectTimeout(),
-                    config.getReadTimeout())) {
+            try (InputStream in = UrlUtils.openStream(url, config.getReadTimeout())) {
                 content = in.readAllBytes();
             }
             AbstractSiteMap sitemap = parser.parseSiteMap(content, url);

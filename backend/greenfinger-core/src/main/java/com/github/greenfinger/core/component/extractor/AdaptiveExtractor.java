@@ -18,12 +18,13 @@ package com.github.greenfinger.core.component.extractor;
 
 import java.nio.charset.Charset;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.List;
 import java.util.function.Supplier;
 import org.apache.commons.lang3.StringUtils;
 import com.github.greenfinger.core.ManagedBeanLifeCycle;
 import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.core.engine.CrawlTask;
-import com.github.greenfinger.core.utils.BeanLifeCycleUtils;
+import com.github.greenfinger.utils.BeanLifeCycleUtils;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -46,11 +47,24 @@ import lombok.extern.slf4j.Slf4j;
 public class AdaptiveExtractor implements NamedExtractor, ManagedBeanLifeCycle {
 
     private final Extractor fast;
-    private final Supplier<Extractor> browserSupplier;
+    private final List<Choice> choices;
     private final RenderingDetector detector;
-    private final String browserName;
+
+    /** The one that started, or the one that will be tried first while none has. */
+    private volatile String browserName;
 
     private volatile Extractor browser;
+
+    /** Asked for once. A browser that would not start will not start on the next page either. */
+    private volatile boolean browserUnavailable;
+
+    /**
+     * A browser to try, in order. Playwright first because it is a real browser and renders what a
+     * person would see; HtmlUnit behind it because it is pure java and needs nothing installed,
+     * which is the difference between a container that renders and one that does not.
+     */
+    public record Choice(String name, Supplier<Extractor> supplier) {
+    }
 
     @Getter
     private final AtomicLong fetched = new AtomicLong();
@@ -60,9 +74,13 @@ public class AdaptiveExtractor implements NamedExtractor, ManagedBeanLifeCycle {
 
     public AdaptiveExtractor(Extractor fast, String browserName,
             Supplier<Extractor> browserSupplier, RenderingDetector detector) {
+        this(fast, List.of(new Choice(browserName, browserSupplier)), detector);
+    }
+
+    public AdaptiveExtractor(Extractor fast, List<Choice> choices, RenderingDetector detector) {
         this.fast = fast;
-        this.browserName = browserName;
-        this.browserSupplier = browserSupplier;
+        this.choices = List.copyOf(choices);
+        this.browserName = choices.isEmpty() ? "none" : choices.get(0).name();
         this.detector = detector;
     }
 
@@ -85,9 +103,13 @@ public class AdaptiveExtractor implements NamedExtractor, ManagedBeanLifeCycle {
         if (!detector.needsRendering(html)) {
             return html;
         }
+        Extractor renderer = browser();
+        if (renderer == null) {
+            return html;
+        }
         try {
-            String renderedHtml = browser().extractHtml(catalogDetails, referUrl, url,
-                    pageEncoding, task);
+            String renderedHtml =
+                    renderer.extractHtml(catalogDetails, referUrl, url, pageEncoding, task);
             // only count it when the browser actually produced more than the plain fetch did;
             // otherwise the page really is that empty and the detector was wrong
             if (StringUtils.length(renderedHtml) > StringUtils.length(html)) {
@@ -120,9 +142,13 @@ public class AdaptiveExtractor implements NamedExtractor, ManagedBeanLifeCycle {
         if (!detector.needsRendering(plain.html())) {
             return plain;
         }
+        Extractor renderer = browser();
+        if (renderer == null) {
+            return plain;
+        }
         try {
             String renderedHtml =
-                    browser().extractHtml(catalogDetails, referUrl, url, pageEncoding, task);
+                    renderer.extractHtml(catalogDetails, referUrl, url, pageEncoding, task);
             if (StringUtils.length(renderedHtml) > StringUtils.length(plain.html())) {
                 rendered.incrementAndGet();
                 // the validators still come from the http response: they describe the resource the
@@ -138,22 +164,45 @@ public class AdaptiveExtractor implements NamedExtractor, ManagedBeanLifeCycle {
     }
 
     /**
-     * Started on first use. A site that turns out to be static never pays for one at all.
+     * Started on first use, and only ever attempted once.
+     *
+     * <p>
+     * A site that turns out to be static never pays for a browser at all. And where one cannot be
+     * started -- a container with the engine on the classpath but no browser installed, which is
+     * every image that has not run `playwright install` -- the attempt is made once and the answer
+     * remembered. Retrying it per page costs a launch timeout for every page on the site and ends
+     * in the same place.
+     *
+     * @return null when there is no browser to be had, which the callers read as "keep the plain
+     *         fetch" -- a rendered page was always an improvement on http, never a requirement.
      */
-    private Extractor browser() throws Exception {
+    private Extractor browser() {
         Extractor instance = browser;
-        if (instance == null) {
-            synchronized (this) {
-                instance = browser;
-                if (instance == null) {
-                    log.info("A page needed rendering; starting {}", browserName);
-                    instance = browserSupplier.get();
-                    BeanLifeCycleUtils.afterPropertiesSet(instance);
-                    browser = instance;
+        if (instance != null || browserUnavailable) {
+            return instance;
+        }
+        synchronized (this) {
+            if (browser != null || browserUnavailable) {
+                return browser;
+            }
+            for (Choice choice : choices) {
+                try {
+                    log.info("A page needed rendering; starting {}", choice.name());
+                    Extractor started = choice.supplier().get();
+                    BeanLifeCycleUtils.afterPropertiesSet(started);
+                    browserName = choice.name();
+                    browser = started;
+                    return browser;
+                } catch (Throwable e) {
+                    log.warn("{} will not start: {}", choice.name(), e.getMessage());
                 }
             }
+            browserUnavailable = true;
+            log.warn("No browser would start, so this crawl is plain http and pages that render"
+                    + " themselves are stored as they arrived. Install one, or set the extractor"
+                    + " to restclient to stop asking.");
+            return null;
         }
-        return instance;
     }
 
     @Override

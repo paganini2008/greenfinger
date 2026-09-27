@@ -153,10 +153,26 @@ function upstreamHeaders(request, upstream) {
   return headers;
 }
 
+/**
+ * A refusal in the api's own envelope, so the page can say what happened.
+ *
+ * The proxy used to answer text/plain, which the front end cannot read: it looks for `message` in
+ * a json body and otherwise shows "502 Bad Gateway". A node that had been killed -- stopped, or
+ * out of memory, which is the usual one in a container -- therefore looked like a bug in the page
+ * rather than a node that is gone.
+ */
+function refuse(response, status, message) {
+  if (response.headersSent) {
+    response.end();
+    return;
+  }
+  response.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
+  response.end(JSON.stringify({ success: false, message, data: null }));
+}
+
 function proxy(request, response) {
   if (UPSTREAMS.length === 0) {
-    response.writeHead(502, { 'content-type': 'text/plain; charset=utf-8' });
-    response.end('No GF_UPSTREAMS configured, so there is no api to forward to.\n');
+    refuse(response, 502, 'This page is not pointed at any node: GF_UPSTREAMS is empty.');
     return;
   }
   // ?__node=<index> pins the request; anything else is spread as usual
@@ -165,8 +181,8 @@ function proxy(request, response) {
   const order = [];
   if (asked !== null) {
     if (asked < 0 || asked >= UPSTREAMS.length) {
-      response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
-      response.end(`There is no node ${asked}; this front end has ${UPSTREAMS.length}.\n`);
+      refuse(response, 404,
+        `There is no node ${asked}; this page is in front of ${UPSTREAMS.length}.`);
       return;
     }
     // one entry, so the retry loop below has nowhere else to go -- which is the point
@@ -200,10 +216,7 @@ function proxy(request, response) {
         attempt(index + 1, body);
         return;
       }
-      if (!response.headersSent) {
-        response.writeHead(502, { 'content-type': 'text/plain; charset=utf-8' });
-      }
-      response.end(`No node answered: ${failure.message}\n`);
+      refuse(response, 502, unreachable(order, failure));
     });
     if (body === null) {
       // too big to hold, so this is the only attempt it gets
@@ -429,6 +442,7 @@ function serve(file, response, fallbackToApp) {
  * a release: the one line that decides it is four lines long, and nothing could call it.
  */
 module.exports = {
+  unreachable,
   upstreamHeaders,
   membersFrom,
   pinnedNode,
@@ -476,4 +490,25 @@ if (require.main === module) {
           (UPSTREAMS.map((one) => `${one.host}:${one.port}`).join(', ') || '(nothing configured)'),
       );
     });
+}
+
+/**
+ * Why nothing answered, in a sentence somebody can act on.
+ *
+ * Refused means nothing is listening: the node was stopped, or the container was killed -- and in
+ * a container the usual reason is memory, because the jvm's own limit does not cover what the
+ * embedding models allocate outside the heap. That is worth naming: the page has no other way to
+ * say it, and the alternative is a 502 that reads like the page is broken.
+ */
+function unreachable(order, failure) {
+  const where = order.map((one) => `${one.host}:${one.port}`).join(', ');
+  if (failure && failure.code === 'ECONNREFUSED') {
+    return `No node answered at ${where}. Nothing is listening there: the node was stopped, or it`
+      + ` exited -- a container killed for memory looks exactly like this. Its log says which.`;
+  }
+  if (failure && (failure.code === 'ETIMEDOUT' || /timed out/.test(failure.message || ''))) {
+    return `No node answered at ${where} in time. It is listening but not replying, which is a`
+      + ` node that is stuck rather than one that is gone.`;
+  }
+  return `No node answered at ${where}: ${failure ? failure.message : 'unknown'}.`;
 }

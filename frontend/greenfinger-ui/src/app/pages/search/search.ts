@@ -64,6 +64,65 @@ export class SearchPage {
       ),
   );
 
+  /**
+   * The catalogs the current choice of catalog covers. One when the dropdown names one, all of
+   * them when it says every catalog, because then any of them can answer.
+   */
+  private readonly inScope = computed(() => {
+    const picked = this.catalog();
+    const all = this.catalogs();
+    return picked ? all.filter((one) => one.id === picked || one.name === picked) : all;
+  });
+
+  /**
+   * Whether the choice of catalog can answer by meaning at all.
+   *
+   * <p>
+   * A catalog that writes files and an index has nothing in the vector store, so a search by
+   * meaning over it returns nothing and reads as though the feature were broken. This is what the
+   * mode switch greys out, and what the empty state explains.
+   */
+  protected readonly meaningReady = computed(() =>
+    this.inScope().some(
+      (one) => (one.searchVersion ?? -1) >= 0 && (one.outputTypes ?? []).includes('vector'),
+    ),
+  );
+
+  /**
+   * The same for pictures, which needs more than the vector output: a catalog that was crawled
+   * with images off has no image vectors however much text it embedded.
+   */
+  protected readonly picturesReady = computed(() =>
+    this.inScope().some(
+      (one) =>
+        (one.searchVersion ?? -1) >= 0 &&
+        (one.outputTypes ?? []).includes('vector') &&
+        one.imageEnabled !== false &&
+        (one.contentMode ?? '').includes('image'),
+    ),
+  );
+
+  /** Whether a mode can be used with the catalog now chosen. Words needs only the index. */
+  protected isModeReady(mode: Mode): boolean {
+    if (mode === 'meaning') {
+      return this.meaningReady();
+    }
+    if (mode === 'pictures') {
+      return this.picturesReady();
+    }
+    return true;
+  }
+
+  /** Said on the greyed switch, and again in the empty state where there is room for the fix. */
+  protected getModeBlockedHint(mode: Mode): string {
+    const one = this.inScope().length === 1 ? this.inScope()[0] : null;
+    const subject = one?.name ? `'${one.name}'` : 'No catalog here';
+    if (mode === 'pictures') {
+      return `${subject} has no picture vectors. Pictures need the vector output and a crawl that fetched images.`;
+    }
+    return `${subject} has no vectors. Meaning needs the vector output.`;
+  }
+
   protected readonly searching = signal(false);
   protected readonly searched = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -99,7 +158,7 @@ export class SearchPage {
       value: 'pictures',
       label: 'Pictures',
       icon: 'image_search',
-      hint: 'Describe what is in a picture — a colour, a subject. Not the text printed on it.',
+      hint: 'Describe what is in a picture, a colour or a subject. Not the text printed on it.',
     },
   ];
 
@@ -112,6 +171,9 @@ export class SearchPage {
   }
 
   protected setMode(mode: Mode): void {
+    if (!this.isModeReady(mode)) {
+      return;
+    }
     if (this.mode() === mode) {
       return;
     }
@@ -127,6 +189,12 @@ export class SearchPage {
    */
   protected search(): void {
     this.reset();
+    // A mode the chosen catalog cannot answer asks nothing at all. Without this the blank box
+    // still lists what is stored, so the tab reads as greyed out and full of results at once.
+    if (!this.isModeReady(this.mode())) {
+      this.searched.set(true);
+      return;
+    }
     this.run(this.keyword().trim(), null);
   }
 
@@ -283,6 +351,18 @@ export class SearchPage {
   /** The bytes arrived but the browser could not decode them: the same dead end as a missing file. */
   protected onImageFailed(hit: VectorHit): void {
     this.missing.update((all) => new Set(all).add(hit.id));
+  }
+
+  /**
+   * What a picture is captioned with: its alt text, or the wording around it when it has none.
+   *
+   * <p>
+   * Kept short. A picture card is a tile in a grid and the picture is the result, so a paragraph
+   * under it pushes the next row off the screen for no gain.
+   */
+  protected getPictureCaption(hit: VectorHit): string {
+    const caption = this.text(hit, 'alt') || this.text(hit, 'context');
+    return caption.length > 90 ? caption.slice(0, 90).trimEnd() + '\u2026' : caption;
   }
 
   /** Vector payload fields, read defensively: the store returns whatever was written into it. */

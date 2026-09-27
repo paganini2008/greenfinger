@@ -16,6 +16,7 @@
 
 package com.github.greenfinger.core.engine;
 
+import java.io.Serializable;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -33,7 +34,10 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ImageRef {
+public class ImageRef implements Serializable {
+
+    /** Carried on CrawledPage, so it has to travel with it. */
+    private static final long serialVersionUID = 7041558220914432004L;
 
     private String url;
     private String alt;

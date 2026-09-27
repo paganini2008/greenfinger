@@ -19,7 +19,7 @@ package com.github.greenfinger.core.component.dedup;
 import java.nio.charset.StandardCharsets;
 import org.apache.commons.lang3.StringUtils;
 import com.github.greenfinger.core.WebCrawlerException;
-import com.github.greenfinger.core.utils.HashUtils;
+import com.github.greenfinger.utils.HashUtils;
 
 /**
  * Exact content deduplication: two pages are the same document when their normalised text hashes

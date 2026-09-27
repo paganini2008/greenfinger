@@ -39,6 +39,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import com.github.greenfinger.utils.JsonUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.greenfinger.api.web.ApiResult;
 import lombok.RequiredArgsConstructor;
@@ -109,7 +110,7 @@ public class WebSecurityConfiguration {
      * envelope, and taking a dependency on a bean would make the whole chain -- the thing that
      * decides who gets in -- fail to build if Jackson were configured differently.
      */
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = JsonUtils.MAPPER;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, TokenStore tokenStore)

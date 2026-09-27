@@ -22,6 +22,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.shell.core.command.annotation.Command;
 import org.springframework.shell.core.command.annotation.Option;
 import org.springframework.stereotype.Component;
+import com.github.greenfinger.utils.JsonUtils;
 import com.github.greenfinger.shell.ConsoleIO;
 import com.github.greenfinger.shell.Interview;
 import com.github.greenfinger.shell.UsageException;
@@ -31,15 +32,15 @@ import com.github.greenfinger.core.WebCrawlerException;
 import com.github.greenfinger.core.WebCrawlerProperties;
 import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.service.ops.CatalogSnapshot;
-import com.github.greenfinger.service.ops.GreenfingerOperations;
+import com.github.greenfinger.service.ops.UIOperations;
 import com.github.greenfinger.core.catalog.CatalogDetailsService;
 import com.github.greenfinger.core.model.Catalog;
 import com.github.greenfinger.core.model.Category;
 import com.github.greenfinger.core.model.ContentMode;
 import com.github.greenfinger.core.model.ExtractorType;
 import com.github.greenfinger.core.model.OutputType;
-import com.github.greenfinger.core.utils.UrlPathPatterns;
-import com.github.greenfinger.core.utils.UrlUtils;
+import com.github.greenfinger.utils.UrlPathPatternUtils;
+import com.github.greenfinger.utils.UrlUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import java.util.function.BiConsumer;
@@ -63,7 +64,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 @RequiredArgsConstructor
 public class CatalogCommands {
 
-    private final GreenfingerOperations ops;
+    private final UIOperations ops;
     private final ConsoleIO io;
 
     /**
@@ -76,7 +77,7 @@ public class CatalogCommands {
 
     /** The same mapper shape the api uses, so one json works against both. */
     private static final ObjectMapper OBJECT_MAPPER =
-            new ObjectMapper()
+            JsonUtils.MAPPER
                     .configure(DeserializationFeature
                             .FAIL_ON_UNKNOWN_PROPERTIES, true);
 
@@ -244,7 +245,7 @@ public class CatalogCommands {
                 "leave empty to discover it automatically", catalog.getSitemapUrl(), false));
         catalog.setPathPattern(interview.text("include", "ant path pattern, ',' for several",
                 StringUtils.defaultIfBlank(catalog.getPathPattern(),
-                        UrlPathPatterns.defaultPathPattern(catalog.getUrl())),
+                        UrlPathPatternUtils.defaultPathPattern(catalog.getUrl())),
                 true));
         catalog.setExcludedPathPattern(interview.text("exclude",
                 "ant path pattern, ',' for several; empty for none",
@@ -325,7 +326,7 @@ public class CatalogCommands {
             description = "Every version of one catalog, newest first")
     public void versions(@Option(longName = "id",
             description = "The catalog id, from catalog-list") String id) {
-        GreenfingerOperations.Versions versions = ops.versions(id);
+        UIOperations.Versions versions = ops.versions(id);
         TextTable table = TextTable.of("Version", "Pages", "Images", "State", "First built",
                 "Last run").rightAlign(1).rightAlign(2)
                 .title("Versions of " + versions.catalogName());

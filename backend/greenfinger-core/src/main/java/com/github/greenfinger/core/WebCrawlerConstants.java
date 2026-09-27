@@ -63,10 +63,17 @@ public abstract class WebCrawlerConstants {
     /**
      * The browser engines are optional dependencies. These are the classes whose presence says one
      * is actually on the classpath.
+     *
+     * <p>
+     * Fully qualified, which is the whole point: these were the simple names, and
+     * {@code Class.forName("WebClient")} looks in the default package and can only ever fail. So
+     * every installation was told it had no browser and every adaptive crawl was plain http --
+     * including the ones that shipped all three engines. Nothing said so except one line of warn
+     * at startup, and a page that needed rendering was stored as the shell it arrived as.
      */
-    public static final String CLASS_HTMLUNIT = "WebClient";
-    public static final String CLASS_PLAYWRIGHT = "Playwright";
-    public static final String CLASS_SELENIUM = "WebDriver";
+    public static final String CLASS_HTMLUNIT = "org.htmlunit.WebClient";
+    public static final String CLASS_PLAYWRIGHT = "com.microsoft.playwright.Playwright";
+    public static final String CLASS_SELENIUM = "org.openqa.selenium.WebDriver";
 
     /**
      * Which browser to reach for when the configured one is not on the classpath, best first.

@@ -10,6 +10,50 @@
     auto,
     auto;
   animation: gf-sheen 4.5s linear infinite;
+
+  // The background turned green and the foreground did not. Every piece of text in here kept the
+  // light theme's colour: the title near-black, the url a muted brown, and the back button the
+  // theme's own green painted on green, which is why it read as an empty outline.
+  color: var(--gf-on-chrome);
+
+  // The green field is a panel now, so its contents need to sit inside it. With no horizontal
+  // padding the title, the url and the progress labels all ran into the edge.
+  padding: 1.1rem 1.35rem 1.25rem;
+  border-radius: var(--gf-r-md);
+
+  .gf-hero-inner h1 {
+    color: var(--gf-on-chrome);
+  }
+
+  .gf-hero-inner p {
+    color: color-mix(in srgb, var(--gf-on-chrome) 82%, transparent);
+  }
+
+  .gf-hero-progress-label,
+  .gf-hero-progress-value {
+    color: color-mix(in srgb, var(--gf-on-chrome) 88%, transparent);
+    opacity: 1;
+  }
+
+  .gf-ghost-button {
+    --mdc-outlined-button-label-text-color: var(--gf-on-chrome);
+    --mdc-outlined-button-outline-color: color-mix(in srgb, var(--gf-on-chrome) 45%, transparent);
+    color: var(--gf-on-chrome);
+  }
+
+  .gf-ghost-icon {
+    color: var(--gf-on-chrome);
+  }
+
+  // The readings sit on white cards inside the green field, so they keep the page's own colours.
+  // Inheriting the white set above made a white number on a white card: the cards looked empty.
+  .gf-stat-value {
+    color: var(--mat-sys-on-surface);
+  }
+
+  .gf-stat-label {
+    color: var(--gf-muted);
+  }
 }
 
 @keyframes gf-sheen {
@@ -109,8 +153,24 @@
   color: var(--gf-muted);
 }
 
+// Read as dangerous before it is read at all. The border used to be the outline colour with a
+// little red mixed in, which at a glance is just another panel. A panel whose every button is
+// irreversible should not look like the one above it.
 .gf-danger-zone {
-  border-color: color-mix(in srgb, var(--mat-sys-error) 30%, var(--gf-outline));
+  border: 1px solid color-mix(in srgb, var(--mat-sys-error) 55%, transparent);
+  // A wash of the same colour, so the panel reads as dangerous from the corner of the eye rather
+  // than only once the border is noticed.
+  background: color-mix(in srgb, var(--mat-sys-error) 4%, var(--gf-surface));
+
+  .gf-panel-title {
+    color: var(--mat-sys-error);
+  }
+
+  // The confirm button is the last thing pressed here, so it carries the colour outright.
+  .gf-delete-apply {
+    --mdc-filled-button-container-color: var(--mat-sys-error);
+    --mdc-filled-button-label-text-color: var(--mat-sys-on-error);
+  }
 }
 
 // The two irreversible things, side by side and named, so the difference is read rather than
@@ -365,3 +425,50 @@
    a second set here -- same seven outcomes, different hues -- so one page called "filtered out"
    tan and the other called it ochre, and a palette change reached only whichever was edited. */
 
+
+/* ------------------------------------------------------------------------------------------------
+   Every run, under the chart. A bar shows how much a run saved; this shows how each one ended,
+   which is the question somebody opens the reports with.
+   --------------------------------------------------------------------------------------------- */
+
+.gf-runs-table {
+  font-size: 0.82rem;
+}
+
+.gf-runs-row {
+  cursor: pointer;
+
+  &:hover {
+    background: var(--gf-surface-container);
+  }
+}
+
+/* the one the detail above is showing */
+.gf-runs-row-on {
+  background: var(--gf-wheat-soft);
+
+  &:hover {
+    background: var(--gf-wheat-soft);
+  }
+}
+
+/* a run that published nothing: the pages it fetched are not in any search */
+.gf-runs-row-bad .gf-runs-why {
+  color: var(--gf-on-wheat);
+  font-weight: 600;
+}
+
+.gf-runs-why {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 18rem;
+}
+
+.gf-runs-warn {
+  flex: none;
+  font-size: 1rem;
+  width: 1rem;
+  height: 1rem;
+  color: var(--gf-wheat-deep);
+}

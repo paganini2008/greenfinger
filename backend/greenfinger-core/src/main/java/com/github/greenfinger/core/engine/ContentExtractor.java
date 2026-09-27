@@ -20,6 +20,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import org.apache.commons.lang3.StringUtils;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import org.jsoup.Jsoup;
+import com.github.greenfinger.core.document.DocumentContentParsers;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
@@ -73,10 +77,45 @@ public class ContentExtractor {
 
     private final boolean enabled;
 
+    /** What reads a file that is not html. Only txt and markdown out of the box. */
+    private final DocumentContentParsers parsers;
+
     public ContentExtractor(boolean enabled, int minBlockLength, int minContentLength) {
+        this(enabled, minBlockLength, minContentLength, new DocumentContentParsers(List.of()));
+    }
+
+    public ContentExtractor(boolean enabled, int minBlockLength, int minContentLength,
+            DocumentContentParsers parsers) {
         this.enabled = enabled;
         this.minBlockLength = minBlockLength;
         this.minContentLength = minContentLength;
+        this.parsers = parsers;
+    }
+
+    /**
+     * The text of whatever this is, html or not.
+     *
+     * <p>
+     * One door for the outputs: an index does not care whether a page arrived as html or as a pdf
+     * somebody linked, only that there is text to index. html goes through the article extraction
+     * below; everything else goes to the {@link DocumentContentParser} that reads that format, and
+     * a format nothing reads comes back empty rather than as bytes pretending to be prose.
+     *
+     * @param fileType {@code html}, or an extension without the dot
+     */
+    public String extract(String fileType, byte[] content, String url, Charset encoding)
+            throws Exception {
+        if (fileType == null || CrawlTask.FILE_TYPE_HTML.equalsIgnoreCase(fileType)) {
+            String html = new String(content, encoding != null ? encoding
+                    : StandardCharsets.UTF_8);
+            return extract(Jsoup.parse(html, StringUtils.defaultString(url)));
+        }
+        return parsers.extractText(fileType, content, url, encoding);
+    }
+
+    /** What this installation can read as a file rather than a page. */
+    public java.util.Set<String> readableTypes() {
+        return parsers.readable();
     }
 
     /**

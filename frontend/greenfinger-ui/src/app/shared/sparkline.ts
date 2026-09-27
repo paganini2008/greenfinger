@@ -44,6 +44,13 @@ import { Component, ChangeDetectionStrategy, computed, input } from '@angular/co
     :host {
       display: block;
       width: 100%;
+      /*
+       * Fills whatever box the caller sized. Without it the host is auto-height, the svg's
+       * height:100% resolves against auto, and the svg falls back to its viewBox ratio --
+       * 290px wide became 93px tall inside a 42px slot and painted over the text below it.
+       * A caller that sets a height on gf-sparkline itself still wins on specificity.
+       */
+      height: 100%;
     }
 
     .gf-spark {

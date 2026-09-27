@@ -187,7 +187,7 @@ class VectorOutputChannelTest {
     }
 
     @Test
-    @DisplayName("an image vector is written per page-image reference, so a hit knows its page")
+    @DisplayName("one vector per picture, carrying the page it was found on")
     void imagePointsAreSelfSufficient() throws Exception {
         CatalogDetails details = OutputFixtures.catalogDetails(Set.of(OutputType.VECTOR));
         CrawledPage page =
@@ -208,8 +208,8 @@ class VectorOutputChannelTest {
     }
 
     @Test
-    @DisplayName("the point id is the reference row's id: both name one page-image pair")
-    void imagePointIdIsTheReferenceId() throws Exception {
+    @DisplayName("the point is keyed by the picture, not by the page-image reference")
+    void imagePointIdIsThePicture() throws Exception {
         CatalogDetails details = OutputFixtures.catalogDetails(Set.of(OutputType.VECTOR));
         CrawledPage page =
                 OutputFixtures.pageWithImage("https://www.example.com/b", "B", "text");
@@ -221,7 +221,30 @@ class VectorOutputChannelTest {
             channel.flush();
         }
         assertThat(vectorStore.of("greenfinger_image_8").get(0).getId())
-                .isEqualTo(record.images().get(0).reference().getId());
+                .isNotEqualTo(record.images().get(0).reference().getId());
+    }
+
+    @Test
+    @DisplayName("a picture on many pages is embedded once and stored once")
+    void onePointPerPictureHoweverManyPagesShowIt() throws Exception {
+        // a banner or an avatar is referenced by every page on a site. The vector comes from the
+        // bytes alone, soevery reference was the same vector paid for again
+        CatalogDetails details = OutputFixtures.catalogDetails(Set.of(OutputType.VECTOR));
+        CrawledPage first =
+                OutputFixtures.pageWithImage("https://www.example.com/one", "One", "text one");
+        CrawledPage second =
+                OutputFixtures.pageWithImage("https://www.example.com/two", "Two", "text two");
+        StubEmbeddingClient client = new StubEmbeddingClient(4, 8);
+
+        try (VectorOutputChannel channel = channel(client)) {
+            channel.open(details);
+            channel.write(OutputFixtures.payload(details, first));
+            channel.write(OutputFixtures.payload(details, second));
+            channel.flush();
+        }
+
+        assertThat(vectorStore.of("greenfinger_image_8")).hasSize(1);
+        assertThat(client.getImagesEmbedded()).isEqualTo(1);
     }
 
     @Test

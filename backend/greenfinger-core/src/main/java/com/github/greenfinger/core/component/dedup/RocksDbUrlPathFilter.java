@@ -20,7 +20,7 @@ import java.nio.charset.StandardCharsets;
 import org.rocksdb.RocksIterator;
 import com.github.greenfinger.core.WebCrawlerConstants;
 import com.github.greenfinger.core.WebCrawlerException;
-import com.github.greenfinger.core.utils.UrlUtils;
+import com.github.greenfinger.utils.UrlUtils;
 import lombok.extern.slf4j.Slf4j;
 
 /**

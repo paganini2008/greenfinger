@@ -22,14 +22,14 @@ import org.springframework.util.AntPathMatcher;
 import org.springframework.util.PathMatcher;
 import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.core.engine.CrawlTask;
-import com.github.greenfinger.core.utils.UrlPathPatterns;
+import com.github.greenfinger.utils.UrlPathPatternUtils;
 
 /**
  * Keeps a crawl inside the patterns the catalog declares. Exclusions are tested first, so an
  * excluded pattern always beats an included one.
  *
  * <p>
- * Patterns are expanded by {@link UrlPathPatterns} before matching, which is what lets a user write
+ * Patterns are expanded by {@link UrlPathPatternUtils} before matching, which is what lets a user write
  * {@code **.google.com} instead of {@code **://**.google.com/**}.
  * 
  * @Description: PathMatcherUrlPathAcceptor
@@ -44,9 +44,9 @@ public class PathMatcherUrlPathAcceptor implements UrlPathAcceptor {
     private final List<String> excludedPatterns;
 
     public PathMatcherUrlPathAcceptor(CatalogDetails catalogDetails) {
-        this.includedPatterns = UrlPathPatterns.expandAll(catalogDetails.getPathPatterns());
+        this.includedPatterns = UrlPathPatternUtils.expandAll(catalogDetails.getPathPatterns());
         this.excludedPatterns =
-                UrlPathPatterns.expandAll(catalogDetails.getExcludedPathPatterns());
+                UrlPathPatternUtils.expandAll(catalogDetails.getExcludedPathPatterns());
     }
 
     @Override

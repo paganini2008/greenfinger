@@ -65,7 +65,7 @@
     <section class="gf-panel">
       <h2 class="gf-panel-title"><mat-icon>call_split</mat-icon> Outputs</h2>
       <p class="gf-panel-hint">
-        These stack. Files are always written &mdash; the database holds only metadata, so without
+        These stack. Files are always written. The database holds only metadata, so without
         them there is nothing for the other two to be rebuilt from.
       </p>
 
@@ -211,7 +211,7 @@
             @for (extractor of extractors; track extractor.value) {
               <mat-option [value]="extractor.value">
                 {{ extractor.label }}
-                <span class="gf-option-hint">&mdash; {{ extractor.hint }}</span>
+                <span class="gf-option-hint">{{ extractor.hint }}</span>
               </mat-option>
             }
           </mat-select>

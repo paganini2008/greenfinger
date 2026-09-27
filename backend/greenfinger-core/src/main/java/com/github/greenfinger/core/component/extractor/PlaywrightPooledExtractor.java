@@ -26,7 +26,7 @@ import com.github.greenfinger.core.WebCrawlerConstants;
 import com.github.greenfinger.core.WebCrawlerExtractorProperties;
 import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.core.engine.CrawlTask;
-import com.github.greenfinger.core.utils.ThreadUtils;
+import com.github.greenfinger.utils.ThreadUtils;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.BrowserType;

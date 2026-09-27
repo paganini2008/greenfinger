@@ -17,14 +17,20 @@
 package com.github.greenfinger.service;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import org.apache.commons.lang3.StringUtils;
 import com.github.greenfinger.core.model.Catalog;
+import com.github.greenfinger.core.output.ContentReader;
 import com.github.greenfinger.core.record.ResourceRecord;
 import com.github.greenfinger.core.record.ResourceRecordStore;
 import com.github.greenfinger.output.vector.VectorHit;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * What "everything" is, when the question is blank. In core rather than beside the http api
@@ -41,11 +47,22 @@ import lombok.RequiredArgsConstructor;
  * @Date: 23/09/2026
  * @Version 2.0.0
  */
+@Slf4j
 @RequiredArgsConstructor
 public class StoredListing {
 
+    /** Long enough to say what the page is about, short enough that a page of them is small. */
+    private static final int EXCERPT = 400;
+
     private final ResourceRecordStore recordStore;
     private final CatalogAdminService catalogAdminService;
+
+    /**
+     * Reads back the text the file layer wrote, so a blank box answers with the same shape a
+     * question does. Without it a listed page carried a title and a url and nothing to read, while
+     * the very same card from a real search carried the passage that matched.
+     */
+    private final ContentReader contentReader;
 
     /** How many rows are read from the store at a time while filling a page of hits. */
     private static final int PAGE = 100;
@@ -61,8 +78,16 @@ public class StoredListing {
     /** Every picture of the versions given, as the image mode's hits. */
     public List<VectorHit> images(List<String> catalogVersions, int size, int offset) {
         List<VectorHit> hits = new ArrayList<>();
+        // One row per picture, not per page that shows it. A banner or an avatar is referenced by
+        // every page on a site, and listing each reference filled the results with one picture
+        // repeated. The set spans the offset too, so a picture skipped onto page one cannot come
+        // back on page two.
+        Set<String> seen = new HashSet<>();
         walk(catalogVersions, size, offset, hits, (record, catalogName, into) -> {
             for (ResourceRecord.ImageRecord image : record.images()) {
+                if (!seen.add(image.image().getId())) {
+                    continue;
+                }
                 into.add(new VectorHit(image.image().getId(), 0d,
                         imageOf(record, image, catalogName)));
             }
@@ -127,7 +152,7 @@ public class StoredListing {
     }
 
     /** The keys the semantic hits carry, so one page renders both without knowing which it got. */
-    private static Map<String, Object> pageOf(ResourceRecord record, String catalogName) {
+    private Map<String, Object> pageOf(ResourceRecord record, String catalogName) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("catalogVersion",
                 record.resource().getCatalogId() + ":" + record.resource().getVersion());
@@ -141,7 +166,31 @@ public class StoredListing {
         payload.put("htmlFilePath", record.resource().getHtmlFilePath());
         payload.put("linkCount", record.resource().getLinkCount());
         payload.put("textLength", record.resource().getTextLength());
+        // named as the vector hits name it, because the page reads one key either way
+        excerptOf(record).ifPresent(text -> payload.put("chunkText", text));
         return payload;
+    }
+
+    /**
+     * The opening of the stored text, or nothing.
+     *
+     * <p>
+     * One read per listed row. That is the cost of a listing having something to read, and it is
+     * bounded by the page size; a store that cannot answer costs a row its excerpt and nothing
+     * else, because a listing with no text is still a listing.
+     */
+    private Optional<String> excerptOf(ResourceRecord record) {
+        String path = record.resource().getHtmlContentFilePath();
+        if (contentReader == null || StringUtils.isBlank(path)) {
+            return Optional.empty();
+        }
+        try {
+            return contentReader.readText(path).map(String::trim).filter(text -> !text.isEmpty())
+                    .map(text -> text.length() > EXCERPT ? text.substring(0, EXCERPT) : text);
+        } catch (Exception e) {
+            log.debug("Could not read '{}' for a listing excerpt: {}", path, e.getMessage());
+            return Optional.empty();
+        }
     }
 
     private static Map<String, Object> imageOf(ResourceRecord record,

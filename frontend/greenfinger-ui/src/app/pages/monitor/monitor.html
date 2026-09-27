@@ -39,11 +39,11 @@
           <mat-menu #menu="matMenu">
             <button mat-menu-item (click)="update()" [disabled]="run?.live">
               <mat-icon>sync</mat-icon>
-              <span>Update &mdash; same version, carry on</span>
+              <span>Update: same version, carry on</span>
             </button>
             <button mat-menu-item (click)="rebuild()" [disabled]="run?.live">
               <mat-icon>restart_alt</mat-icon>
-              <span>Rebuild &mdash; a new version</span>
+              <span>Rebuild: a new version</span>
             </button>
             <button mat-menu-item (click)="replay()" [disabled]="run?.live">
               <mat-icon>replay</mat-icon>
@@ -108,11 +108,11 @@
       <mat-icon>{{ run.interrupted ? 'warning' : 'info' }}</mat-icon>
       @if (run.interrupted) {
         <span>
-          The last run was cut short &mdash; {{ stoppedBecause() }}. Nothing was published to
+          The last run was cut short: {{ stoppedBecause() }}. Nothing was published to
           search; <strong>Update</strong> carries on from where it left off, in the same version.
         </span>
       } @else {
-        <span>The last run finished &mdash; {{ stoppedBecause() }}.</span>
+        <span>The last run finished: {{ stoppedBecause() }}.</span>
       }
     </div>
   }
@@ -123,7 +123,7 @@
       <span>
         The site has refused the last <strong>{{ refusal.inARow }}</strong> fetches in a row
         @if (refusal.last) {
-          &mdash; the most recent answered <strong>{{ refusal.last }}</strong>
+          , the most recent answering <strong>{{ refusal.last }}</strong>
         }
         . {{ refusalAdvice() }}
       </span>
@@ -148,7 +148,7 @@
         out of <strong>{{ urlsSeen() | number }}</strong> urls
         {{ run?.live ? 'seen so far' : 'seen' }}
         @if (keepRate()) {
-          &mdash; one page in every {{ keepRate() | number }}.
+          , one page in every {{ keepRate() | number }}.
         }
         @if (run?.live) {
           <span class="gf-sieve-live">
@@ -206,6 +206,46 @@
     </div>
   </section>
 
+  <!-- The totals above cannot say whether the work is shared. One row per node can. -->
+  @if (nodeRows().length) {
+    <section class="gf-panel">
+      <h2 class="gf-panel-title"><mat-icon>lan</mat-icon> What each node did</h2>
+      <p class="gf-panel-note">
+        The totals above are the cluster's. These are the nodes that made them, ordered by how much
+        each one pulled.
+      </p>
+      <table class="gf-table gf-node-table">
+        <thead>
+          <tr>
+            <th>Node</th>
+            <th class="gf-num">Handled</th>
+            <th class="gf-share-cell">Share</th>
+            <th class="gf-num">Pages</th>
+            <th class="gf-num">Images</th>
+            <th class="gf-num">Indexed</th>
+            <th class="gf-num">Vectors</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of nodeRows(); track row.node) {
+            <tr>
+              <td class="gf-mono">{{ row.node }}</td>
+              <td class="gf-num">{{ row.handled | number }}</td>
+              <td class="gf-share-cell">
+                <span class="gf-share-bar"><span [style.width.%]="row.share"></span></span>
+                <span class="gf-share-value">{{ row.share | number: '1.0-0' }}%</span>
+              </td>
+              <td class="gf-num">{{ row.pages | number }}</td>
+              <td class="gf-num">{{ row.images | number }}</td>
+              <td class="gf-num">{{ row.indexed | number }}</td>
+              <td class="gf-num">{{ row.vectored | number }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  }
+
   @let config = details();
   @if (config) {
     <section class="gf-panel">
@@ -240,7 +280,7 @@
     "is it working" against "why did last night's produce half of what Tuesday's did".
   -->
   @if (runs().length) {
-    <section class="gf-panel gf-runs">
+    <section class="gf-panel gf-runs" id="runs">
       <h2 class="gf-panel-title"><mat-icon>history</mat-icon> Runs</h2>
 
       <!-- pages saved per run, oldest on the left. Hand drawn rather than a chart library: it is
@@ -251,7 +291,7 @@
             class="gf-bar"
             [class.gf-bar-on]="(selectedReport()?.startTime ?? 0) === run.startTime"
             (click)="selectReport(run)"
-            [matTooltip]="reportLabel(run) + ' — ' + run.produced.savedResourceCount + ' page(s)'"
+            [matTooltip]="reportLabel(run) + ': ' + run.produced.savedResourceCount + ' page(s)'"
           >
             <span
               class="gf-bar-fill"
@@ -272,6 +312,35 @@
             <div><dt>Images</dt><dd>{{ picked.produced.savedImageCount | number }}</dd></div>
             <div class="gf-defs-wide"><dt>Ended because</dt><dd>{{ picked.ending.reason }}</dd></div>
           </dl>
+
+          <!-- who actually did this run, not only what it added up to -->
+          @if (reportNodeRows().length) {
+            <table class="gf-table gf-node-table">
+              <thead>
+                <tr>
+                  <th>Node</th>
+                  <th class="gf-num">Handled</th>
+                  <th class="gf-share-cell">Share</th>
+                  <th class="gf-num">Pages</th>
+                  <th class="gf-num">Images</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of reportNodeRows(); track row.node) {
+                  <tr>
+                    <td class="gf-mono">{{ row.node }}</td>
+                    <td class="gf-num">{{ row.handled | number }}</td>
+                    <td class="gf-share-cell">
+                      <span class="gf-share-bar"><span [style.width.%]="row.share"></span></span>
+                      <span class="gf-share-value">{{ row.share | number: '1.0-0' }}%</span>
+                    </td>
+                    <td class="gf-num">{{ row.pages | number }}</td>
+                    <td class="gf-num">{{ row.images | number }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
 
           <!-- dispatched is the whole bar; what is missing from it is what nobody got to -->
           <div class="gf-seg-title">
@@ -298,21 +367,56 @@
             <p class="gf-panel-hint">{{ picked.ending.note }}</p>
           }
 
-          <!-- who did what. On one node this is one row and says nothing; on four it is the only
-               place that shows one of them sat idle -->
-          @if (nodeShare().length > 1) {
-            <div class="gf-seg-title">Pages by node</div>
-            <div class="gf-nodes">
-              @for (share of nodeShare(); track share.node) {
-                <div class="gf-node-row">
-                  <span class="gf-node-name">{{ share.node }}</span>
-                  <span class="gf-node-bar"><i [style.width.%]="share.percent"></i></span>
-                  <span class="gf-node-value">{{ share.value | number }}</span>
-                </div>
-              }
-            </div>
-          }
         </div>
+      }
+
+      <!-- Every run, not just the one the chart has open. A bar says how much a run saved and
+           nothing about how it ended, and "why did the crawl on the 14th stop early" is a
+           question about all of them at once. -->
+      @if (runs().length) {
+        <details class="gf-details" [open]="runs().length <= 3">
+          <summary>All runs, {{ runs().length }} of them</summary>
+          <div class="gf-table-scroll">
+            <table class="gf-plan-table gf-runs-table">
+              <thead>
+                <tr>
+                  <th>Started</th>
+                  <th>Action</th>
+                  <th>v</th>
+                  <th class="text-right">Pages</th>
+                  <th class="text-right">Images</th>
+                  <th class="text-right">Dispatched</th>
+                  <th class="text-right">Left over</th>
+                  <th>Ended because</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (run of runsNewestFirst(); track run.startTime) {
+                  <tr
+                    class="gf-runs-row"
+                    [class.gf-runs-row-on]="(selectedReport()?.startTime ?? 0) === run.startTime"
+                    [class.gf-runs-row-bad]="!run.ending.published"
+                    (click)="selectReport(run)"
+                  >
+                    <td class="gf-mono">{{ reportLabel(run) }}</td>
+                    <td>{{ run.action }}</td>
+                    <td>v{{ run.version }}</td>
+                    <td class="text-right">{{ run.produced.savedResourceCount | number }}</td>
+                    <td class="text-right">{{ run.produced.savedImageCount | number }}</td>
+                    <td class="text-right">{{ run.urls.dispatched | number }}</td>
+                    <td class="text-right">{{ run.urls.outstanding | number }}</td>
+                    <td class="gf-runs-why">
+                      @if (!run.ending.published) {
+                        <mat-icon class="gf-runs-warn" matTooltip="Nothing was published by this run">error_outline</mat-icon>
+                      }
+                      {{ run.ending.reason }}
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </details>
       }
     </section>
   }
@@ -353,40 +457,26 @@
           type="button"
           class="gf-mode"
           [class.gf-mode-on]="deleteMode() === 'entirely'"
-          [disabled]="!canDeleteEntirely()"
           (click)="setDeleteMode('entirely')"
         >
           <span class="gf-mode-title">Delete it entirely</span>
           <span class="gf-mode-hint">
-            @if (canDeleteEntirely()) {
-              The catalog goes too. Nothing is left to crawl, search or replay.
-            } @else {
-              Only when nothing is kept: set "keep the newest" to 0.
-            }
+            The catalog goes too. Nothing is left to crawl, search or replay.
           </span>
         </button>
       </div>
 
       <div class="gf-delete-controls">
-        <mat-form-field appearance="outline" class="w-40">
-          <mat-label>Keep the newest</mat-label>
-          <input
-            matInput
-            type="number"
-            min="0"
-            [ngModel]="keepLatest()"
-            (ngModelChange)="keepLatest.set($event); deletePlan.set(null); canDeleteEntirely() || setDeleteMode('empty')"
-          />
-        </mat-form-field>
-
         <div class="gf-chip-row">
+          <!-- Same shape as the category filter: these are a filter too, over what gets removed -->
           @for (layer of ['all', 'db', 'file', 'index', 'vector']; track layer) {
             <button
               type="button"
-              class="gf-pill"
+              class="gf-pill gf-cat"
               [class.gf-pill-on]="deleteLayers().includes($any(layer))"
               (click)="toggleLayer($any(layer))"
             >
+              <mat-icon>{{ getLayerIcon(layer) }}</mat-icon>
               {{ layer }}
             </button>
           }
@@ -421,9 +511,9 @@
               }
             </tbody>
           </table>
-          <button mat-flat-button color="warn" (click)="applyDelete()" [disabled]="busy()">
+          <button mat-flat-button class="gf-delete-apply" (click)="applyDelete()" [disabled]="busy()">
             <mat-icon>delete_forever</mat-icon>
-            {{ deleteMode() === 'entirely' && canDeleteEntirely() ? 'Delete entirely' : 'Empty it' }}
+            {{ deleteMode() === 'entirely' ? 'Delete entirely' : 'Empty it' }}
           </button>
         </div>
       }

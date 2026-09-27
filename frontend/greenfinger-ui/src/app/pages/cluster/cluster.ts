@@ -269,6 +269,30 @@ export class ClusterPage {
     }));
   });
 
+  /**
+   * The size of the cluster at its largest since this page was opened, which is what makes a
+   * member leaving visible. Membership alone cannot: a node that died before the page loaded
+   * leaves a cluster that simply looks smaller, and nothing says one is missing.
+   */
+  private readonly peakMembers = signal(0);
+
+  /**
+   * Shape rather than trouble: how this installation is put together. Red is for what is wrong,
+   * and one node is the ordinary installation -- run.conf ships GF_NODES=1 -- so saying it in the
+   * error colour tells everyone running the default that something has broken.
+   */
+  protected readonly notes = computed<string[]>(() => {
+    const status = this.status();
+    if (!status) {
+      return [];
+    }
+    const notes: string[] = [];
+    if (status.node.memberCount < 2 && this.peakMembers() < 2) {
+      notes.push('This node is alone. A crawl will run, but entirely here.');
+    }
+    return notes;
+  });
+
   /** Anything here is work that was lost, or a node that cannot do any. */
   protected readonly warnings = computed<string[]>(() => {
     const status = this.status();
@@ -276,8 +300,12 @@ export class ClusterPage {
       return [];
     }
     const warnings: string[] = [];
-    if (status.node.memberCount < 2) {
-      warnings.push('This node is alone. A crawl will run, but entirely here.');
+    const peak = this.peakMembers();
+    if (peak > status.node.memberCount) {
+      const missing = peak - status.node.memberCount;
+      warnings.push(
+        `${missing} node(s) left the cluster: ${peak} were here, ${status.node.memberCount} answer now. A crawl that was sharing the work with them is short of hands.`,
+      );
     }
     if (status.node.onBreak) {
       warnings.push('This node is resting: still a member, but not taking or sending work.');
@@ -444,6 +472,7 @@ export class ClusterPage {
     this.tpsHistory.set([]);
     this.channelHistory.set({});
     this.status.set(null);
+    this.peakMembers.set(0);
     this.settings.set(null);
     this.loading.set(true);
     this.start();
@@ -478,6 +507,7 @@ export class ClusterPage {
       .subscribe({
         next: (status) => {
           this.status.set(status);
+          this.peakMembers.update((peak) => Math.max(peak, status.node.memberCount));
           this.remember(status);
           this.error.set(null);
           this.loading.set(false);

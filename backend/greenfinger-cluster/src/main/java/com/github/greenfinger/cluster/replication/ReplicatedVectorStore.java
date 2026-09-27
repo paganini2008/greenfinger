@@ -21,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import com.github.greenfinger.utils.JsonUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.greenfinger.output.vector.VectorHit;
@@ -51,7 +52,7 @@ public class ReplicatedVectorStore implements VectorStore {
 
     private final VectorStore delegate;
     private final ReplicationSink channel;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = JsonUtils.MAPPER;
 
     public ReplicatedVectorStore(VectorStore delegate, ReplicationSink channel) {
         this.delegate = delegate;

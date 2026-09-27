@@ -10,7 +10,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Observable, Subscription, interval, startWith, switchMap } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import {
@@ -60,6 +60,7 @@ export class MonitorPage {
   private readonly notify = inject(NotifyService);
   private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   protected readonly auth = inject(AuthService);
 
   protected readonly summary = signal<CatalogSummary | null>(null);
@@ -77,7 +78,6 @@ export class MonitorPage {
    * not a thing anybody means.
    */
   protected readonly deleteMode = signal<'empty' | 'entirely'>('empty');
-  protected readonly keepLatest = signal<number>(3);
 
   private poll?: Subscription;
 
@@ -109,19 +109,6 @@ export class MonitorPage {
     Math.max(1, ...this.runs().map((r) => r.produced?.savedResourceCount ?? 0)),
   );
 
-  /** What each node contributed to the selected run, largest first. */
-  protected readonly nodeShare = computed(() => {
-    const report = this.selectedReport() ?? this.runs()[this.runs().length - 1];
-    const saved = report?.byNode?.['savedResourceCount'];
-    if (!saved) {
-      return [];
-    }
-    const total = Object.values(saved).reduce((sum, value) => sum + value, 0) || 1;
-    return Object.entries(saved)
-      .map(([node, value]) => ({ node, value, percent: Math.round((value / total) * 100) }))
-      .sort((a, b) => b.value - a.value);
-  });
-
   /** Dispatched is the whole; the segments are what became of them. The question is the ratio. */
   protected readonly urlSegments = computed(() => {
     const report = this.selectedReport() ?? this.runs()[this.runs().length - 1];
@@ -136,6 +123,24 @@ export class MonitorPage {
     return segments
       .filter((segment) => segment.value > 0)
       .map((segment) => ({ ...segment, percent: (segment.value / dispatched) * 100 }));
+  });
+
+  /**
+   * The same counters again, this time per node.
+   *
+   * <p>
+   * The totals say what the crawl has done. They cannot say whether the work is being shared: one
+   * node fetching everything looks exactly like four pulling evenly. The server sends counter and
+   * then node, which is the wrong way round for a table, so it is turned here.
+   */
+  protected readonly nodeRows = computed(() => {
+    return toNodeRows(this.summary()?.perNode);
+  });
+
+  /** The same transposition for a finished run, whose report keeps the counters the same way. */
+  protected readonly reportNodeRows = computed(() => {
+    const picked = this.selectedReport() ?? this.runs()[this.runs().length - 1];
+    return toNodeRows(picked?.byNode);
   });
 
   protected readonly counters = computed(() => {
@@ -288,7 +293,7 @@ export class MonitorPage {
     }
     const inARow = reason.match(/(\d+) fetch\(es\) in a row came back with nothing \(last: ([^)]+)\)/);
     if (inARow) {
-      return `the site stopped serving this crawler — ${inARow[1]} fetches in a row came back with ${inARow[2]}`;
+      return `the site stopped serving this crawler, ${inARow[1]} fetches in a row came back with ${inARow[2]}`;
     }
     if (/has not moved for|never dispatched/i.test(reason)) {
       return 'it stood still long enough to be wound up, so a node had probably stopped answering';
@@ -372,10 +377,31 @@ export class MonitorPage {
         if (!this.selectedReport() && reports.length) {
           this.selectedReport.set(reports[0]);
         }
+        this.scrollToFragment();
       },
       error: () => undefined,
     });
   }
+
+  /**
+   * Arriving at #runs from the catalog card lands on the reports rather than at the top of a page
+   * whose first screen is the counters. Done here rather than by the router's anchor scrolling:
+   * the section does not exist until the reports have been read, and by then the router has long
+   * since given up looking for it.
+   */
+  private scrollToFragment(): void {
+    const fragment = this.route.snapshot.fragment;
+    if (!fragment) {
+      return;
+    }
+    // after this change has been rendered, which is when the element is there to scroll to
+    queueMicrotask(() =>
+      document.getElementById(fragment)?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+    );
+  }
+
+  /** The chart reads oldest first, a table reads newest first: the last run is the interesting one. */
+  protected readonly runsNewestFirst = computed(() => [...this.runs()].reverse());
 
   protected selectReport(report: CrawlReport): void {
     this.selectedReport.set(report);
@@ -470,25 +496,38 @@ export class MonitorPage {
     this.deletePlan.set(null);
   }
 
+  /** One icon per layer, the same lookup the category filter uses for its own fixed set. */
+  private static readonly LAYER_ICONS: Record<string, string> = {
+    all: 'select_all',
+    db: 'storage',
+    file: 'folder',
+    index: 'manage_search',
+    vector: 'auto_awesome',
+  };
+
+  protected getLayerIcon(layer: string): string {
+    return MonitorPage.LAYER_ICONS[layer] ?? 'layers';
+  }
+
   protected setDeleteMode(mode: 'empty' | 'entirely'): void {
     this.deleteMode.set(mode);
     this.deletePlan.set(null);
   }
 
-  /** Removing the catalog itself is only offered when no version is being kept. */
-  protected readonly canDeleteEntirely = computed(() => this.keepLatest() === 0);
-
   /**
-   * Keeping nothing names no versions at all -- the api reads that as "all of it", where
-   * keepLatest 0 would name each one and be refused for the version search is serving. Purge is
-   * what separates emptying from deleting.
+   * Both modes take every version, so neither names one: the api reads no version at all as "all
+   * of it". Purge is the only difference, and it is what separates emptying from deleting.
+   *
+   * <p>
+   * There used to be a "keep the newest" field here, which contradicted both cards -- the one
+   * saying "removes every version" quietly kept three -- and sent the string "null" when it was
+   * cleared. Trimming to the newest few is a different operation and lives at the prompt, where
+   * `delete --keep-latest=3` says so.
    */
   private deleteOptions(dryRun: boolean) {
-    const wholeCatalog = this.keepLatest() === 0;
     return {
-      ...(wholeCatalog ? {} : { keepLatest: this.keepLatest() }),
       layers: this.deleteLayers(),
-      ...(wholeCatalog && this.deleteMode() === 'entirely' ? { purge: true } : {}),
+      ...(this.deleteMode() === 'entirely' ? { purge: true } : {}),
       dryRun,
     };
   }
@@ -516,18 +555,18 @@ export class MonitorPage {
   protected applyDelete(): void {
     const lines = this.deletePlan() ?? [];
     const total = lines.reduce((sum, line) => sum + line.count, 0);
-    const entirely = this.deleteMode() === 'entirely' && this.canDeleteEntirely();
+    const entirely = this.deleteMode() === 'entirely';
     const data: ConfirmData = {
       title: entirely ? `Delete '${this.ref()}' entirely?` : `Empty '${this.ref()}'?`,
       message:
-        `${total} item(s) will be removed from ${this.deleteLayers().join(', ')}, keeping the ` +
-        `${this.keepLatest()} most recent version(s).\n\n` +
+        `${total} item(s) will be removed from ${this.deleteLayers().join(', ')}. ` +
+        `Every version goes, not only the oldest.\n\n` +
         (entirely
           ? 'The catalog goes too, so there is nothing left to crawl, search or replay.\n\n'
           : 'The catalog itself stays, defined and with nothing crawled, ready to be crawled ' +
             'again.\n\n') +
-        'This cannot be undone. The index and the vectors can be replayed from the database; ' +
-        'files can only be fetched again from the site, and only while it still serves them.',
+        'This cannot be undone. The index and the vectors can be replayed from the database. ' +
+        'Files can only be fetched again from the site, and only while it still serves them.',
       confirmLabel: entirely ? 'Delete entirely' : 'Empty it',
       destructive: true,
     };
@@ -576,4 +615,38 @@ export class MonitorPage {
   protected edit(): void {
     this.router.navigate(['/catalogs', this.ref(), 'edit']);
   }
+}
+
+/**
+ * Counter and then node, which is how both the live state manager and the run report keep it,
+ * turned into one row per node. The share is of urls handled, because that is the number that
+ * answers whether the work was spread or whether one node did all of it.
+ */
+function toNodeRows(byCounter: Record<string, Record<string, number>> | null | undefined) {
+  if (!byCounter) {
+    return [];
+  }
+  const byNode = new Map<string, Record<string, number>>();
+  for (const [counter, nodes] of Object.entries(byCounter)) {
+    for (const [node, value] of Object.entries(nodes ?? {})) {
+      const row = byNode.get(node) ?? {};
+      row[counter] = value;
+      byNode.set(node, row);
+    }
+  }
+  const handledTotal = [...byNode.values()].reduce(
+    (sum, row) => sum + (row['handledUrlCount'] ?? 0),
+    0,
+  );
+  return [...byNode.entries()]
+    .map(([node, row]) => ({
+      node,
+      handled: row['handledUrlCount'] ?? 0,
+      pages: row['savedResourceCount'] ?? 0,
+      images: row['savedImageCount'] ?? 0,
+      indexed: row['indexedResourceCount'] ?? 0,
+      vectored: row['vectoredResourceCount'] ?? 0,
+      share: handledTotal > 0 ? ((row['handledUrlCount'] ?? 0) / handledTotal) * 100 : 0,
+    }))
+    .sort((a, b) => b.handled - a.handled);
 }

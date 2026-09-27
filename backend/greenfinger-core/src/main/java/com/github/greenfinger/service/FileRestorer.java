@@ -37,8 +37,8 @@ import com.github.greenfinger.core.model.Image;
 import com.github.greenfinger.core.output.BlobStore;
 import com.github.greenfinger.core.record.ResourceRecord;
 import com.github.greenfinger.core.record.ResourceRecordStore;
-import com.github.greenfinger.core.utils.BeanLifeCycleUtils;
-import com.github.greenfinger.core.utils.CharsetUtils;
+import com.github.greenfinger.utils.BeanLifeCycleUtils;
+import com.github.greenfinger.utils.CharsetUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 

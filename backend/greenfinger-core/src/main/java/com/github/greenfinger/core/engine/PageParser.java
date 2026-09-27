@@ -24,6 +24,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import com.github.greenfinger.core.document.DocumentContentParsers;
 import org.jsoup.select.Elements;
 import com.github.greenfinger.core.WebCrawlerProperties;
 import java.net.URI;
@@ -120,6 +121,64 @@ public class PageParser {
         }
         return total;
     }
+
+    /**
+     * The files this page links to: the handbook as a pdf, the price list as a spreadsheet.
+     *
+     * <p>
+     * A site is not only its html, and a crawl that follows {@code <a>} into more html walks past
+     * all of it. These are not followed as pages -- that is what AssetUrlPathAcceptor refuses, and
+     * a pdf fetched as a page is a wasted request -- they are recorded as what they are.
+     *
+     * <p>
+     * Recorded, not fetched. Reading one is
+     * {@link com.github.greenfinger.core.document.DocumentContentParser}, and only txt and
+     * markdown have an implementation that ships.
+     */
+    public List<DownloadedFile> extractDownloadedFiles(Document document) {
+        List<DownloadedFile> files = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+        for (Element element : document.select("a[href]")) {
+            String href = element.absUrl("href");
+            if (StringUtils.isBlank(href) || !seen.add(href)) {
+                continue;
+            }
+            String fileType = fileTypeOf(href);
+            if (DocumentContentParsers.DOCUMENT_TYPES.contains(fileType)) {
+                files.add(new DownloadedFile(href, fileType, StringUtils.trimToEmpty(
+                        element.text())));
+            }
+        }
+        return files;
+    }
+
+    /**
+     * The extension of the path, and only of the path: {@code report.pdf?v=2} is a pdf and
+     * {@code /download?file=x.pdf} is a page that hands one out.
+     */
+    public static String fileTypeOf(String url) {
+        String path = StringUtils.substringBefore(StringUtils.substringBefore(url, "#"), "?");
+        String last = StringUtils.substringAfterLast(path, "/");
+        String extension = last.contains(".")
+                ? StringUtils.substringAfterLast(last, ".").toLowerCase()
+                : "";
+        return extension.isEmpty() || PAGE_EXTENSIONS.contains(extension)
+                ? CrawlTask.FILE_TYPE_HTML
+                : extension;
+    }
+
+    /**
+     * Extensions that are a page whatever they are called.
+     *
+     * <p>
+     * A server-side engine puts its own name on the url -- {@code .php}, {@code .jsp},
+     * {@code .aspx}, {@code .do} -- and what comes back is html. Reading the extension literally
+     * would make "php" a file type, and every one of those pages would be looking for a parser
+     * that will never exist. No extension at all is a page too, which is most of the modern web.
+     */
+    static final Set<String> PAGE_EXTENSIONS = Set.of("html", "htm", "xhtml", "shtml", "phtml",
+            "php", "php3", "php4", "php5", "jsp", "jspx", "asp", "aspx", "ashx", "asmx", "cfm",
+            "cgi", "pl", "py", "rb", "do", "action", "jhtml", "xht");
 
     public List<ImageRef> extractImages(Document document) {
         List<ImageRef> images = new ArrayList<>();

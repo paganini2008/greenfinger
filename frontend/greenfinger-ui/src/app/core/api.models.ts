@@ -23,9 +23,9 @@ export type ContentMode = 'text' | 'text+image';
 
 /** One picture per output, so a card says where its pages went without a line of text. */
 export const OUTPUT_MARKS: Record<OutputType, { icon: string; label: string; hint: string }> = {
-  file: { icon: 'folder', label: 'Files', hint: 'Files -- pages and images kept on disk or in MinIO' },
-  index: { icon: 'manage_search', label: 'Index', hint: 'Index -- searchable by words' },
-  vector: { icon: 'scatter_plot', label: 'Vectors', hint: 'Vectors -- searchable by meaning' },
+  file: { icon: 'folder', label: 'Files', hint: 'Files: pages and images kept on disk or in MinIO' },
+  index: { icon: 'manage_search', label: 'Index', hint: 'Index: searchable by words' },
+  vector: { icon: 'scatter_plot', label: 'Vectors', hint: 'Vectors: searchable by meaning' },
 };
 
 export type RunningState = 'none' | 'crawl' | 'update' | 'rebuild';
@@ -157,6 +157,11 @@ export interface CatalogDetails {
 /** The counters the Monitor page draws: live while a crawl runs, the last run's otherwise. */
 export interface CatalogSummary {
   live: boolean;
+  /**
+   * Counter name, then node, while a crawl is running. Null once it is over: the run report keeps
+   * the totals only.
+   */
+  perNode?: Record<string, Record<string, number>> | null;
   catalogId: string;
   catalogName: string;
   version: number;

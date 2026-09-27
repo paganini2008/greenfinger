@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import org.rocksdb.RocksIterator;
+import com.github.greenfinger.utils.JsonUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.greenfinger.core.component.dedup.RocksDbStore;
 import lombok.extern.slf4j.Slf4j;
@@ -57,7 +58,7 @@ public class RocksDbCrawlFrontier implements CrawlFrontier {
 
     private static final byte[] PRESENT = new byte[] {1};
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = JsonUtils.MAPPER;
     private final RocksDbStore store;
     private final AtomicLong writeSequence = new AtomicLong(0);
     private final AtomicLong outstanding = new AtomicLong(0);

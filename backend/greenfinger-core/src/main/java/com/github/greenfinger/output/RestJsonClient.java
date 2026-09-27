@@ -17,13 +17,14 @@
 package com.github.greenfinger.output;
 
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.Base64;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.io.entity.StringEntity;
+import com.github.greenfinger.utils.HttpUtils;
+import com.github.greenfinger.utils.JsonUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.greenfinger.core.WebCrawlerException;
@@ -45,9 +46,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
  */
 public class RestJsonClient {
 
-    private final HttpClient httpClient;
-    private final ObjectMapper objectMapper = new ObjectMapper();
-    private final Duration readTimeout;
+    private final ObjectMapper objectMapper = JsonUtils.MAPPER;
+    private final int readTimeout;
     private final String authorization;
 
     /**
@@ -71,11 +71,10 @@ public class RestJsonClient {
 
     public RestJsonClient(int connectTimeout, int readTimeout, String authorization,
             String authorizationHeader) {
+        // connectTimeout is no longer this client's to set: one shared client means one connect
+        // timeout for the process, and it is configured with the rest of the http settings
         this.authorizationHeader = authorizationHeader;
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofMillis(connectTimeout))
-                .followRedirects(HttpClient.Redirect.NORMAL).build();
-        this.readTimeout = Duration.ofMillis(readTimeout);
+        this.readTimeout = readTimeout;
         this.authorization = authorization;
     }
 
@@ -88,20 +87,20 @@ public class RestJsonClient {
                 .encodeToString(token.getBytes(StandardCharsets.UTF_8));
     }
 
-    public ObjectMapper objectMapper() {
+    public ObjectMapper getObjectMapper() {
         return objectMapper;
     }
 
     public JsonNode get(String url) {
-        return send(request(url).GET().build(), url);
+        return send(request("GET", url), url);
     }
 
     public JsonNode put(String url, Object body) {
-        return send(request(url).PUT(bodyOf(body)).build(), url);
+        return send(withBody(request("PUT", url), body), url);
     }
 
     public JsonNode post(String url, Object body) {
-        return send(request(url).POST(bodyOf(body)).build(), url);
+        return send(withBody(request("POST", url), body), url);
     }
 
     /**
@@ -109,25 +108,22 @@ public class RestJsonClient {
      * a request that carries one, even an empty object.
      */
     public JsonNode post(String url) {
-        return send(request(url).POST(HttpRequest.BodyPublishers.noBody()).build(), url);
+        return send(request("POST", url), url);
     }
 
     /**
      * Elasticsearch's bulk api takes newline-delimited json rather than a json document.
      */
     public JsonNode postNdjson(String url, String ndjson) {
-        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(url))
-                .timeout(readTimeout).header("Content-Type", "application/x-ndjson")
-                .header("Accept", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(ndjson, StandardCharsets.UTF_8));
-        if (StringUtils.isNotBlank(authorization)) {
-            builder = builder.header(authorizationHeader, authorization);
-        }
-        return send(builder.build(), url);
+        HttpUriRequestBase request = request("POST", url);
+        request.setEntity(new StringEntity(ndjson,
+                ContentType.create("application/x-ndjson", StandardCharsets.UTF_8)));
+        request.setHeader("Content-Type", "application/x-ndjson");
+        return send(request, url);
     }
 
     public JsonNode delete(String url) {
-        return send(request(url).DELETE().build(), url);
+        return send(request("DELETE", url), url);
     }
 
     /**
@@ -135,14 +131,7 @@ public class RestJsonClient {
      * refuses to attach it, so the method is set explicitly.
      */
     public JsonNode delete(String url, Object body) {
-        try {
-            return send(request(url)
-                    .method("DELETE", HttpRequest.BodyPublishers
-                            .ofString(objectMapper.writeValueAsString(body)))
-                    .header("Content-Type", "application/json").build(), url);
-        } catch (JsonProcessingException e) {
-            throw new WebCrawlerException("Cannot serialise request body for " + url, e);
-        }
+        return send(withBody(request("DELETE", url), body), url);
     }
 
     /**
@@ -150,11 +139,11 @@ public class RestJsonClient {
      */
     public boolean exists(String url) {
         try {
-            HttpResponse<String> response = execute(request(url).GET().build());
-            if (response.statusCode() == 404) {
+            HttpUtils.Reply reply = HttpUtils.send(request("GET", url), readTimeout);
+            if (reply.status() == 404) {
                 return false;
             }
-            checkStatus(response, url);
+            checkStatus(reply, url);
             return true;
         } catch (WebCrawlerException e) {
             throw e;
@@ -163,29 +152,31 @@ public class RestJsonClient {
         }
     }
 
-    private HttpRequest.Builder request(String url) {
-        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(url)).timeout(readTimeout)
-                .header("Content-Type", "application/json").header("Accept", "application/json");
+    private HttpUriRequestBase request(String method, String url) {
+        HttpUriRequestBase request = new HttpUriRequestBase(method, URI.create(url));
+        request.setHeader("Content-Type", "application/json");
+        request.setHeader("Accept", "application/json");
         if (StringUtils.isNotBlank(authorization)) {
-            builder = builder.header(authorizationHeader, authorization);
+            request.setHeader(authorizationHeader, authorization);
         }
-        return builder;
+        return request;
     }
 
-    private HttpRequest.BodyPublisher bodyOf(Object body) {
+    private HttpUriRequestBase withBody(HttpUriRequestBase request, Object body) {
         try {
-            return HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body),
-                    StandardCharsets.UTF_8);
-        } catch (Exception e) {
+            request.setEntity(new StringEntity(objectMapper.writeValueAsString(body),
+                    ContentType.APPLICATION_JSON));
+            return request;
+        } catch (JsonProcessingException e) {
             throw new WebCrawlerException("Cannot serialise request body", e);
         }
     }
 
-    private JsonNode send(HttpRequest request, String url) {
+    private JsonNode send(HttpUriRequestBase request, String url) {
         try {
-            HttpResponse<String> response = execute(request);
-            checkStatus(response, url);
-            String body = response.body();
+            HttpUtils.Reply reply = HttpUtils.send(request, readTimeout);
+            checkStatus(reply, url);
+            String body = new String(reply.body(), StandardCharsets.UTF_8);
             return StringUtils.isNotBlank(body) ? objectMapper.readTree(body)
                     : objectMapper.createObjectNode();
         } catch (WebCrawlerException e) {
@@ -195,15 +186,10 @@ public class RestJsonClient {
         }
     }
 
-    private HttpResponse<String> execute(HttpRequest request) throws Exception {
-        return httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-    }
-
-    private void checkStatus(HttpResponse<String> response, String url) {
-        if (response.statusCode() / 100 != 2) {
-            throw new WebCrawlerException(
-                    "Request to " + url + " returned " + response.statusCode() + ": "
-                            + StringUtils.abbreviate(response.body(), 500));
+    private void checkStatus(HttpUtils.Reply reply, String url) {
+        if (!reply.isOk()) {
+            throw new WebCrawlerException("Request to " + url + " returned " + reply.status() + ": "
+                    + StringUtils.abbreviate(new String(reply.body(), StandardCharsets.UTF_8), 500));
         }
     }
 

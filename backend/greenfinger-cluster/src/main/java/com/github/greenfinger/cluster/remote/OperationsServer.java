@@ -19,7 +19,7 @@ package com.github.greenfinger.cluster.remote;
 import com.github.greenfinger.cluster.leader.LeaderGateway;
 import com.github.greenfinger.core.ManagedBeanLifeCycle;
 import com.github.greenfinger.core.model.Catalog;
-import com.github.greenfinger.service.ops.GreenfingerOperations;
+import com.github.greenfinger.service.ops.UIOperations;
 
 /**
  * What a terminal elsewhere in the cluster may ask for, registered on the leader channel. The
@@ -33,9 +33,9 @@ import com.github.greenfinger.service.ops.GreenfingerOperations;
 public class OperationsServer implements ManagedBeanLifeCycle {
 
     private final LeaderGateway gateway;
-    private final GreenfingerOperations operations;
+    private final UIOperations operations;
 
-    public OperationsServer(LeaderGateway gateway, GreenfingerOperations operations) {
+    public OperationsServer(LeaderGateway gateway, UIOperations operations) {
         this.gateway = gateway;
         this.operations = operations;
     }
@@ -55,16 +55,16 @@ public class OperationsServer implements ManagedBeanLifeCycle {
         gateway.handle(Ops.VERSIONS, Ops.Ref.class, ref -> operations.versions(ref.idOrName()));
         gateway.handle(Ops.REPORT, Ops.ReportAsk.class,
                 ask -> operations.report(ask.idOrName(), ask.version()));
-        gateway.handle(Ops.START, GreenfingerOperations.StartAsk.class,
+        gateway.handle(Ops.START, UIOperations.StartAsk.class,
                 ask -> new Ops.Said(true, operations.start(ask)));
         gateway.handle(Ops.INTERRUPT, Ops.Ref.class,
                 ref -> new Ops.Said(operations.interrupt(ref.idOrName()), null));
         gateway.handle(Ops.LIVE, Ops.LiveAsk.class,
                 ask -> operations.live(ask.catalogId(), ask.perNode()));
-        gateway.handle(Ops.DELETE, GreenfingerOperations.DeleteAsk.class,
+        gateway.handle(Ops.DELETE, UIOperations.DeleteAsk.class,
                 ask -> new Ops.Lines(operations.delete(ask)));
-        gateway.handle(Ops.REPLAY, GreenfingerOperations.ReplayAsk.class, operations::replay);
-        gateway.handle(Ops.SEARCH, GreenfingerOperations.SearchAsk.class, operations::search);
+        gateway.handle(Ops.REPLAY, UIOperations.ReplayAsk.class, operations::replay);
+        gateway.handle(Ops.SEARCH, UIOperations.SearchAsk.class, operations::search);
         gateway.handle(Ops.INDEX_INFO, Void.class, ignored -> operations.indexInfo());
         gateway.handle(Ops.VECTOR_INFO, Void.class, ignored -> operations.vectorInfo());
     }

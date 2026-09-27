@@ -23,7 +23,7 @@ import com.github.greenfinger.core.ManagedBeanLifeCycle;
 import com.github.greenfinger.core.WebCrawlerConstants;
 import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.core.engine.CrawlTask;
-import com.github.greenfinger.core.utils.UrlUtils;
+import com.github.greenfinger.utils.UrlUtils;
 import crawlercommons.robots.BaseRobotRules;
 import crawlercommons.robots.SimpleRobotRulesParser;
 import lombok.SneakyThrows;
@@ -58,7 +58,7 @@ public class RobotRuleUrlPathAcceptor implements UrlPathAcceptor, ManagedBeanLif
     public void afterPropertiesSet() throws Exception {
         InputStream robotsTxtStream = null;
         try {
-            robotsTxtStream = UrlUtils.openStream(robotsTxtUrl, 10000, 60000);
+            robotsTxtStream = UrlUtils.openStream(robotsTxtUrl, 60000);
             byte[] content = robotsTxtStream.readAllBytes();
             rules = new SimpleRobotRulesParser().parseContent(robotsTxtUrl.toString(), content,
                     "text/plain", WebCrawlerConstants.USER_AGENTS);

@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
+import com.github.greenfinger.utils.JsonUtils;
 import com.chaconneai.openspreader.cluster.SelfRegisteringListener;
 import com.chaconneai.spreader.GossipCluster;
 import com.chaconneai.spreader.Node;
@@ -60,7 +61,7 @@ import lombok.extern.slf4j.Slf4j;
 public class LeaderChannel
         implements LeaderGateway, GossipListener, SelfRegisteringListener, ManagedBeanLifeCycle {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = JsonUtils.MAPPER;
 
     private final GossipCluster cluster;
     private final long timeoutMs;

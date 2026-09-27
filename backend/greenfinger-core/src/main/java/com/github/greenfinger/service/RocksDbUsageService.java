@@ -28,7 +28,7 @@ import java.util.stream.Stream;
 import com.github.greenfinger.core.WebCrawlerProperties;
 import com.github.greenfinger.core.component.dedup.RocksDbStore;
 import com.github.greenfinger.core.engine.CrawlRegistry;
-import com.github.greenfinger.core.utils.BeanLifeCycleUtils;
+import com.github.greenfinger.utils.BeanLifeCycleUtils;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;

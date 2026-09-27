@@ -32,9 +32,9 @@ import com.github.greenfinger.core.model.Catalog;
 import com.github.greenfinger.core.model.DeleteLayer;
 import com.github.greenfinger.core.model.OutputType;
 import com.github.greenfinger.service.CrawlerTestApplication;
-import com.github.greenfinger.service.ops.GreenfingerOperations.DeleteAsk;
-import com.github.greenfinger.service.ops.GreenfingerOperations.Overview;
-import com.github.greenfinger.service.ops.GreenfingerOperations.SearchAsk;
+import com.github.greenfinger.service.ops.UIOperations.DeleteAsk;
+import com.github.greenfinger.service.ops.UIOperations.Overview;
+import com.github.greenfinger.service.ops.UIOperations.SearchAsk;
 
 /**
  * What a face asks for, answered by the services in this process.
@@ -172,7 +172,7 @@ class LocalOperationsTest {
     @DisplayName("Versions and reports of a catalog that has never run")
     void versionsAndReportsOfANewCatalog() {
         CatalogSnapshot saved = save("https://books.toscrape.com", "books");
-        GreenfingerOperations.Versions versions = operations.versions(saved.getId());
+        UIOperations.Versions versions = operations.versions(saved.getId());
         assertThat(versions.catalogId()).isEqualTo(saved.getId());
         assertThat(versions.catalogName()).isEqualTo("books");
         assertThat(versions.rows()).isNotNull();
@@ -224,12 +224,12 @@ class LocalOperationsTest {
     @Test
     @DisplayName("The index and the vector store say what they are, even when empty")
     void storesDescribeThemselves() {
-        GreenfingerOperations.Info index = operations.indexInfo();
+        UIOperations.Info index = operations.indexInfo();
         assertThat(index.about()).isNotEmpty();
         assertThat(index.counts()).isEmpty();
 
-        GreenfingerOperations.Info vectors = operations.vectorInfo();
-        assertThat(vectors.about()).extracting(GreenfingerOperations.InfoRow::name)
+        UIOperations.Info vectors = operations.vectorInfo();
+        assertThat(vectors.about()).extracting(UIOperations.InfoRow::name)
                 .contains("Store", "Text collection");
     }
 

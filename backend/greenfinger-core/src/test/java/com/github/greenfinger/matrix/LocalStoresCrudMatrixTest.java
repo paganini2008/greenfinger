@@ -38,7 +38,7 @@ import com.github.greenfinger.core.output.SearchRequest;
 import com.github.greenfinger.core.output.SearchResponse;
 import com.github.greenfinger.core.output.Searcher;
 import com.github.greenfinger.core.record.ResourceRecordStore;
-import com.github.greenfinger.core.utils.BeanLifeCycleUtils;
+import com.github.greenfinger.utils.BeanLifeCycleUtils;
 import com.github.greenfinger.output.OutputFactory;
 import com.github.greenfinger.output.OutputProperties;
 import com.github.greenfinger.output.vector.VectorStore;

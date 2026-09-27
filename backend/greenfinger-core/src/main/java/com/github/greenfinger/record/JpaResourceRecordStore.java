@@ -36,8 +36,8 @@ import com.github.greenfinger.core.output.FileLayout;
 import com.github.greenfinger.core.record.ResourceRecord;
 import com.github.greenfinger.core.record.ResourceRecordStore;
 import com.github.greenfinger.core.record.ResourceRecordStore.PageState;
-import com.github.greenfinger.core.utils.HashUtils;
-import com.github.greenfinger.core.utils.UuidUtils;
+import com.github.greenfinger.utils.HashUtils;
+import com.github.greenfinger.utils.UuidUtils;
 import lombok.RequiredArgsConstructor;
 import java.util.Objects;
 

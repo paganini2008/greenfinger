@@ -60,7 +60,8 @@ import com.github.greenfinger.service.CatalogAdminService;
         "greenfinger.dedup.content.directory=${java.io.tmpdir}/gf-cli/content",
         "greenfinger.output.index.lucene.directory=${java.io.tmpdir}/gf-cli-lucene",
         "greenfinger.output.vector.lucene.directory=${java.io.tmpdir}/gf-cli-lucene-vector",
-        "greenfinger.embedding.preload=false"})
+        "greenfinger.embedding.local.preload-text-model=false",
+        "greenfinger.embedding.local.preload-image-model=false"})
 class CommandsIntegrationTest {
 
     @Autowired

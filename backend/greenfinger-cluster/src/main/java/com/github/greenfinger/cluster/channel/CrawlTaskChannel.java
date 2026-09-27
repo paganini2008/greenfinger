@@ -25,6 +25,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import com.github.greenfinger.utils.JsonUtils;
 import com.chaconneai.openspreader.cluster.SelfRegisteringListener;
 import com.chaconneai.spreader.GossipCluster;
 import com.chaconneai.spreader.Node;
@@ -70,7 +71,7 @@ import org.slf4j.LoggerFactory;
 public class CrawlTaskChannel extends BufferedGossipListener
         implements SelfRegisteringListener {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = JsonUtils.MAPPER;
 
     /** How often staged urls are offered to a run that may have opened since. */
     private static final long STAGING_SWEEP_MS = 200L;

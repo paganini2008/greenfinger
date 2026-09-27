@@ -35,7 +35,7 @@ import com.github.greenfinger.core.model.OutputType;
 import com.github.greenfinger.service.DeleteReport;
 import com.github.greenfinger.service.ops.CatalogSnapshot;
 import com.github.greenfinger.service.ops.DashboardSnapshot;
-import com.github.greenfinger.service.ops.GreenfingerOperations;
+import com.github.greenfinger.service.ops.UIOperations;
 
 /**
  * The terminal asking, and a crawler answering, with json in between.
@@ -53,7 +53,7 @@ import com.github.greenfinger.service.ops.GreenfingerOperations;
 class RemoteOperationsTest {
 
     private RecordingOperations crawler;
-    private GreenfingerOperations terminal;
+    private UIOperations terminal;
 
     @BeforeEach
     void wire() throws Exception {
@@ -76,15 +76,15 @@ class RemoteOperationsTest {
         assertThat(terminal.deleteCatalog("abc")).isEqualTo("books");
         assertThat(terminal.versions("abc").catalogName()).isEqualTo("books");
         assertThat(terminal.report("abc", 2)).containsEntry("version", 2);
-        assertThat(terminal.start(new GreenfingerOperations.StartAsk("crawl", "abc", null, 4)))
+        assertThat(terminal.start(new UIOperations.StartAsk("crawl", "abc", null, 4)))
                 .isEqualTo("crawl of 'books' started");
         assertThat(terminal.interrupt("abc")).isTrue();
         assertThat(terminal.live("abc", true).dashboard().getSavedResourceCount()).isEqualTo(7L);
-        assertThat(terminal.delete(new GreenfingerOperations.DeleteAsk("abc", 1, null, false,
+        assertThat(terminal.delete(new UIOperations.DeleteAsk("abc", 1, null, false,
                 false, EnumSet.of(DeleteLayer.DB), true, false))).hasSize(1);
-        assertThat(terminal.replay(new GreenfingerOperations.ReplayAsk("abc", 1,
+        assertThat(terminal.replay(new UIOperations.ReplayAsk("abc", 1,
                 Set.of(OutputType.INDEX))).replayed()).isEqualTo(12L);
-        assertThat(terminal.search(new GreenfingerOperations.SearchAsk("books", null, 10, "words"))
+        assertThat(terminal.search(new UIOperations.SearchAsk("books", null, 10, "words"))
                 .hits()).hasSize(1);
         assertThat(terminal.indexInfo().about()).hasSize(1);
         assertThat(terminal.vectorInfo().counts()).hasSize(1);
@@ -93,12 +93,12 @@ class RemoteOperationsTest {
     @Test
     @DisplayName("What the terminal sends is what the crawler receives")
     void argumentsArriveIntact() {
-        terminal.start(new GreenfingerOperations.StartAsk("merge", "abc", "https://x/y", 8));
+        terminal.start(new UIOperations.StartAsk("merge", "abc", "https://x/y", 8));
         assertThat(crawler.started.verb()).isEqualTo("merge");
         assertThat(crawler.started.from()).isEqualTo("https://x/y");
         assertThat(crawler.started.threads()).isEqualTo(8);
 
-        terminal.delete(new GreenfingerOperations.DeleteAsk("abc", null, 3, false, true,
+        terminal.delete(new UIOperations.DeleteAsk("abc", null, 3, false, true,
                 EnumSet.of(DeleteLayer.INDEX, DeleteLayer.VECTOR), false, true));
         assertThat(crawler.deleted.keepLatest()).isEqualTo(3);
         assertThat(crawler.deleted.purge()).isTrue();
@@ -161,10 +161,10 @@ class RemoteOperationsTest {
     }
 
     /** A crawler that answers with something recognisable, and keeps what it was asked. */
-    private static final class RecordingOperations implements GreenfingerOperations {
+    private static final class RecordingOperations implements UIOperations {
 
-        private GreenfingerOperations.StartAsk started;
-        private GreenfingerOperations.DeleteAsk deleted;
+        private UIOperations.StartAsk started;
+        private UIOperations.DeleteAsk deleted;
 
         @Override
         public Overview overview() {

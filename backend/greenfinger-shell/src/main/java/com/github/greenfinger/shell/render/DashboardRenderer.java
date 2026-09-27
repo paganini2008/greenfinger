@@ -16,6 +16,7 @@
 
 package com.github.greenfinger.shell.render;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
@@ -41,7 +42,7 @@ public class DashboardRenderer {
     }
 
     /**
-     * @param perNode what each node did, by node then by counter, or null for the totals alone.
+     * @param perNode what each node did, by counter then by node, or null for the totals alone.
      *        Rendered underneath rather than instead: the totals are the answer to "how is it
      *        going", and this is the answer to "is one of them doing nothing".
      */
@@ -62,20 +63,42 @@ public class DashboardRenderer {
     /**
      * One row per node. Empty of nodes is still a table, saying this is a cluster of one rather
      * than that nobody looked.
+     *
+     * <p>
+     * The state manager keeps counter and then node, which is the wrong way round for a row per
+     * node. Reading it as node and then counter, which is what this did, looked up counter names
+     * inside a map keyed by node: every row was named after a counter and every number was zero.
      */
-    private TextTable nodeTable(Map<String, Map<String, Long>> perNode) {
+    private TextTable nodeTable(Map<String, Map<String, Long>> byCounter) {
         TextTable table = TextTable.of("Node", "Saved", "Handled", "Dispatched", "Failed")
                 .rightAlign(1).rightAlign(2).rightAlign(3).rightAlign(4).title("By node");
-        if (perNode.isEmpty()) {
+        Map<String, Map<String, Long>> byNode = byNode(byCounter);
+        if (byNode.isEmpty()) {
             table.row(Ansi.dim("this node only"), "-", "-", "-", "-");
             return table;
         }
-        new TreeMap<>(perNode).forEach((node, counters) -> table.row(Ansi.cyan(node),
+        byNode.forEach((node, counters) -> table.row(Ansi.cyan(node),
                 counters.getOrDefault(CountingType.SAVED_RESOURCE_COUNT.getRepr(), 0L),
                 counters.getOrDefault(CountingType.HANDLED_URL_COUNT.getRepr(), 0L),
                 counters.getOrDefault(CountingType.TOTAL_URL_COUNT.getRepr(), 0L),
                 counters.getOrDefault(CountingType.INVALID_URL_COUNT.getRepr(), 0L)));
         return table;
+    }
+
+    /** Counter and then node, turned into node and then counter. */
+    static Map<String, Map<String, Long>> byNode(Map<String, Map<String, Long>> byCounter) {
+        Map<String, Map<String, Long>> byNode = new TreeMap<>();
+        if (byCounter == null) {
+            return byNode;
+        }
+        byCounter.forEach((counter, nodes) -> {
+            if (nodes != null) {
+                nodes.forEach((node, value) -> byNode
+                        .computeIfAbsent(node, key -> new LinkedHashMap<>())
+                        .put(counter, value));
+            }
+        });
+        return byNode;
     }
 
     /**

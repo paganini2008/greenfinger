@@ -16,6 +16,7 @@
 
 package com.github.greenfinger.core.engine;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -34,7 +35,10 @@ import lombok.Data;
  * @Version 2.0.0
  */
 @Data
-public class CrawledPage {
+public class CrawledPage implements Serializable {
+
+    /** Travels between nodes and into the replication channel, so it is serializable. */
+    private static final long serialVersionUID = 7041558220914432001L;
 
     private String catalogId;
     private String catalogName;
@@ -72,6 +76,12 @@ public class CrawledPage {
     private List<StoredImage> storedImages = new ArrayList<>();
 
     /**
+     * The files this page linked to -- pdf, spreadsheet, markdown. Collected, not fetched: what
+     * reads one is a DocumentContentParser, and only txt and markdown have one that ships.
+     */
+    private List<DownloadedFile> downloadedFiles = new ArrayList<>();
+
+    /**
      * 
      * @Description: StoredImage
      * @Author: Fred Feng
@@ -79,7 +89,9 @@ public class CrawledPage {
      * @Version 2.0.0
      */
     @Data
-    public static class StoredImage {
+    public static class StoredImage implements Serializable {
+
+        private static final long serialVersionUID = 7041558220914432002L;
 
         private String sourceUrl;
         private String contentHash;

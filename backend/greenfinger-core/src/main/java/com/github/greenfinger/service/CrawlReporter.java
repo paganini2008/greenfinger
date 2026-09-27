@@ -23,6 +23,7 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import com.github.greenfinger.utils.JsonUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.greenfinger.core.catalog.CatalogDetails;
 import com.github.greenfinger.core.component.state.Dashboard;
@@ -56,7 +57,7 @@ public class CrawlReporter {
     private static final DateTimeFormatter STAMP =
             DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneId.systemDefault());
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = JsonUtils.MAPPER;
 
     /**
      * @return the path written, or null when it could not be written.

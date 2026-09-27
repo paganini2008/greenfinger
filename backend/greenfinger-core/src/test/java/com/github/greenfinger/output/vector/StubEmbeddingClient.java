@@ -16,6 +16,9 @@
 
 package com.github.greenfinger.output.vector;
 
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  * Deterministic vectors without a model, so the channel can be tested without loading half a
  * gigabyte of weights. Image support is switchable, because whether a client has it is exactly the
@@ -34,6 +37,9 @@ public class StubEmbeddingClient implements EmbeddingClient {
     public StubEmbeddingClient(int textDimensions) {
         this(textDimensions, null);
     }
+
+    /** How many pictures were actually put through the model, which is the cost worth counting. */
+    private final AtomicInteger imagesEmbedded = new AtomicInteger();
 
     public StubEmbeddingClient(int textDimensions, Integer imageDimensions) {
         this.textDimensions = textDimensions;
@@ -77,12 +83,18 @@ public class StubEmbeddingClient implements EmbeddingClient {
     }
 
     @Override
-    public java.util.List<float[]> imagesToVectors(java.util.List<byte[]> images,
-            java.util.List<String> contentTypes) {
+    public List<float[]> imagesToVectors(List<byte[]> images,
+            List<String> contentTypes) {
         if (imageDimensions == null) {
             return EmbeddingClient.super.imagesToVectors(images, contentTypes);
         }
+        imagesEmbedded.addAndGet(images.size());
         return images.stream().map(bytes -> imageToVector(bytes, null)).toList();
+    }
+
+    /** How many pictures were actually put through the model, which is the cost worth counting. */
+    public int getImagesEmbedded() {
+        return imagesEmbedded.get();
     }
 
     @Override

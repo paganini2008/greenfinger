@@ -28,7 +28,7 @@ import com.github.greenfinger.core.model.OutputType;
 import com.github.greenfinger.core.output.OutputChannel;
 import com.github.greenfinger.core.output.OutputPayload;
 import com.github.greenfinger.core.record.ResourceRecord;
-import com.github.greenfinger.core.utils.UrlUtils;
+import com.github.greenfinger.utils.UrlUtils;
 import com.github.greenfinger.output.OutputProperties;
 import com.github.greenfinger.output.RestJsonClient;
 import lombok.Getter;
@@ -227,9 +227,9 @@ public class ElasticsearchOutputChannel implements OutputChannel {
         for (Map<String, Object> document : batch) {
             Map<String, Object> source = new LinkedHashMap<>(document);
             Object id = source.remove("_id");
-            ndjson.append(client.objectMapper()
+            ndjson.append(client.getObjectMapper()
                     .writeValueAsString(Map.of("index", Map.of("_id", id)))).append('\n');
-            ndjson.append(client.objectMapper().writeValueAsString(source)).append('\n');
+            ndjson.append(client.getObjectMapper().writeValueAsString(source)).append('\n');
         }
         JsonNode response = client.postNdjson(baseUrl + "/" + indexName + "/_bulk",
                 ndjson.toString());

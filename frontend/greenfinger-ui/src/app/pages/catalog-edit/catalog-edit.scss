@@ -7,7 +7,15 @@
 .gf-form-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-  gap: 0 1rem;
+  gap: 0.5rem 1rem;
+}
+
+// Nothing separated one field from the next inside a panel. A form field's subscript -- the hint --
+// ends exactly where the field's box ends, so two stacked fields put the first one's hint hard
+// against the second one's outline, and the hint reads as a label for the wrong field. Some fields
+// sit straight in the panel and some inside a .gf-form-row, so the rule has to cover both.
+.gf-panel > :is(mat-form-field, .gf-form-row) + :is(mat-form-field, .gf-form-row) {
+  margin-top: 0.65rem;
 }
 
 .gf-form-row-tight {

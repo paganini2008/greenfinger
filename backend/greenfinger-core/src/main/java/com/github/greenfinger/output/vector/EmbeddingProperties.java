@@ -51,16 +51,6 @@ public class EmbeddingProperties {
     /** Refuse to download anything; fail instead if a model is not already cached. */
     private boolean offline = false;
 
-    /**
-     * Load the models when the application starts rather than when the first page needs them.
-     *
-     * <p>
-     * Only has an effect when the local provider is selected and a vector output is configured, so
-     * the quick start neither downloads nor loads anything. When both are true, paying the load
-     * cost up front beats discovering a missing model minutes into a crawl.
-     */
-    private boolean preload = true;
-
     private int batchSize = 32;
     private int connectTimeout = 10000;
     private int readTimeout = 120000;
@@ -94,6 +84,16 @@ public class EmbeddingProperties {
 
         /** Image and text in one space, Apache-2.0 licensed. */
         private String imageModel = "google/siglip2-base-patch16-224";
+
+        /**
+         * Whether each model is loaded at startup. Both on by default, and there is no master
+         * switch above them: a model that is not preloaded is not loaded at all. Turning one off
+         * and then giving a catalog the vector output leaves that half of the feature unavailable,
+         * which is the intended trade -- made once here, rather than discovered partway through a
+         * crawl, which is where the memory these need used to arrive.
+         */
+        private boolean preloadTextModel = true;
+        private boolean preloadImageModel = true;
 
         /**
          * e5 was trained with these prefixes and loses noticeable accuracy without them.

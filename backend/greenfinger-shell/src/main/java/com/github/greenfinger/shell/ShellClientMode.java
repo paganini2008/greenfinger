@@ -24,7 +24,7 @@ import com.chaconneai.spreader.GossipCluster;
 import com.github.greenfinger.cluster.ClusterProperties;
 import com.github.greenfinger.cluster.leader.LeaderChannel;
 import com.github.greenfinger.cluster.remote.RemoteOperations;
-import com.github.greenfinger.service.ops.GreenfingerOperations;
+import com.github.greenfinger.service.ops.UIOperations;
 
 /**
  * The terminal: a face on a cluster somebody else is running, which is what
@@ -55,7 +55,7 @@ public class ShellClientMode {
     }
 
     @Bean
-    public GreenfingerOperations remoteOperations(LeaderChannel leaderChannel) {
+    public UIOperations remoteOperations(LeaderChannel leaderChannel) {
         return new RemoteOperations(leaderChannel);
     }
 

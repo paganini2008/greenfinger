@@ -22,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import com.github.greenfinger.utils.JsonUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.greenfinger.core.WebCrawlerException;
@@ -31,7 +32,7 @@ import com.github.greenfinger.core.output.BlobStore;
 import com.github.greenfinger.core.output.FileLayout;
 import com.github.greenfinger.core.record.ResourceRecordStore;
 import com.github.greenfinger.core.report.CrawlReportStore;
-import com.github.greenfinger.core.utils.BeanLifeCycleUtils;
+import com.github.greenfinger.utils.BeanLifeCycleUtils;
 import com.github.greenfinger.output.OutputFactory;
 import lombok.RequiredArgsConstructor;
 
@@ -52,7 +53,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CrawlReportService {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = JsonUtils.MAPPER;
 
     private final OutputFactory outputFactory;
     private final CatalogDetailsService catalogDetailsService;

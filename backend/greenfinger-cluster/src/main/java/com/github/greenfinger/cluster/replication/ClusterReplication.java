@@ -18,6 +18,7 @@ package com.github.greenfinger.cluster.replication;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.github.greenfinger.utils.JsonUtils;
 import com.chaconneai.spreader.GossipCluster;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.greenfinger.cluster.Channels;
@@ -65,7 +66,7 @@ public class ClusterReplication implements ManagedBeanLifeCycle {
      */
     private final ReplicationChannel search;
 
-    private static final ObjectMapper SEARCH_JSON = new ObjectMapper();
+    private static final ObjectMapper SEARCH_JSON = JsonUtils.MAPPER;
 
     /** Null unless the index is the embedded one. */
     private final LuceneIndexes luceneIndexes;

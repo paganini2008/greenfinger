@@ -18,6 +18,7 @@ package com.github.greenfinger.cluster.channel;
 
 import java.nio.charset.StandardCharsets;
 import java.util.function.Consumer;
+import com.github.greenfinger.utils.JsonUtils;
 import com.chaconneai.openspreader.cluster.SelfRegisteringListener;
 import com.chaconneai.spreader.GossipCluster;
 import com.chaconneai.spreader.Node;
@@ -47,7 +48,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ControlChannel implements GossipListener, SelfRegisteringListener {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = JsonUtils.MAPPER;
 
     private final GossipCluster cluster;
     private final Consumer<ControlMessage> handler;

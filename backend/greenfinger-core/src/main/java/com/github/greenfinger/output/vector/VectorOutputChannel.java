@@ -20,6 +20,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.commons.lang3.StringUtils;
@@ -29,7 +31,7 @@ import com.github.greenfinger.core.output.ContentReader;
 import com.github.greenfinger.core.output.OutputChannel;
 import com.github.greenfinger.core.output.OutputPayload;
 import com.github.greenfinger.core.record.ResourceRecord;
-import com.github.greenfinger.core.utils.UuidUtils;
+import com.github.greenfinger.utils.UuidUtils;
 import com.github.greenfinger.output.OutputProperties;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -60,6 +62,12 @@ public class VectorOutputChannel implements OutputChannel {
 
     private final List<PendingChunk> textBuffer = new ArrayList<>();
     private final List<PendingImage> imageBuffer = new ArrayList<>();
+
+    /**
+     * Every picture already embedded in this run. One id per distinct picture, which is far fewer
+     * than the references that name them, and it lives only as long as the crawl does.
+     */
+    private final Set<String> embeddedImages = ConcurrentHashMap.newKeySet();
     private final AtomicLong textWritten = new AtomicLong();
     private final AtomicLong imageWritten = new AtomicLong();
 
@@ -133,6 +141,14 @@ public class VectorOutputChannel implements OutputChannel {
         }
         if (imagesSupported) {
             for (ResourceRecord.ImageRecord image : record.images()) {
+                // One picture, embedded once. A banner or an avatar is referenced by every page
+                // on a site -- simplefood answered 1000 references from 614 pictures, three of
+                // them 43 times each -- and the vector is computed from the bytes alone, so every
+                // repeat was the same vector arrived at by running SigLIP again. Skipping here
+                // rather than at the point of writing also saves reading the file back.
+                if (!embeddedImages.add(image.image().getId())) {
+                    continue;
+                }
                 byte[] bytes = imageBytes(payload, image);
                 if (bytes != null) {
                     synchronized (imageBuffer) {
@@ -202,11 +218,22 @@ public class VectorOutputChannel implements OutputChannel {
         List<VectorPoint> points = new ArrayList<>(batch.size());
         for (int i = 0; i < batch.size(); i++) {
             PendingImage pending = batch.get(i);
-            points.add(new VectorPoint(pending.image().reference().getId(), vectors.get(i),
+            points.add(new VectorPoint(imagePointId(pending), vectors.get(i),
                     imagePayload(pending)));
         }
         vectorStore.upsert(imageCollection, points);
         imageWritten.addAndGet(points.size());
+    }
+
+    /**
+     * Keyed by the picture, not by the page that happens to show it, so a second reference
+     * overwrites rather than adds. The payload names the first page it was found on, which is one
+     * of several equally true answers and the only one that costs nothing to keep.
+     */
+    private String imagePointId(PendingImage pending) {
+        UUID namespace = UUID.fromString(pending.record().resource().getCatalogId());
+        return UuidUtils.nameBased(namespace, pending.record().resource().getVersion() + "|image|"
+                + pending.image().image().getId()).toString();
     }
 
     private String textPointId(PendingChunk chunk) {
