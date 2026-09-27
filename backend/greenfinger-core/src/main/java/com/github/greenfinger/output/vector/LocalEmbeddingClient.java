@@ -127,15 +127,26 @@ public class LocalEmbeddingClient implements EmbeddingClient {
     }
 
     /**
-     * Loads the text model. The image models are left alone until something asks for an image, so a
-     * text-only crawl never pays for the larger download.
+     * Loads both models, text and image, before anything asks for either.
+     *
+     * <p>
+     * The image models used to wait until the first picture, which meant a crawl that embeds
+     * images grew by a second model fifteen seconds in, long after the memory it would need was
+     * decided. In a container that is how a run gets as far as its first pictures and is then
+     * killed by the kernel. Paying at startup makes the cost visible where it can still be acted
+     * on, and a node that cannot hold both models says so before it takes any work.
      */
     @Override
     public void afterPropertiesSet() throws Exception {
         manager = NDManager.newBaseManager();
-        loadTextModel();
-        log.info("Local text model '{}' ready, {} dimensions", config.getTextModel(),
-                textDimensions);
+        if (config.isPreloadTextModel()) {
+            loadTextModel();
+            log.info("Local text model '{}' ready, {} dimensions", config.getTextModel(),
+                    textDimensions);
+        }
+        if (config.isPreloadImageModel()) {
+            loadImageModels();
+        }
     }
 
     private synchronized void loadTextModel() throws Exception {

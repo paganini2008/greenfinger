@@ -24,11 +24,13 @@ import static org.mockito.Mockito.when;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import com.github.greenfinger.core.model.Catalog;
+import com.github.greenfinger.core.output.ContentReader;
 import com.github.greenfinger.core.model.Image;
 import com.github.greenfinger.core.model.Resource;
 import com.github.greenfinger.core.model.ResourceImage;
@@ -59,7 +61,7 @@ class StoredListingTest {
     private StoredListing listing;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         ResourceRecordStore store = mock(ResourceRecordStore.class);
         when(store.load(anyString(), anyInt(), anyInt(), anyInt())).thenAnswer(invocation -> {
             String catalogId = invocation.getArgument(0);
@@ -75,7 +77,11 @@ class StoredListingTest {
 
         CatalogAdminService catalogs = mock(CatalogAdminService.class);
         when(catalogs.findAll()).thenReturn(List.of(named(A, "Alpha"), named(B, "Beta")));
-        listing = new StoredListing(store, catalogs);
+        // the text the file layer wrote, so a listed row carries an excerpt the way a hit does
+        ContentReader reader = mock(ContentReader.class);
+        when(reader.readText(anyString()))
+                .thenReturn(Optional.of("  the opening of a stored page, read back for a listing  "));
+        listing = new StoredListing(store, catalogs, reader);
     }
 
     private static Catalog named(String id, String name) {
@@ -171,6 +177,52 @@ class StoredListingTest {
         assertThat(hits).hasSize(8);
         assertThat(hits.get(0).payload()).containsKeys("imageId", "imageFilePath", "imageUrl")
                 .containsEntry("catalog", "Alpha");
+    }
+
+    @Test
+    @DisplayName("one picture on many pages is listed once")
+    void listsEachPictureOnce() {
+        // a banner or an avatar is referenced by every page on a site. Listing each reference
+        // filled the results with one picture repeated, which is what somebody sees rather than
+        // the pictures they came for
+        giveSharedPicture(A, 0, 5);
+
+        List<VectorHit> hits = listing.images(List.of(A + ":0"), 20, 0);
+
+        assertThat(hits).hasSize(1);
+        assertThat(hits.get(0).payload()).containsEntry("imageId", A + "-shared");
+    }
+
+    @Test
+    @DisplayName("a picture skipped by the offset does not come back on the next page")
+    void aSkippedPictureStaysSkipped() {
+        giveSharedPicture(A, 0, 5);
+
+        assertThat(listing.images(List.of(A + ":0"), 20, 1)).isEmpty();
+    }
+
+    /** The same picture on every page, which is what a site banner looks like in the store. */
+    private void giveSharedPicture(String catalogId, int version, int pages) {
+        List<ResourceRecord> records = new ArrayList<>();
+        for (int i = 0; i < pages; i++) {
+            Resource resource = new Resource();
+            resource.setId(catalogId + "-r" + i);
+            resource.setCatalogId(catalogId);
+            resource.setVersion(version);
+            resource.setUrl("https://" + catalogId + "/" + i);
+            resource.setTitle("Page " + i);
+            Image image = new Image();
+            image.setId(catalogId + "-shared");
+            image.setImageFilePath("/p/" + image.getId());
+            ResourceImage reference = new ResourceImage();
+            reference.setImageId(image.getId());
+            reference.setResourceId(resource.getId());
+            reference.setSourceUrl("https://" + catalogId + "/banner.jpg");
+            records.add(
+                    new ResourceRecord(resource, List.of(new ResourceRecord.ImageRecord(image,
+                            reference))));
+        }
+        rows.put(catalogId + ":" + version, records);
     }
 
     @Test

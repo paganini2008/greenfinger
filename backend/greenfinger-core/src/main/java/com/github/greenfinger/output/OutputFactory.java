@@ -218,9 +218,10 @@ public class OutputFactory implements DisposableBean {
                     client = getEmbeddingClient();
                     long start = System.currentTimeMillis();
                     BeanLifeCycleUtils.afterPropertiesSet(client);
-                    log.info("Embedding client '{}' ready in {} ms, {} dimensions",
-                            client.getName(), System.currentTimeMillis() - start,
-                            client.textDimensions());
+                    // not the dimensions: asking for them loads the text model, which would
+                    // make preload-text-model=false load it anyway. Each model logs its own.
+                    log.info("Embedding client '{}' ready in {} ms", client.getName(),
+                            System.currentTimeMillis() - start);
                     shared = client;
                 }
             }

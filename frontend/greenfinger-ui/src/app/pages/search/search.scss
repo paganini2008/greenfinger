@@ -109,6 +109,13 @@
   }
 }
 
+// A mode the chosen catalog cannot answer. Greyed and unpressable, but still in its place, so
+// the row does not reflow when the catalog changes and the tooltip can say why.
+.gf-mode-off {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .gf-mode-on {
   background: var(--gf-surface);
   color: var(--mat-sys-on-surface);
@@ -245,6 +252,10 @@
   aspect-ratio: 4 / 3;
   display: grid;
   place-items: center;
+  // a grid box's min-height is its content, so one portrait picture grew its frame past the
+  // aspect ratio and made its whole row taller than the rest
+  min-height: 0;
+  overflow: hidden;
   background: linear-gradient(135deg, var(--gf-green-container), var(--gf-surface-container));
 
   img {

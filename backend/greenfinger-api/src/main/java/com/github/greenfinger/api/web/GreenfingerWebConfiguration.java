@@ -82,8 +82,9 @@ public class GreenfingerWebConfiguration {
      */
     @Bean
     public StoredListing storedListing(ResourceRecordStore recordStore,
-            CatalogAdminService catalogAdminService) {
-        return new StoredListing(recordStore, catalogAdminService);
+            CatalogAdminService catalogAdminService, OutputFactory outputFactory) {
+        // one store, held for the life of the bean, the way the image controller holds its own
+        return new StoredListing(recordStore, catalogAdminService, outputFactory.getBlobStore());
     }
 
     /**

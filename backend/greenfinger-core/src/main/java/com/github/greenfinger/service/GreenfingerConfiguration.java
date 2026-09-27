@@ -136,10 +136,8 @@ public class GreenfingerConfiguration {
     @ConditionalOnMissingBean
     @Bean
     public EmbeddingWarmUp embeddingWarmUp(EmbeddingProperties embeddingProperties,
-            OutputProperties outputProperties, OutputFactory outputFactory,
-            CatalogStore catalogStore) {
-        return new EmbeddingWarmUp(embeddingProperties, outputProperties, outputFactory,
-                catalogStore);
+            OutputFactory outputFactory) {
+        return new EmbeddingWarmUp(embeddingProperties, outputFactory);
     }
 
     @ConditionalOnMissingBean

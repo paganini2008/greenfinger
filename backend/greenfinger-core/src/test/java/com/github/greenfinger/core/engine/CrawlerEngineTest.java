@@ -66,7 +66,8 @@ import com.github.greenfinger.service.CrawlerTestApplication;
         "greenfinger.dedup.content.directory=${java.io.tmpdir}/gf-engine/content",
         "greenfinger.output.index.lucene.directory=${java.io.tmpdir}/gf-engine-lucene",
         "greenfinger.output.vector.lucene.directory=${java.io.tmpdir}/gf-engine-lucene-vector",
-        "greenfinger.embedding.preload=false"})
+        "greenfinger.embedding.local.preload-text-model=false",
+        "greenfinger.embedding.local.preload-image-model=false"})
 class CrawlerEngineTest {
 
     /**

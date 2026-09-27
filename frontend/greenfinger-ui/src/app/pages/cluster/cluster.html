@@ -2,10 +2,18 @@
   <header class="gf-hero">
     <div class="gf-hero-inner">
       <div>
-        <h1>{{ status()?.node?.clusterName || 'System' }}</h1>
+        <!-- The name alone was the whole heading, so the page opened with a bare string and no
+             hint that it was the cluster's name rather than anything else on the page. -->
+        <h1>
+          @if (status()?.node?.clusterName; as name) {
+            Cluster <span class="gf-mono">{{ name }}</span>
+          } @else {
+            System
+          }
+        </h1>
         <p class="gf-hero-sub">
           Every node answers only for itself, so the tables below ask each one in turn. These are
-          not the cluster's totals.
+          not the cluster's totals. The name comes from the launcher that started these nodes.
         </p>
       </div>
       @if (status(); as here) {
@@ -175,8 +183,8 @@
             <span class="gf-muted gf-panel-aside gf-mono">{{ askedAddress() }}</span>
           </h2>
           <p class="gf-panel-hint">
-            Everything behind the one word above. Anything not UP is listed first, because it is
-            why somebody opened this page.
+            What the node's health is made of, check by check. Anything not UP is listed first,
+            because it is why somebody opened this page.
           </p>
           <div class="gf-checks">
             @for (component of health.components; track component.name) {

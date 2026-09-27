@@ -334,11 +334,15 @@ greenfinger:
     provider: ${GF_EMBEDDING_PROVIDER:local}     # local | ollama | openai
     model-dir: ${GF_MODEL_DIR:${user.home}/.greenfinger/models}
     offline: ${GF_EMBEDDING_OFFLINE:false}
-    preload: ${GF_EMBEDDING_PRELOAD:true}
     batch-size: ${GF_EMBEDDING_BATCH_SIZE:32}
     local:
       text-model: ${GF_LOCAL_TEXT_MODEL:intfloat/multilingual-e5-small}
       image-model: ${GF_LOCAL_IMAGE_MODEL:google/siglip2-base-patch16-224}
+      # Both loaded at startup, and a model that is not preloaded is not loaded at all. The image
+      # model used to arrive on the first picture, which decided a node's memory long after it had
+      # taken work -- in a container that reads as the application exiting halfway through a crawl.
+      preload-text-model: ${GF_PRELOAD_TEXT_MODEL:true}
+      preload-image-model: ${GF_PRELOAD_IMAGE_MODEL:true}
     ollama:
       url: ${GF_OLLAMA_URL:http://localhost:11434}
       model: ${GF_OLLAMA_MODEL:qwen3-embedding:4b}

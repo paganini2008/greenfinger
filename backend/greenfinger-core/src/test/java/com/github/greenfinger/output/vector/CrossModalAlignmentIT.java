@@ -62,8 +62,10 @@ class CrossModalAlignmentIT {
 
     @BeforeAll
     static void loadTheModel() throws Exception {
+        // this case loads the models itself, so the client is built without preloading either
         EmbeddingProperties properties = new EmbeddingProperties();
-        properties.setPreload(false);
+        properties.getLocal().setPreloadTextModel(false);
+        properties.getLocal().setPreloadImageModel(false);
         client = new LocalEmbeddingClient(properties);
         BeanLifeCycleUtils.afterPropertiesSet(client);
     }

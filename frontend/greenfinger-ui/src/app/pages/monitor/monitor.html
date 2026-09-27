@@ -457,40 +457,26 @@
           type="button"
           class="gf-mode"
           [class.gf-mode-on]="deleteMode() === 'entirely'"
-          [disabled]="!canDeleteEntirely()"
           (click)="setDeleteMode('entirely')"
         >
           <span class="gf-mode-title">Delete it entirely</span>
           <span class="gf-mode-hint">
-            @if (canDeleteEntirely()) {
-              The catalog goes too. Nothing is left to crawl, search or replay.
-            } @else {
-              Only when nothing is kept: set "keep the newest" to 0.
-            }
+            The catalog goes too. Nothing is left to crawl, search or replay.
           </span>
         </button>
       </div>
 
       <div class="gf-delete-controls">
-        <mat-form-field appearance="outline" class="w-40">
-          <mat-label>Keep the newest</mat-label>
-          <input
-            matInput
-            type="number"
-            min="0"
-            [ngModel]="keepLatest()"
-            (ngModelChange)="keepLatest.set($event); deletePlan.set(null); canDeleteEntirely() || setDeleteMode('empty')"
-          />
-        </mat-form-field>
-
         <div class="gf-chip-row">
+          <!-- Same shape as the category filter: these are a filter too, over what gets removed -->
           @for (layer of ['all', 'db', 'file', 'index', 'vector']; track layer) {
             <button
               type="button"
-              class="gf-pill"
+              class="gf-pill gf-cat"
               [class.gf-pill-on]="deleteLayers().includes($any(layer))"
               (click)="toggleLayer($any(layer))"
             >
+              <mat-icon>{{ getLayerIcon(layer) }}</mat-icon>
               {{ layer }}
             </button>
           }
@@ -525,9 +511,9 @@
               }
             </tbody>
           </table>
-          <button mat-flat-button color="warn" (click)="applyDelete()" [disabled]="busy()">
+          <button mat-flat-button class="gf-delete-apply" (click)="applyDelete()" [disabled]="busy()">
             <mat-icon>delete_forever</mat-icon>
-            {{ deleteMode() === 'entirely' && canDeleteEntirely() ? 'Delete entirely' : 'Empty it' }}
+            {{ deleteMode() === 'entirely' ? 'Delete entirely' : 'Empty it' }}
           </button>
         </div>
       }

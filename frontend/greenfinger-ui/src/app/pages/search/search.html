@@ -35,11 +35,17 @@
         <div class="gf-search-controls">
           <div class="gf-modes">
             @for (option of modes; track option.value) {
+              <!-- Greyed rather than hidden: the tab going missing when the catalog changes moves
+                   the row under the pointer, and an absent tab cannot say why it is absent. -->
               <button
                 class="gf-mode"
                 [class.gf-mode-on]="mode() === option.value"
+                [class.gf-mode-off]="!isModeReady(option.value)"
+                [disabled]="!isModeReady(option.value)"
                 (click)="setMode(option.value)"
-                [matTooltip]="option.hint"
+                [matTooltip]="
+                  isModeReady(option.value) ? option.hint : getModeBlockedHint(option.value)
+                "
               >
                 <mat-icon>{{ option.icon }}</mat-icon>
                 {{ option.label }}
@@ -172,7 +178,16 @@
     @if (searched() && hits().length === 0 && !error()) {
       <div class="gf-empty">
         <mat-icon>auto_awesome</mat-icon>
-        <p>No close enough match. The vector output has to be on for this to find anything.</p>
+        @if (!meaningReady()) {
+          <!-- not the query's fault, and the fix costs no crawling -->
+          <p>
+            {{ getModeBlockedHint('meaning') }} Turn <strong>Vector</strong> on in the catalog's
+            outputs, then <strong>Replay index and vectors from disk</strong> on its Monitor page
+            puts the pages already crawled into it without fetching the site again.
+          </p>
+        } @else {
+          <p>No close enough match. Try fewer words, or the Words tab for an exact term.</p>
+        }
       </div>
     }
 
@@ -220,9 +235,9 @@
             }
           </div>
           <figcaption>
-            @if (text(hit, 'alt')) {
-              <div class="gf-shot-alt gf-truncate" [matTooltip]="text(hit, 'alt')">
-                {{ text(hit, 'alt') }}
+            @if (getPictureCaption(hit)) {
+              <div class="gf-shot-alt gf-truncate" [matTooltip]="getPictureCaption(hit)">
+                {{ getPictureCaption(hit) }}
               </div>
             }
             <a
@@ -252,7 +267,13 @@
     @if (searched() && hits().length === 0 && !error()) {
       <div class="gf-empty">
         <mat-icon>image_search</mat-icon>
-        @if (ranked()) {
+        @if (!picturesReady()) {
+          <p>
+            {{ getModeBlockedHint('pictures') }} Turn <strong>Vector</strong> on and crawl with
+            images, then <strong>Replay index and vectors from disk</strong> on the Monitor page
+            builds them from the pages already held.
+          </p>
+        } @else if (ranked()) {
           <!-- a question was asked and nothing matched, or nothing can answer it -->
           <p>
             Nothing matched. Searching pictures by description needs an embedding provider that

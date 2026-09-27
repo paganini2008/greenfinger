@@ -66,7 +66,8 @@ import com.github.greenfinger.service.CatalogAdminService;
         "greenfinger.dedup.content.directory=${java.io.tmpdir}/gf-cli-search/content",
         "greenfinger.output.index.lucene.directory=${java.io.tmpdir}/gf-cli-search-lucene",
         "greenfinger.output.vector.lucene.directory=${java.io.tmpdir}/gf-cli-search-lucene-vector",
-        "greenfinger.embedding.preload=false"})
+        "greenfinger.embedding.local.preload-text-model=false",
+        "greenfinger.embedding.local.preload-image-model=false"})
 class SearchAndReplayCommandsTest {
 
     @Autowired

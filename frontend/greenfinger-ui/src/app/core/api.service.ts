@@ -131,8 +131,12 @@ export class ApiService {
     },
   ): Observable<DeleteLine[]> {
     let params = new HttpParams();
-    if (options.version !== undefined) params = params.set('version', options.version);
-    if (options.keepLatest !== undefined) params = params.set('keepLatest', options.keepLatest);
+    // Numbers only. An empty number input hands over null rather than undefined, and HttpParams
+    // turns that into the text "null", which the server rejects as not an Integer.
+    const number = (value: unknown): value is number =>
+      typeof value === 'number' && Number.isFinite(value);
+    if (number(options.version)) params = params.set('version', options.version);
+    if (number(options.keepLatest)) params = params.set('keepLatest', options.keepLatest);
     if (options.layers?.length) params = params.set('layers', options.layers.join(','));
     if (options.purge) params = params.set('purge', true);
     params = params.set('dryRun', options.dryRun ?? true);

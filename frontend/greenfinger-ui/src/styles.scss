@@ -376,6 +376,9 @@ body {
   }
 
   &:hover {
+    // .gf-pill's hover puts a near-black outline on: right for an outlined pill, and a hard dark
+    // box around one category in a row of ten here.
+    border-color: transparent;
     background: var(--gf-wheat-soft);
     color: var(--gf-chrome-deep);
 
@@ -1380,6 +1383,21 @@ body {
   font-weight: 400;
 }
 
+// The live hero's progress bars, reaching inside the Material component -- its own elements carry
+// no scoping attribute, so a component stylesheet cannot touch them, and the two
+// --mdc-linear-progress-* custom properties set there turn out not to be the names this version
+// reads. Left alone the bar draws backwards on green: the track is near-white and the fill is the
+// theme's green border, invisible against the background it sits on.
+.gf-hero-live {
+  .mdc-linear-progress__buffer-bar {
+    background-color: rgb(255 255 255 / 22%);
+  }
+
+  .mdc-linear-progress__bar-inner {
+    border-color: #fff;
+  }
+}
+
 // ---- the footer --------------------------------------------------------------------------------
 
 // The routed page takes the slack, so the footer sits at the bottom of a short page. Global
@@ -1477,16 +1495,27 @@ body {
 }
 
 .gf-footer-name {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
   text-align: center;
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
+}
+
+// The mark rather than the word, the same one the rail carries, so the two ends of the page are
+// the same piece of chrome.
+.gf-footer-logo {
+  height: 1.9rem;
+  width: auto;
+  display: block;
+  // the file is the green mark, invisible on the green footer
+  filter: brightness(0) invert(1);
 }
 
 .gf-footer-name .gf-mono {
-  font-size: 0.9rem;
-  font-weight: 600;
-  opacity: 0.9;
+  font-size: 1rem;
+  font-weight: 700;
+  opacity: 0.92;
 }
 
 
@@ -1641,8 +1670,13 @@ body {
   color: var(--gf-on-chrome);
 }
 
+// Four of these used to be the same wheat at slightly different lightness, which put "already
+// known", "filtered out", "dropped" and "invalid" within a shade of each other. They are told
+// apart by meaning now rather than by how dark they are: what was kept is green, what was already
+// held is a paler green, what the rules turned away is wheat, and what went wrong is the error
+// colour the rest of the application already uses for that.
 .gf-band-duplicate {
-  background: color-mix(in srgb, var(--gf-green) 45%, var(--gf-wheat-soft));
+  background: color-mix(in srgb, var(--gf-green) 35%, #fff);
 }
 
 .gf-band-known {
@@ -1654,16 +1688,16 @@ body {
 }
 
 .gf-band-dropped {
-  background: color-mix(in srgb, var(--gf-wheat-deep) 70%, var(--gf-on-wheat));
+  background: color-mix(in srgb, var(--gf-muted) 55%, var(--gf-surface));
 }
 
 .gf-band-invalid {
-  background: var(--gf-on-wheat);
+  background: color-mix(in srgb, var(--mat-sys-error) 70%, var(--gf-surface));
 }
 
 .gf-band-queued {
-  background: var(--gf-wheat-soft);
-  box-shadow: inset 0 0 0 1px var(--gf-wheat);
+  background: var(--gf-surface);
+  box-shadow: inset 0 0 0 1px var(--gf-outline);
 }
 
 .gf-sieve-legend {

@@ -66,7 +66,8 @@ import com.github.greenfinger.service.CatalogAdminService;
         "greenfinger.dedup.content.directory=${java.io.tmpdir}/gf-save/content",
         "greenfinger.output.index.lucene.directory=${java.io.tmpdir}/gf-save-lucene",
         "greenfinger.output.vector.lucene.directory=${java.io.tmpdir}/gf-save-lucene-vector",
-        "greenfinger.embedding.preload=false"})
+        "greenfinger.embedding.local.preload-text-model=false",
+        "greenfinger.embedding.local.preload-image-model=false"})
 class CatalogSaveInteractiveTest {
 
     @TestConfiguration

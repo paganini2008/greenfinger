@@ -16,13 +16,9 @@
 
 package com.github.greenfinger.service;
 
-import java.util.Locale;
-import org.springframework.beans.factory.SmartInitializingSingleton;
-import com.github.greenfinger.core.catalog.CatalogStore;
-import com.github.greenfinger.core.model.Catalog;
-import com.github.greenfinger.core.model.OutputType;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.ApplicationListener;
 import com.github.greenfinger.output.OutputFactory;
-import com.github.greenfinger.output.OutputProperties;
 import com.github.greenfinger.output.vector.EmbeddingProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,53 +42,57 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @RequiredArgsConstructor
-public class EmbeddingWarmUp implements SmartInitializingSingleton {
+public class EmbeddingWarmUp implements ApplicationListener<ApplicationReadyEvent> {
 
     private final EmbeddingProperties embeddingProperties;
-    private final OutputProperties outputProperties;
     private final OutputFactory outputFactory;
-    private final CatalogStore catalogStore;
 
+    /**
+     * After the application is up, and on a thread of its own.
+     *
+     * <p>
+     * This used to run inside the context refresh, which put the best part of a second of model
+     * loading in front of the port opening. A node is useful before its models are: it can answer
+     * health, join the cluster and serve what is already indexed. So the loading starts once the
+     * rest is ready and does not hold anything up while it runs. A crawl that gets there first
+     * loads the model itself, which is the same synchronized call and happens once either way.
+     */
     @Override
-    public void afterSingletonsInstantiated() {
+    public void onApplicationEvent(ApplicationReadyEvent event) {
         if (!shouldWarmUp()) {
             return;
         }
+        Thread thread = new Thread(this::load, "greenfinger-embedding-warmup");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void load() {
         try {
+            long start = System.currentTimeMillis();
             // and kept: this used to load the models and immediately close them, so the first
             // crawl built the same three onnx sessions all over again. The download was warmed;
             // the sessions were not
             outputFactory.sharedEmbeddingClient();
+            log.info("Embedding models preloaded in {} ms", System.currentTimeMillis() - start);
         } catch (Exception e) {
             log.warn("Could not preload the embedding model: {}", e.getMessage());
         }
     }
 
-    private boolean shouldWarmUp() {
-        return embeddingProperties.isPreload()
-                && "local".equalsIgnoreCase(
-                        embeddingProperties.getProvider().toLowerCase(Locale.ROOT))
-                && vectorIsUsedSomewhere();
-    }
-
     /**
-     * The default output types are not the whole answer. A catalog carries its own, and the
-     * shipped default is files alone -- so a setup where every catalog asks for vectors would
-     * never have warmed up, and every crawl paid the model load instead. Asking the catalogs is
-     * what makes the preload actually happen where it is needed.
+     * Whether to load at all. No longer conditional on anything using vectors: a model that
+     * arrives partway through a crawl decides this node's memory after the node has already taken
+     * work, and in a container that reads as the application exiting mid-run. Preloading is still
+     * a setting, so an installation that wants nothing loaded turns it off.
      */
-    private boolean vectorIsUsedSomewhere() {
-        if (OutputType.parse(outputProperties.getTypes()).contains(OutputType.VECTOR)) {
-            return true;
-        }
-        try {
-            return catalogStore.findAll().stream().map(Catalog::getOutputTypes)
-                    .anyMatch(types -> types != null && types.contains(OutputType.VECTOR));
-        } catch (RuntimeException e) {
-            // the catalogs cannot be read yet: not a reason to fail, only a reason not to preload
-            log.debug("Could not check the catalogs for a vector output: {}", e.getMessage());
+    private boolean shouldWarmUp() {
+        // ollama and openai are http services: there is no model to load into this process
+        if (!"local".equalsIgnoreCase(embeddingProperties.getProvider())) {
             return false;
         }
+        EmbeddingProperties.Local local = embeddingProperties.getLocal();
+        return local.isPreloadTextModel() || local.isPreloadImageModel();
     }
 
 }

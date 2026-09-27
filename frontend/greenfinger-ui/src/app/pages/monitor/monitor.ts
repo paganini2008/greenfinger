@@ -78,7 +78,6 @@ export class MonitorPage {
    * not a thing anybody means.
    */
   protected readonly deleteMode = signal<'empty' | 'entirely'>('empty');
-  protected readonly keepLatest = signal<number>(3);
 
   private poll?: Subscription;
 
@@ -497,25 +496,38 @@ export class MonitorPage {
     this.deletePlan.set(null);
   }
 
+  /** One icon per layer, the same lookup the category filter uses for its own fixed set. */
+  private static readonly LAYER_ICONS: Record<string, string> = {
+    all: 'select_all',
+    db: 'storage',
+    file: 'folder',
+    index: 'manage_search',
+    vector: 'auto_awesome',
+  };
+
+  protected getLayerIcon(layer: string): string {
+    return MonitorPage.LAYER_ICONS[layer] ?? 'layers';
+  }
+
   protected setDeleteMode(mode: 'empty' | 'entirely'): void {
     this.deleteMode.set(mode);
     this.deletePlan.set(null);
   }
 
-  /** Removing the catalog itself is only offered when no version is being kept. */
-  protected readonly canDeleteEntirely = computed(() => this.keepLatest() === 0);
-
   /**
-   * Keeping nothing names no versions at all -- the api reads that as "all of it", where
-   * keepLatest 0 would name each one and be refused for the version search is serving. Purge is
-   * what separates emptying from deleting.
+   * Both modes take every version, so neither names one: the api reads no version at all as "all
+   * of it". Purge is the only difference, and it is what separates emptying from deleting.
+   *
+   * <p>
+   * There used to be a "keep the newest" field here, which contradicted both cards -- the one
+   * saying "removes every version" quietly kept three -- and sent the string "null" when it was
+   * cleared. Trimming to the newest few is a different operation and lives at the prompt, where
+   * `delete --keep-latest=3` says so.
    */
   private deleteOptions(dryRun: boolean) {
-    const wholeCatalog = this.keepLatest() === 0;
     return {
-      ...(wholeCatalog ? {} : { keepLatest: this.keepLatest() }),
       layers: this.deleteLayers(),
-      ...(wholeCatalog && this.deleteMode() === 'entirely' ? { purge: true } : {}),
+      ...(this.deleteMode() === 'entirely' ? { purge: true } : {}),
       dryRun,
     };
   }
@@ -543,18 +555,18 @@ export class MonitorPage {
   protected applyDelete(): void {
     const lines = this.deletePlan() ?? [];
     const total = lines.reduce((sum, line) => sum + line.count, 0);
-    const entirely = this.deleteMode() === 'entirely' && this.canDeleteEntirely();
+    const entirely = this.deleteMode() === 'entirely';
     const data: ConfirmData = {
       title: entirely ? `Delete '${this.ref()}' entirely?` : `Empty '${this.ref()}'?`,
       message:
-        `${total} item(s) will be removed from ${this.deleteLayers().join(', ')}, keeping the ` +
-        `${this.keepLatest()} most recent version(s).\n\n` +
+        `${total} item(s) will be removed from ${this.deleteLayers().join(', ')}. ` +
+        `Every version goes, not only the oldest.\n\n` +
         (entirely
           ? 'The catalog goes too, so there is nothing left to crawl, search or replay.\n\n'
           : 'The catalog itself stays, defined and with nothing crawled, ready to be crawled ' +
             'again.\n\n') +
-        'This cannot be undone. The index and the vectors can be replayed from the database; ' +
-        'files can only be fetched again from the site, and only while it still serves them.',
+        'This cannot be undone. The index and the vectors can be replayed from the database. ' +
+        'Files can only be fetched again from the site, and only while it still serves them.',
       confirmLabel: entirely ? 'Delete entirely' : 'Empty it',
       destructive: true,
     };

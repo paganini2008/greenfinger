@@ -392,7 +392,8 @@ public class LocalOperations implements UIOperations {
     }
 
     private SearchAnswer listEverything(String mode, List<String> versions, int size) {
-        StoredListing listing = new StoredListing(recordStore, catalogAdminService);
+        StoredListing listing =
+                new StoredListing(recordStore, catalogAdminService, outputFactory.getBlobStore());
         if ("pictures".equals(mode)) {
             return hits(listing.images(versions, size, 0), "Every picture kept", true);
         }
