@@ -1,3 +1,7 @@
+---
+title: "Design"
+---
+
 # Greenfinger 2.0 design
 
 How the system is shaped, and why. Reference rather than tutorial. What it does and how to run it

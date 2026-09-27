@@ -1,3 +1,7 @@
+---
+title: "Command line reference"
+---
+
 Greenfinger command line
 ========================================
 
