@@ -1,1 +1,7 @@
 theme: jekyll-theme-cayman
+
+# This site is English only. The Chinese write-up goes to external platforms
+# instead, so it is never published here even if the file lands in the repo.
+exclude:
+  - blogger/greenfinger-2.0-zh.md
+  - blogger/social.md
