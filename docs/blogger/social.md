@@ -28,6 +28,56 @@ Paste ready. The title in each file is already set to the recommended one.
 
 ---
 
+## The generic post
+
+One block, works anywhere. Paste it on X, LinkedIn, Reddit, Hacker News, dev.to
+or a WeChat post without rewriting it.
+
+### English
+
+``` text
+Point it at a url. Walk away.
+
+Come back to the whole site on disk, a full text index, and vectors you can
+query by describing a picture you only half remember. Type "a bright spiral
+galaxy against black sky" and it hands you the galaxy.
+
+Greenfinger 2.0 is a distributed web crawler for the JVM. One pass keeps every
+page, every picture and every version, reads the pdfs and markdown a site links
+to, throws away the navigation, and writes files, a search index and vectors at
+the same time.
+
+The first crawl needs no database, no search server, no API key and no model
+download. Every node runs the same jar, so add one and it goes faster, kill one
+and the crawl carries on. Killed halfway, it resumes. Lose your index and you
+rebuild it from the files without touching the site again.
+
+Java 17, Apache 2.0.
+https://github.com/paganini2008/greenfinger
+```
+
+### 中文
+
+``` text
+给它一个 url，然后走开。
+
+回来的时候，整站已经躺在磁盘上，全文索引建好了，向量也建好了。你可以直接打一句
+「一张黑色天空上的亮螺旋星系」，它把那张图从几千张里捞给你。
+
+Greenfinger 2.0 是一个跑在 JVM 上的分布式爬虫。一次爬取留下每一个页面、每一张图、
+每一个版本，读得懂站点链出去的 pdf 和 markdown，扔掉导航和 cookie 横幅，
+同时写出文件、全文索引和向量。
+
+第一次爬取不需要数据库、不需要搜索服务、不需要 API key、不用手动下模型。
+每个节点跑同一个 jar，加一个就更快，杀掉一个爬取继续。爬到一半被杀，它接着跑。
+索引丢了，从文件重建，不用再碰那个站点。
+
+Java 17，Apache 2.0。
+https://github.com/paganini2008/greenfinger
+```
+
+---
+
 ## X / Twitter
 
 Short, one claim per line, link last.
