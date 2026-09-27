@@ -1,3 +1,7 @@
+---
+title: "Schema scripts"
+---
+
 # Schema scripts
 
 One per database, generated from the entities. Create the schema with these rather than

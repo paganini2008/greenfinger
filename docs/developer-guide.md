@@ -1,3 +1,7 @@
+---
+title: "Developer guide"
+---
+
 Greenfinger for developers
 ========================================
 
