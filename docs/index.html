@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Greenfinger · distributed web crawler for the JVM</title>
+  <meta name="description" content="Give it one url. It crawls the whole site and writes files, a full text index and vectors in one pass. Search by words, by meaning, or by describing a picture." />
+  <link rel="icon" href="favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --green: #2d8a4e; --green-d: #276845; --chrome: #2f7a52;
+      --ink: #1e2b23; --muted: #6b6558; --line: #ece2cf;
+      --bg: #ffffff; --paper: #fbf4e7; --soft: #f6efe1; --mint: #cdeed6;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--bg); color: var(--ink);
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased; line-height: 1.6; }
+    a { color: var(--green); text-decoration: none; }
+    code, pre { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 1.5rem; }
+    img { max-width: 100%; }
+
+    /* Nav */
+    header.nav { position: sticky; top: 0; z-index: 20; background: rgba(255,255,255,0.9);
+      backdrop-filter: saturate(1.5) blur(8px); border-bottom: 1px solid var(--line); }
+    header.nav .row { display: flex; align-items: center; gap: 1.5rem; height: 60px; }
+    header.nav .brand { display: flex; align-items: center; gap: .55rem;
+      font-weight: 800; color: var(--green-d); font-size: 1.15rem; letter-spacing: -0.02em; }
+    header.nav .brand img { height: 26px; width: auto; display: block; }
+    header.nav nav { display: flex; gap: 1.4rem; margin-left: auto; flex-wrap: wrap; }
+    header.nav nav a { color: var(--muted); font-weight: 600; font-size: 0.92rem; }
+    header.nav nav a:hover { color: var(--green); }
+    .btn { display: inline-flex; align-items: center; gap: 0.45rem; font-weight: 650;
+      border-radius: 10px; padding: 0.6rem 1.1rem; font-size: 0.95rem;
+      transition: transform .06s, box-shadow .15s, background .15s, border-color .15s; }
+    .btn-primary { background: var(--green); color: #fff; box-shadow: 0 8px 20px -8px rgba(45,138,78,0.6); }
+    .btn-primary:hover { background: var(--green-d); }
+    .btn-ghost { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+    .btn-ghost:hover { border-color: #cfc3aa; }
+    .btn:active { transform: translateY(1px); }
+
+    /* Hero */
+    .hero { padding: 4.5rem 0 3rem; }
+    .eyebrow { display: inline-block; font-size: 0.8rem; font-weight: 650; letter-spacing: 0.02em;
+      color: var(--green-d); background: var(--mint); border-radius: 999px; padding: 0.3rem 0.8rem; }
+    .hero h1 { font-size: clamp(2.1rem, 5vw, 3.2rem); line-height: 1.1; letter-spacing: -0.03em;
+      margin: 1.1rem 0 0; max-width: 20ch; }
+    .hero p.lead { font-size: 1.12rem; color: var(--muted); max-width: 62ch; margin: 1.1rem 0 0; }
+    .hero .cta { display: flex; gap: 0.8rem; margin-top: 1.9rem; flex-wrap: wrap; }
+    .hero .sum { margin-top: 1.6rem; font-size: 0.95rem; color: var(--muted); }
+    .hero .sum b { color: var(--ink); }
+
+    /* Shot */
+    .shot { margin-top: 2.6rem; border-radius: 14px; overflow: hidden;
+      border: 1px solid var(--line); box-shadow: 0 24px 60px -30px rgba(30,43,35,0.45); }
+    .shot img { display: block; width: 100%; }
+    .caption { margin-top: 0.75rem; font-size: 0.87rem; color: var(--muted); text-align: center; }
+
+    /* Sections */
+    section { padding: 3.6rem 0; scroll-margin-top: 60px; }
+    section.soft { background: var(--paper); border-block: 1px solid var(--line); }
+    section h2 { font-size: clamp(1.5rem, 3vw, 2rem); letter-spacing: -0.02em; margin: 0 0 0.5rem; }
+    section p.sub { color: var(--muted); margin: 0 0 2rem; max-width: 70ch; }
+
+    /* Cards */
+    .grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+    .card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 1.3rem 1.4rem; }
+    section.soft .card { background: #fff; }
+    .card .ico { display: inline-grid; place-items: center; width: 36px; height: 36px;
+      border-radius: 10px; background: var(--mint); color: var(--green-d);
+      font-size: 1.05rem; margin-bottom: 0.7rem; }
+    .card h3 { margin: 0 0 0.4rem; font-size: 1.05rem; letter-spacing: -0.01em; }
+    .card p { margin: 0; color: var(--muted); font-size: 0.93rem; }
+    .card code { background: var(--soft); border-radius: 5px; padding: 0.05rem 0.3rem; font-size: 0.87em; }
+
+    /* Three modes, as a list beside one large screenshot. A whole app window shrunk into a
+       card column is unreadable, and two of the three are pages of text */
+    .mode { padding: 1.1rem 0; border-top: 1px solid var(--line); }
+    .mode:first-of-type { border-top: 0; padding-top: 0; }
+    .mode h3 { margin: 0 0 0.3rem; font-size: 1.05rem; display: flex; align-items: baseline; gap: .6rem; }
+    .mode h3 small { font-weight: 600; font-size: 0.75rem; color: var(--muted); letter-spacing: .04em;
+      text-transform: uppercase; }
+    .mode p { margin: 0; color: var(--muted); font-size: 0.93rem; }
+    .mode .q { display: block; margin-top: 0.55rem; font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem; color: var(--green-d); background: var(--mint);
+      border-radius: 7px; padding: 0.4rem 0.6rem; }
+    .figbox { border-radius: 12px; overflow: hidden; border: 1px solid var(--line);
+      box-shadow: 0 18px 44px -26px rgba(30,43,35,0.5); }
+    .figbox img { display: block; width: 100%; }
+
+    /* Code */
+    pre.code { background: #17281f; color: #e7f2ea; border-radius: 12px; padding: 1.15rem 1.3rem;
+      overflow-x: auto; font-size: 0.88rem; line-height: 1.65; margin: 0; }
+    pre.code .c { color: #8fb6a0; }
+    pre.code .p { color: #7fd6a0; }
+    .split { display: grid; gap: 2rem; grid-template-columns: 1fr 1fr; align-items: center; }
+    .split.top { align-items: start; }
+    /* a grid child sizes to its content by default, so the code block widens its whole column */
+    .split > * { min-width: 0; }
+    @media (max-width: 860px) { .split { grid-template-columns: 1fr; } }
+    @media (max-width: 760px) {
+      header.nav nav { display: none; }
+      .hero { padding-top: 3rem; }
+      .stats { grid-template-columns: 1fr 1fr; }
+      footer .sp { margin-left: 0; width: 100%; }
+    }
+
+    /* Stats */
+    .stats { display: grid; gap: 0.8rem; grid-template-columns: repeat(3, 1fr); margin-top: 1.4rem; }
+    .stat { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.15rem; }
+    .stat b { display: block; font-size: 1.5rem; letter-spacing: -0.02em; }
+    .stat span { font-size: 0.85rem; color: var(--muted); }
+
+    /* Docs list */
+    .doclist { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
+    .doc { display: block; background: #fff; border: 1px solid var(--line); border-radius: 14px;
+      padding: 1.2rem 1.35rem; color: inherit; transition: border-color .15s, transform .08s; }
+    .doc:hover { border-color: var(--green); transform: translateY(-2px); }
+    .doc .tag { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--green-d); }
+    .doc h3 { margin: 0.35rem 0 0.35rem; font-size: 1.02rem; }
+    .doc p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+
+    /* Footer */
+    footer { background: var(--chrome); color: #fff; padding: 2.2rem 0; }
+    footer .row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; font-size: 0.92rem; }
+    footer img { height: 22px; filter: brightness(0) invert(1); }
+    footer a { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+    footer .sp { margin-left: auto; opacity: 0.85; }
+  </style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap row">
+    <a class="brand" href="#top"><img src="blogger/assets/logo.png" alt="" /></a>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#search">Search</a>
+      <a href="#console">Console</a>
+      <a href="#start">Quick start</a>
+      <a href="#docs">Docs</a>
+      <a href="https://github.com/paganini2008/greenfinger">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<div id="top" class="wrap hero">
+  <span class="eyebrow">Open source · Apache 2.0 · JDK 17</span>
+  <h1>One url in. A searchable archive out.</h1>
+  <p class="lead">
+    Greenfinger is a distributed web crawler for the JVM. Point it at a url and it crawls the whole
+    site, keeps every page, every picture and every version, and writes plain files, a full text
+    index and a vector collection in one pass. Every node runs the same jar, so there is no
+    coordinator to deploy and nothing to provision before the first crawl.
+  </p>
+  <div class="cta">
+    <a class="btn btn-primary" href="https://github.com/paganini2008/greenfinger">Get started on GitHub</a>
+    <a class="btn btn-ghost" href="#docs">Read the docs</a>
+  </div>
+  <p class="sum">
+    <b>Greenfinger</b> = a crawler that never leaves the site + three outputs that stack +
+    search by words, by meaning, or by describing a picture.
+  </p>
+
+  <div class="shot">
+    <img src="blogger/assets/monitor-live.jpg" alt="A crawl running, with a progress hero, the sieve of where every url went, and a row per node" />
+  </div>
+  <p class="caption">
+    A rebuild in progress. v1 keeps answering searches while v2 is being written, and each node
+    reports what it pulled.
+  </p>
+</div>
+
+<section id="features" class="soft">
+  <div class="wrap">
+    <h2>Everything a crawl needs, nothing to provision</h2>
+    <p class="sub">
+      No database, no search server, no API key and no model download before the first crawl.
+      H2 and an embedded Lucene index are the defaults, and the embedding models run as ONNX inside
+      the crawler's own process.
+    </p>
+    <div class="grid">
+      <div class="card">
+        <div class="ico">◈</div>
+        <h3>Decentralised by default</h3>
+        <p>One url dispatched is one call to whichever node owns it. No central queue, no scheduler,
+          no leader in the fetch path. Start another process on the same cluster name and it joins a
+          crawl already running.</p>
+      </div>
+      <div class="card">
+        <div class="ico">⛁</div>
+        <h3>Three outputs, and they stack</h3>
+        <p>Files on disk or in MinIO, a full text index in Lucene or Elasticsearch, and vectors in
+          Lucene, Qdrant, Weaviate or Elasticsearch. Any combination, chosen per catalog.</p>
+      </div>
+      <div class="card">
+        <div class="ico">⟳</div>
+        <h3>Replay without recrawling</h3>
+        <p>The database keeps metadata only, so the index and the vectors rebuild from the files.
+          Lost an index, changed an analyzer, or decided late that you want embeddings? None of it
+          touches the site again.</p>
+      </div>
+      <div class="card">
+        <div class="ico">⊘</div>
+        <h3>Never leaves the site</h3>
+        <p>Two boundary rules run before anything else and cannot be switched off: the registrable
+          domain has to match, and every url has to sit under the start url. robots.txt is obeyed on
+          top of that.</p>
+      </div>
+      <div class="card">
+        <div class="ico">▤</div>
+        <h3>Beyond html</h3>
+        <p>Pictures from <code>&lt;img&gt;</code>, <code>srcset</code> and <code>og:image</code>,
+          filtered by size and type. Links to documents recorded on every crawl, with text, markdown
+          and csv read out of the box and pdf one bean away.</p>
+      </div>
+      <div class="card">
+        <div class="ico">↺</div>
+        <h3>Resumable and versioned</h3>
+        <p>The frontier is on disk, so a crawl killed halfway carries on. A rebuild opens a new
+          version beside the old one, and search keeps answering from the old one until the new one
+          finishes.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="search">
+  <div class="wrap">
+    <h2>Search what you kept, three ways</h2>
+    <p class="sub">
+      One box, three modes. The embedding models are local, so meaning and picture search need no
+      account and no network.
+    </p>
+    <div class="split top">
+      <div>
+        <div class="mode">
+          <h3>Words <small>to the index</small></h3>
+          <p>Exact terms, highlighted, with detail pages ranked above listings. Deep paging by
+            cursor, past the ten thousandth result Elasticsearch refuses.</p>
+          <span class="q">bread</span>
+        </div>
+        <div class="mode">
+          <h3>Meaning <small>to the text vectors</small></h3>
+          <p>Finds the page that answers the question even when it never uses the words. The top
+            answer to this one is a supernova remnants page that never contains the sentence.</p>
+          <span class="q">what happens when a star runs out of fuel</span>
+        </div>
+        <div class="mode">
+          <h3>Pictures <small>to the image vectors</small></h3>
+          <p>Describe what you want to see rather than what the caption might say. This is matched
+            against the picture itself, not the filename and not the alt text.</p>
+          <span class="q">a bright spiral galaxy against black sky</span>
+        </div>
+      </div>
+      <div>
+        <div class="figbox">
+          <img src="blogger/assets/search-pictures.jpg" alt="Pictures found by describing them, each result scored by similarity" />
+        </div>
+        <p class="caption" style="text-align:left">
+          Pictures, ranked by how well each one matches the description.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="console" class="soft">
+  <div class="wrap">
+    <h2>See the whole crawl at a glance</h2>
+    <p class="sub">
+      An Angular console on the same REST api your own code would call. One address in front of
+      every node, so the browser talks to the cluster rather than to one process.
+    </p>
+    <div class="split">
+      <div>
+        <div class="grid" style="grid-template-columns:1fr">
+          <div class="card">
+            <h3>Catalogs</h3>
+            <p>A site, the rules for crawling it, and every version it produced, with live progress
+              on the card while it runs.</p>
+          </div>
+          <div class="card">
+            <h3>Monitor</h3>
+            <p>Pages kept against urls seen, where every url went, throughput, a row per node, and
+              the report of every finished run.</p>
+          </div>
+          <div class="card">
+            <h3>Resources and System</h3>
+            <p>Every row in crawl order with its file paths and content hash. Members, roles, heap,
+              and every health check the node makes.</p>
+          </div>
+        </div>
+      </div>
+      <div>
+        <figure style="margin:0">
+          <img src="blogger/assets/monitor-nodes.jpg" alt="A per node table showing how the work was shared, and the delete panel below it"
+               style="border-radius:12px;border:1px solid var(--line);display:block" />
+        </figure>
+        <p class="caption" style="text-align:left">
+          Two nodes on one crawl, 51% and 49%. The totals above are the cluster's.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="start">
+  <div class="wrap">
+    <div class="split">
+      <div>
+        <h2 style="margin-top:0">From clone to a searchable site in one command</h2>
+        <p class="sub">
+          The crawler needs nothing else running. Metadata goes into an H2 file, pages go under
+          <code>./data</code>, and a live dashboard is drawn while it works.
+        </p>
+        <div class="stats">
+          <div class="stat"><b>0</b><span>services to provision</span></div>
+          <div class="stat"><b>3</b><span>outputs from one pass</span></div>
+          <div class="stat"><b>6</b><span>databases supported</span></div>
+        </div>
+        <p style="margin-top:1.6rem">
+          <a class="btn btn-primary" href="https://github.com/paganini2008/greenfinger">Browse the repo</a>
+        </p>
+      </div>
+      <div>
+<pre class="code"><span class="c"># clone and build</span>
+git clone https://github.com/paganini2008/greenfinger
+<span class="p">cd</span> greenfinger/backend &amp;&amp; mvn clean install
+
+<span class="c"># crawl a site, right now</span>
+<span class="p">cd</span> ../deploy
+./greenfinger-cli.sh --cluster=demo <span class="p">crawl</span> \
+    --url=https://books.toscrape.com
+
+<span class="c"># or bring up the nodes and the console</span>
+./run-local.sh              <span class="c"># http://localhost:9700</span>
+GF_NODES=3 ./run-local.sh   <span class="c"># three nodes, one crawl</span>
+
+<span class="c"># a terminal on those nodes</span>
+./greenfinger-shell.sh --cluster=greenfinger-local</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="docs" class="soft">
+  <div class="wrap">
+    <h2>Documentation</h2>
+    <p class="sub">Reference for operators, and the seams for developers.</p>
+    <div class="doclist">
+      <a class="doc" href="https://github.com/paganini2008/greenfinger#readme">
+        <span class="tag">Start here</span>
+        <h3>README</h3>
+        <p>What it does, how to run it, every setting a catalog takes, and the REST api.</p>
+      </a>
+      <a class="doc" href="cli-reference.html">
+        <span class="tag">Reference</span>
+        <h3>Command line</h3>
+        <p>The crawl verbs, every command at the prompt, and how a terminal attaches to a cluster.</p>
+      </a>
+      <a class="doc" href="design-2.0.html">
+        <span class="tag">Reference</span>
+        <h3>Design</h3>
+        <p>How the system is shaped and why, with diagrams and the numbers the decisions were made on.</p>
+      </a>
+      <a class="doc" href="developer-guide.html">
+        <span class="tag">Guide</span>
+        <h3>Developer guide</h3>
+        <p>Every seam, what ships behind it, and how to put your own there. Extractors, filters,
+          outputs, stores and document parsers.</p>
+      </a>
+      <a class="doc" href="sql/schema-scripts.html">
+        <span class="tag">Reference</span>
+        <h3>Schema scripts</h3>
+        <p>One per database, generated from the entities, for creating the schema yourself instead
+          of letting Hibernate do it.</p>
+      </a>
+      <a class="doc" href="https://github.com/paganini2008/greenfinger/blob/main/CHANGELOG.md">
+        <span class="tag">Reference</span>
+        <h3>Changelog</h3>
+        <p>What changed in 2.0, and what an upgrade from 1.x involves.</p>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap row">
+    <img src="blogger/assets/logo.png" alt="Greenfinger" />
+    <span>Crawl a site, keep every version, search what you kept.</span>
+    <span class="sp">Apache 2.0 · <a href="https://github.com/paganini2008/greenfinger">source on GitHub</a></span>
+  </div>
+</footer>
+
+</body>
+</html>
