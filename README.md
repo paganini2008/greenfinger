@@ -28,115 +28,43 @@ needs no database, no search server and no API key.
 
 ## Table of contents
 
-**Getting it running** [Quick start](#quick-start) · [Install](#install) · [Launchers](#launchers)
+[Features](#features) · [Architecture](#architecture) · [Requirements](#requirements) · [Quick start](#quick-start) · [Examples](#examples) · [Configuration](#configuration) · [Performance](#performance) · [Documentation](#documentation) · [Roadmap](#roadmap) · [Contributing](#contributing) · [License](#license)
 
-**What it does** [What it solves](#what-it-solves) · [One pass, three outputs](#one-pass-three-outputs) · [What one page goes through](#what-one-page-goes-through) · [Everything a catalog can set](#everything-a-catalog-can-set) · [Also in the box](#also-in-the-box)
+---
 
-**Using it** [Web interface](#web-interface) · [Command line](#command-line) · [Cluster](#cluster) · [What lands on disk](#what-lands-on-disk) · [Configuration](#configuration)
+## Features
 
-**Building on it** [Extending it](#extending-it) · [Embedding in an application](#embedding-in-an-application) · [REST api](#rest-api)
+Each line is a problem crawlers actually hit, and what Greenfinger does about it.
 
-**Reference** [Stack](#stack) · [Documentation](#documentation) · [Roadmap](#roadmap) · [Contributing](#contributing) · [License](#license)
+| | The problem | What it does |
+|---|---|---|
+| **Stays on the site** | One advert link and an unbounded crawler is downloading the rest of the web | Two boundary rules that cannot be switched off: same registrable domain, and under the start url. robots.txt on top |
+| **Scales sideways** | Going faster means a queue, a scheduler and a week of work | Every node runs the same jar and pulls its own share. No queue service, no scheduler, no leader in the fetch path |
+| **Survives a kill** | Killed at page 40,000, the in-memory queue is gone | The frontier is on disk. A resume carries on from where it stopped |
+| **Three outputs, one pass** | Files here, an index there, embeddings elsewhere, three pieces of glue | One crawl writes files, a full text index and vectors. Pick any combination per catalog |
+| **Rebuilds without recrawling** | The index was lost, or the analyzer changed, and the site has to be crawled again | `replay` rebuilds the index or the vectors from the files. The site is never touched |
+| **Reads past html** | The handbook is a pdf, the price list a spreadsheet, and the crawler walks past both | Document links are recorded on every crawl, for free. Switch reading on and text, markdown and csv are parsed out of the box, pdf one bean away |
+| **Keeps the article** | Navigation and cookie banners get indexed, so every result looks the same | Boilerplate dropped by link density. No model and no dictionary, so any language behaves the same |
+| **Stores nothing twice** | The same article under two urls, kept twice | Urls normalised into RocksDB, content fingerprinted with SHA-256 or SimHash |
+| **Versions, safely** | A rebuild takes search down while it runs | A rebuild opens a new version beside the old one, and search keeps answering from the old one |
+| **Searches three ways** | Keyword search cannot find a page that never says the words | Words to the index, meaning to the text vectors, pictures by describing them. Models run locally |
 
-## Quick start
+### What it looks like
 
-``` shell
-cd deploy
-./greenfinger-cli.sh --cluster=demo crawl --url=https://books.toscrape.com
-```
-
-Up to 10,000 pages, no depth limit, a second apart, images downloaded, metadata in an H2 file and
-pages under `./data`. A dashboard is drawn while it runs and the catalog id is printed at the end.
-
-``` shell
-./run-local.sh                # nodes plus the page on http://localhost:9700
-./run-docker.sh               # the same, in containers
-./run-local.sh stop
-```
-
-Sign in with `admin` and the password in `deploy/config/api/users.xml`. Seven example catalogs ship
-with a fresh install, so there is something to crawl before you have picked anything.
-
-`--cluster=<name>` is required and has no default. A cluster crawls one catalog at a time, so the
-name is what keeps two runs apart.
-
-## Install
-
-Requirements: JDK 17 or later, Maven 3.9 or later, Node 20 or later for the front end.
-
-``` shell
-git clone https://github.com/paganini2008/greenfinger.git
-cd greenfinger/backend
-mvn clean install
-```
-
-That produces `deploy/`: the four launchers, the jars in `lib/`, the configuration in `config/`,
-and `run.conf` beside them.
-
-``` text
-greenfinger
-├── backend
-│   ├── greenfinger-core      engine, pluggable components, outputs, vector stores,
-│   │                         embeddings, persistence, the services both front ends drive
-│   ├── greenfinger-cluster   the crawl across processes, plus replication
-│   ├── greenfinger-api       REST api, login, and the server that serves the page
-│   └── greenfinger-shell     the prompt and the one line crawler
-├── frontend/greenfinger-ui   Angular 21
-├── deploy                    produced by the build, this is what you run
-└── docs                      references, design notes, schema scripts
-```
-
-**`deploy/` is not in the repository.** Everything in it is put there by the build, so there is one
-copy of every file and it is the one you edit:
-
-| In deploy/ | Edited in |
+| | |
 |---|---|
-| `greenfinger-cli.sh`, `greenfinger-shell.sh`, `run.conf`, `.env.example` | `backend/greenfinger-shell/src/main/resources/bin/` |
-| `run-local.sh`, `run-docker.sh` | `backend/greenfinger-api/src/main/resources/bin/` |
-| `config/` | `backend/greenfinger-shell/src/main/resources/config/` |
-| `docker/Dockerfile`, `dockerignore` | `backend/greenfinger-api/src/main/resources/docker/` |
-| `docker/Dockerfile.web`, `docker/server.js`, `docker/static/` | `frontend/greenfinger-ui/` |
+| ![Catalogs](docs/blogger/assets/catalogs.jpg) | ![Dashboard](docs/blogger/assets/dashboard.jpg) |
+| **Catalogs.** A site, the rules for crawling it, and every version it produced, with live progress while it runs. | **Dashboard.** What this installation kept, and what it threw away to keep it. |
+| ![Run report](docs/blogger/assets/monitor-report.jpg) | ![Per node](docs/blogger/assets/monitor-nodes.jpg) |
+| **Monitor.** Where every url went, live and in the report of every finished run. | **Per node.** The totals above are the cluster's. These are the nodes that made them. |
+| ![Search by meaning](docs/blogger/assets/search-meaning.jpg) | ![Search by picture](docs/blogger/assets/search-pictures.jpg) |
+| **Meaning.** The query is *what happens when a star runs out of fuel*. The top answer never contains that sentence. | **Pictures.** The query is *a bright spiral galaxy against black sky*, matched against the picture itself. |
 
-Deleting `deploy/` and rebuilding is safe, with three exceptions a build cannot put back: `data/`
-holds everything crawled, `.env` holds secrets that exist nowhere else, and a `run.conf` you have
-filled in survives a rebuild but not a delete.
+---
 
-## Launchers
+## Architecture
 
-Four executables, four faces on the same jar. Same crawler, same configuration, same data store.
-
-| | What it is | Cluster | Port |
-|---|---|---|---|
-| `./greenfinger-cli.sh --cluster=<name> <verb>` | A crawler. One command, printed, done | whatever you called it | 22000 |
-| `./greenfinger-shell.sh --cluster=<name>` | A prompt on a cluster somebody is running | the one you attach to | 22010 |
-| `./run-local.sh` | The nodes here as background processes, plus the page | `greenfinger-local` | 22010 |
-| `./run-docker.sh` | The same, one container per node, plus the page container | `greenfinger-docker` | 22020 |
-
-``` shell
-cd deploy
-./greenfinger-cli.sh --cluster=demo crawl --url=https://books.toscrape.com
-GF_NODES=3 ./run-local.sh                            # three nodes sharing the crawl
-./greenfinger-shell.sh --cluster=greenfinger-local   # a prompt on those nodes
-./run-docker.sh shell                                # a prompt inside the container network
-./run-local.sh stop
-```
-
-Which cluster a node joins, where it writes and how many nodes to start live in `deploy/run.conf`,
-read by all four. Addresses and passwords stay in `deploy/.env`.
-
-## What it solves
-
-| The problem | What Greenfinger does |
-|---|---|
-| The crawl wanders off into the rest of the web | Two boundary rules that cannot be switched off: same registrable domain, and under the start url |
-| One machine is not enough | Every node runs the same jar and pulls its own share. No queue service, no scheduler |
-| Killed at page 40,000, restarts from zero | The frontier is on disk. A resume carries on from where it stopped |
-| Half the site is pdf, docx, markdown | Document links are recorded on every crawl. Text, markdown and csv read out of the box |
-| Navigation and cookie banners get indexed | Boilerplate dropped by link density. No model, no dictionary, any language |
-| The same article under two urls, stored twice | Urls normalised into RocksDB, content fingerprinted with SHA-256 or SimHash |
-| Files, index and embeddings are three projects | One pass writes all three. Any of them rebuilds from the files, without recrawling |
-
-## One pass, three outputs
+### One pass, three outputs
 
 ``` text
                             ┌──────────────┐
@@ -151,39 +79,11 @@ read by all four. Addresses and passwords stay in `deploy/.env`.
                                        without fetching the site again
 ```
 
-| Output | What goes there | Backends |
-|---|---|---|
-| **file** | The page as fetched, the article text, every image | local, minio |
-| **index** | Full text, searchable by words | lucene, elasticsearch |
-| **vector** | Text chunks and image embeddings | lucene, elasticsearch, qdrant, weaviate |
-
 The file layer is always on, because the database keeps metadata only and the other two rebuild
-from what it wrote.
+from what it wrote. **Search never reads the database**, which is the constraint the whole design
+follows from.
 
-``` shell
-./greenfinger-cli.sh --cluster=nightly replay --id=<id> --layers=index+vector
-```
-
-### Versions
-
-``` text
-  v0  ████████████  searchable
-  v1  ████████████  searchable          rebuild opens v2 beside v1
-  v2  ██████░░░░░░  writing             search keeps answering from v1
-
-  interrupted ──► publishes nothing ──► search is exactly as it was
-```
-
-| Verb | Does |
-|---|---|
-| `crawl` | From the start url |
-| `update` | Only the urls that have appeared since |
-| `merge` | That, and revisit what is held. Writes nothing for pages that came back unchanged |
-| `rebuild` | A new version, whole site again, old one keeps serving |
-| `resume` | Continue after a pause or a kill |
-| `replay` | Rebuild an output from what is stored, without fetching |
-
-## What one page goes through
+### What one page goes through
 
 ``` text
   url from the frontier
@@ -199,133 +99,157 @@ from what it wrote.
         └─ new links ─────────────► back to the frontier, to whichever node owns them
 ```
 
-- **Pictures** come from `<img>`, `srcset`, `<picture>` and `og:image`, filtered by size, media
-  type and byte count. Identical bytes are stored once however many pages point at them, and the
-  wording around each one is kept so an image with no alt text is still findable by words.
-- **Documents** are recorded on every crawl. Text, markdown and csv are read out of the box, and
-  pdf, Word or Excel is [one bean away](#extending-it).
-- **Javascript** starts a browser only for pages that came back as an unrendered shell. Five
-  extractors ship: `restclient`, `htmlunit`, `playwright`, `selenium`, and the default `adaptive`.
+Every drop is counted and named, which is why the monitor can say where 22,000 urls went rather
+than only that 140 pages were kept.
 
-## Everything a catalog can set
+### How the cluster shares one crawl
 
-Run `options` at the prompt for this table with the current defaults.
+``` text
+   node A ── finds /a/b ──► node C owns it ──► fetches, finds /a/b/c ──► node A owns it ──► ...
 
-| Setting | Accepts | Default |
-|---|---|---|
-| `url` | http:// or https:// | required, the only one |
-| `name` | unique text | the domain |
-| `cat` | one of nine categories, used to filter and group | `other` |
-| `start-url` | a url under `url`. A seed and a boundary at once | `= url` |
-| `sitemap-url` | a url, or empty to discover it from robots.txt | empty |
-| `include` | ant path pattern, comma for several | `**.<domain>/**` |
-| `exclude` | ant path pattern, comma for several | empty |
-| `encoding` | UTF-8, GBK, and the rest | UTF-8 |
-| `extractor` | adaptive, restclient, htmlunit, playwright, selenium | adaptive |
-| `max-size` | saved pages before it stops | 10000 |
-| `depth` | -1 for no limit | -1 |
-| `duration` | minutes before it stops | 30 |
-| `interval` | milliseconds between fetches, per node | 1000 |
-| `retry` | retries per url | 1 |
-| `url-dedup` | rocksdb, or a filter of your own by class name | rocksdb |
-| `images` | whether pictures are fetched at all | true |
-| `output-types` | file+index+vector, file is always on | file |
-| `content` | text+image or text, what reaches the index and vectors | text+image |
-| `max-versions` | how many versions to keep | 10 |
-
-Node wide defaults for all of these live in `.env`, and a catalog overrides any of them.
-
-## Also in the box
-
-- **Sitemaps.** What a site publishes about itself is collected before the crawl starts, from
-  `sitemap-url` or discovered through robots.txt.
-- **File restore.** `replay --layers=file` fetches back pages and images that were lost, from the
-  urls the rows record, one page at a time and only the ones actually missing. Combine it with
-  `index` and `vector` to repair a version completely, in that order.
-- **Deep paging.** Word search pages by cursor, so it goes past the ten thousandth result
-  Elasticsearch refuses. Vector search pages by offset, capped at a thousand.
-- **Search ranking.** Detail pages are pushed above listings in both the index and the vector
-  store, because a listing matches the same words as the article it links to and is almost never
-  the answer.
-- **An account of every run.** One report file beside the pages per node, plus a merged one, kept
-  with the version so a crawl from six months ago can still be explained.
-- **Six databases.** H2, SQLite, MySQL, PostgreSQL, SQL Server and Oracle, each taken through the
-  full regression.
-- **A proxy, when a site needs one.** `greenfinger.extractor.base.proxy-host` and `proxy-port`
-  apply to every fetch, pages, images and documents alike, because one shared HttpClient makes
-  them.
-- **`test-url`** fetches one url and reports what came back, which is the fastest way to find out
-  why a site is refusing you.
-
-## Web interface
-
-Angular 21 with signals and Material 3, talking to the same REST endpoints your own code would.
-
-**Catalogs.** A site, the rules for crawling it, and every version it produced.
-
-![Catalogs](docs/blogger/assets/catalogs.jpg)
-
-**New catalog** asks for a url and nothing else. Every other field has a default chosen to give a
-useful crawl of a site you know nothing about.
-
-![New catalog](docs/blogger/assets/catalog-new.jpg)
-
-**Dashboard.** What this installation kept, and what it threw away to keep it.
-
-![Dashboard](docs/blogger/assets/dashboard.jpg)
-
-**Monitor.** Live while it runs, and the report of every finished run: where every url went, a row
-per node, and the delete panel.
-
-![Run report](docs/blogger/assets/monitor-report.jpg)
-
-![What each node did](docs/blogger/assets/monitor-nodes.jpg)
-
-**Resources.** Every row, in crawl order, with file paths and the content hash.
-
-![Resources](docs/blogger/assets/resources.jpg)
-
-**Search**, three modes over one box.
-
-| Mode | Goes to | Example query |
-|---|---|---|
-| Words | The index | `galaxy` |
-| Meaning | Text vectors | `what happens when a star runs out of fuel` |
-| Pictures | Image vectors | `a bright spiral galaxy against black sky` |
-
-![Search by words](docs/blogger/assets/search-words.jpg)
-
-![Search by meaning](docs/blogger/assets/search-meaning.jpg)
-
-![Search by describing a picture](docs/blogger/assets/search-pictures.jpg)
-
-Embeddings run locally as ONNX and need no account: `multilingual-e5-small` for text, `SigLIP 2`
-for images, both preloaded at startup on a background thread.
-
-``` shell
-GF_EMBEDDING_PROVIDER=local     # the default
-GF_PRELOAD_TEXT_MODEL=true
-GF_PRELOAD_IMAGE_MODEL=true
-GF_MODEL_DIR=./models           # cached here, downloaded once
-
-GF_EMBEDDING_PROVIDER=ollama
-GF_OLLAMA_URL=http://localhost:11434
-
-GF_EMBEDDING_PROVIDER=openai
-OPENAI_API_KEY=...
+   no central queue        no leader in the fetch path        join or leave mid crawl
 ```
 
-**System.** Members, roles, heap, and every health check the node makes. The settings tab merges
-the packaged yaml, the copy beside the launcher, `.env` and the command line.
+One url dispatched is one call to whichever node owns it, routed by a consistent hash of
+`catalogId|version|url`. There is no join, because a parent page does not care what its children
+found.
 
-![System](docs/blogger/assets/cluster.jpg)
+**Completion is decided by everyone.** Every node checks the shared counters against
+`maxFetchSize` and `fetchDuration`, and the first to notice writes the reason. A leader that dies
+mid crawl cannot leave a crawl that never ends.
 
-## Command line
+**What replicates.** Rows, blobs and vectors replicate themselves. The embedded Lucene index and
+the RocksDB directories are per node, so index documents travel on their own channel and deletions
+travel as an instruction. Elasticsearch and Qdrant are one shared cluster and need none of it.
 
-| | What it is | Use it to |
+### What lands on disk
+
+``` text
+deploy/data/
+  system/                                  working state. Local to a node, always
+    greenfinger.mv.db                      H2, when no database server was configured
+    frontier/                              RocksDB: the urls still to visit
+    dedup/url/  dedup/content/             RocksDB: what has been seen already
+  user/                                    what was crawled. This is what a search reads
+    assets/{catalogId}/v0/
+      settings.json                        how this version was configured, and how it went
+      reports/{stamp}-{action}-{node}.json one file per run
+      pages/ab/cd/{id}.html                the page as fetched
+      pages/ab/cd/{id}.txt                 the article, with the navigation removed
+      images/ab/cd/{id}.jpg                the pictures it referenced
+    index/{prefix}-{catalogId}/            embedded Lucene, one index per catalog
+    vector/{collection}_{dimensions}/      embedded Lucene, one per embedding width
+```
+
+`system/` can be deleted without affecting a search, at the cost of a resume. `user/` is the half
+worth backing up. Paths are keyed by catalog id, never name, so renaming moves nothing. MinIO
+object keys are identical to these paths.
+
+---
+
+## Requirements
+
+| | Version | Needed for |
 |---|---|---|
-| `greenfinger-cli.sh` | A crawler that runs one command and exits | Crawl from a script or a cron entry |
-| `greenfinger-shell.sh` | A terminal on a cluster somebody is running | Look at it, search it, drive it |
+| **JDK** | 17 or later | Running anything |
+| **Maven** | 3.9 or later | Building from source |
+| **Node** | 20 or later | Building the web interface |
+| **Docker** | any current | `run-docker.sh` only |
+
+**Nothing else is required.** H2 and an embedded Lucene index are the defaults, and the embedding
+models are ONNX files downloaded once into `GF_MODEL_DIR`. Everything below is optional and opt in
+one variable at a time.
+
+| Optional service | Versions | Replaces |
+|---|---|---|
+| PostgreSQL, MySQL, SQL Server, Oracle, SQLite | current | The H2 metadata file |
+| Elasticsearch | 7, 8 or 9 | The embedded Lucene index |
+| Qdrant, Weaviate, Elasticsearch | current | The embedded Lucene vector store |
+| MinIO, or any S3 compatible store | 9.x client | Local disk for pages and images |
+| Ollama, OpenAI | current | The local ONNX embedding models |
+
+A browser is needed only for the `playwright` and `selenium` extractors. The default `adaptive`
+extractor falls back to HtmlUnit, which is pure Java and needs nothing installed.
+
+---
+
+## Quick start
+
+### Build
+
+``` shell
+git clone https://github.com/paganini2008/greenfinger.git
+cd greenfinger/backend
+mvn clean install
+```
+
+That produces `deploy/`: four launchers, the jars in `lib/`, the configuration in `config/`, and
+`run.conf` beside them.
+
+### Crawl a site in one command
+
+``` shell
+cd deploy
+./greenfinger-cli.sh --cluster=demo crawl --url=https://books.toscrape.com
+```
+
+Expected output:
+
+``` text
+Crawling 'books.toscrape.com' from https://books.toscrape.com
+
+  pages kept    1,000      urls seen   28,411      1 in every 28
+  images        3,204      indexed      1,000      elapsed  0h 4m 12s
+
+Finished: reached maxFetchSize
+Catalog 01a0c3d5-7d3d-7000-81f6-76057a403db8, version 0, now searchable.
+```
+
+Up to 10,000 pages, no depth limit, a second apart, images downloaded, metadata in an H2 file and
+pages under `./data`. `--cluster=<name>` is required and has no default, because a cluster crawls
+one catalog at a time and the name is what keeps two runs apart.
+
+### Or bring up the nodes and the console
+
+``` shell
+./run-local.sh                # nodes plus the page on http://localhost:9700
+GF_NODES=3 ./run-local.sh     # three nodes sharing one crawl
+./run-docker.sh               # the same, in containers
+./run-local.sh stop
+```
+
+Sign in with `admin` and the password in `deploy/config/api/users.xml`. Seven example catalogs ship
+with a fresh install, so there is something to crawl before you have picked anything.
+
+### The four launchers
+
+| | What it is | Cluster | Port |
+|---|---|---|---|
+| `./greenfinger-cli.sh --cluster=<name> <verb>` | A crawler. One command, printed, done | whatever you called it | 22000 |
+| `./greenfinger-shell.sh --cluster=<name>` | A prompt on a cluster somebody is running | the one you attach to | 22010 |
+| `./run-local.sh` | The nodes here as background processes, plus the page | `greenfinger-local` | 22010 |
+| `./run-docker.sh` | One container per node, plus the page container | `greenfinger-docker` | 22020 |
+
+`deploy/` is a build output and is not in the repository. Every file in it is edited at its source:
+
+| In deploy/ | Edited in |
+|---|---|
+| `greenfinger-cli.sh`, `greenfinger-shell.sh`, `run.conf`, `.env.example` | `backend/greenfinger-shell/src/main/resources/bin/` |
+| `run-local.sh`, `run-docker.sh` | `backend/greenfinger-api/src/main/resources/bin/` |
+| `config/` | `backend/greenfinger-shell/src/main/resources/config/` |
+| `docker/Dockerfile` | `backend/greenfinger-api/src/main/resources/docker/` |
+| `docker/Dockerfile.web`, `docker/server.js`, `docker/static/` | `frontend/greenfinger-ui/` |
+
+Deleting `deploy/` and rebuilding is safe, with three exceptions a build cannot put back: `data/`,
+`.env`, and a `run.conf` you have filled in.
+
+---
+
+## Examples
+
+### Crawl, update, rebuild, replay
+
+**Input.** A catalog id, and a verb.
 
 ``` shell
 ./greenfinger-cli.sh --cluster=nightly crawl   --id=<id>            # from the start url
@@ -338,12 +262,58 @@ the packaged yaml, the copy beside the launcher, `.env` and the command line.
 ./greenfinger-cli.sh --cluster=nightly replay  --id=<id> --layers=index+vector
 ```
 
+**Output.** Each verb exits non zero on failure and prints what it did. What each one means:
+
+| Verb | Version | Fetches | Writes |
+|---|---|---|---|
+| `crawl` | current | from the start url | everything it saves |
+| `update` | current | only urls not seen before | new pages only |
+| `merge` | current | new urls **and** pages already held | only the pages that changed |
+| `rebuild` | a new one | the whole site again | the new version, old one keeps serving |
+| `resume` | current | what is left on the frontier | as the interrupted run would have |
+| `replay` | a named one | nothing | rebuilds an output from what is stored |
+
 Three ways of naming the same catalog: `--id=<id>`, `--name=<name>`, or `--url=<url>`, which
-creates one if there is no catalog for that url yet. Anything that goes wrong exits non zero.
+creates one if there is no catalog for that url yet.
 
-### The prompt
+### Drive a running cluster from a prompt
 
-Crawls nothing itself. It joins a running cluster and drives it, exactly as the page does.
+**Input.** Nodes already running, then the prompt attaches to them.
+
+``` shell
+./run-local.sh
+./greenfinger-shell.sh --cluster=greenfinger-local
+```
+
+**Execution.**
+
+``` text
+greenfinger:> catalog-list
+greenfinger:> search --query="what happens when a star runs out of fuel" --mode=meaning --size=3
+```
+
+**Output.**
+
+``` text
+╭──────────────────────────────────────┬───────────────────────────────────┬─────────────────────────────┬───────────┬───────────────────┬─────────┬────────╮
+│ Id                                   │ Name                              │ Url                         │ Category  │ Outputs           │ Version │ Search │
+├──────────────────────────────────────┼───────────────────────────────────┼─────────────────────────────┼───────────┼───────────────────┼─────────┼────────┤
+│ 01a0c3ac-90bc-7000-82aa-adcb256bc8bc │ NASA Astronomy Picture of the Day │ https://apod.nasa.gov/apod/ │ education │ file+vector+index │ v1      │ v1     │
+│ 01a0c3ac-9152-7000-a9aa-7749058dd231 │ Rust Blog                         │ https://blog.rust-lang.org/ │ tech      │ file+index        │ v0      │ v0     │
+│ 01a0c3d5-7d3d-7000-81f6-76057a403db8 │ Simple Food                       │ https://simplefood.blog/    │ food      │ file+vector+index │ v2      │ v1     │
+╰──────────────────────────────────────┴───────────────────────────────────┴─────────────────────────────┴───────────┴───────────────────┴─────────┴────────╯
+
+╭────────┬──────────────────────────────────────────┬────────────────────────────────────────────────╮
+│ Score  │ Title                                    │ Url                                            │
+├────────┼──────────────────────────────────────────┼────────────────────────────────────────────────┤
+│ 0.9356 │ APOD: 2008 June 4 - Chasing the ISS      │ https://apod.nasa.gov/apod/ap080604.html       │
+│ 0.9317 │ APOD Index - Nebulae: Supernova Remnants │ https://apod.nasa.gov/apod/supernova_remnants… │
+│ 0.9289 │ APOD Index - Stars: Binary Stars         │ https://apod.nasa.gov/apod/binary_stars.html   │
+╰────────┴──────────────────────────────────────────┴────────────────────────────────────────────────╯
+```
+
+Multi word queries need double quotes, because the prompt tokenises the line before the command
+sees it. Every command:
 
 ``` text
 CATALOGS                              CRAWLING                          SEARCHING
@@ -360,30 +330,9 @@ crawler-report  --id=<id>             delete         --id=<id> ...
                                       options
 ```
 
-``` text
-greenfinger:> catalog-list
-╭──────────────────────────────────────┬───────────────────────────────────┬─────────────────────────────┬───────────┬───────────────────┬─────────┬────────╮
-│ Id                                   │ Name                              │ Url                         │ Category  │ Outputs           │ Version │ Search │
-├──────────────────────────────────────┼───────────────────────────────────┼─────────────────────────────┼───────────┼───────────────────┼─────────┼────────┤
-│ 01a0c3ac-90bc-7000-82aa-adcb256bc8bc │ NASA Astronomy Picture of the Day │ https://apod.nasa.gov/apod/ │ education │ file+vector+index │ v1      │ v1     │
-│ 01a0c3ac-9152-7000-a9aa-7749058dd231 │ Rust Blog                         │ https://blog.rust-lang.org/ │ tech      │ file+index        │ v0      │ v0     │
-│ 01a0c3d5-7d3d-7000-81f6-76057a403db8 │ Simple Food                       │ https://simplefood.blog/    │ food      │ file+vector+index │ v2      │ v1     │
-╰──────────────────────────────────────┴───────────────────────────────────┴─────────────────────────────┴───────────┴───────────────────┴─────────┴────────╯
+### Remove what a crawl produced
 
-greenfinger:> search --query="what happens when a star runs out of fuel" --mode=meaning --size=3
-╭────────┬──────────────────────────────────────────┬────────────────────────────────────────────────╮
-│ Score  │ Title                                    │ Url                                            │
-├────────┼──────────────────────────────────────────┼────────────────────────────────────────────────┤
-│ 0.9356 │ APOD: 2008 June 4 - Chasing the ISS      │ https://apod.nasa.gov/apod/ap080604.html       │
-│ 0.9317 │ APOD Index - Nebulae: Supernova Remnants │ https://apod.nasa.gov/apod/supernova_remnants… │
-│ 0.9289 │ APOD Index - Stars: Binary Stars         │ https://apod.nasa.gov/apod/binary_stars.html   │
-╰────────┴──────────────────────────────────────────┴────────────────────────────────────────────────╯
-```
-
-Multi word queries need double quotes, because the prompt tokenises the line before the command
-sees it. Every verb and option: **[docs/cli-reference.md](docs/cli-reference.md)**.
-
-### Removing what a crawl produced
+**Input.** A catalog, and which layers to touch.
 
 ``` shell
 delete --id=<id> --version=3                 one version
@@ -394,129 +343,41 @@ delete --id=<id> --all=true --dry-run=true   what it would remove, and remove no
 delete --id=<id> --version=3 --layers=vector only the vectors of that version
 ```
 
+**Output.** A preview is the same walk as the delete, so what `--dry-run=true` reports is exactly
+what a real one touches. On the REST endpoint `dryRun` **defaults to true**, so a caller who
+forgets it gets a preview rather than a deletion.
+
 `--layers` takes `db`, `file`, `index`, `vector` or `all`, joined with `+`. `catalog-delete`
 removes the definition instead.
 
-## Cluster
+### Add a pdf parser
 
-A crawl always runs on a cluster, and one process is a cluster of one. There is no separate
-standalone mode to grow out of.
+**Input.** A site that links pdfs, and a parser bean.
 
-``` text
-   node A ── finds /a/b ──► node C owns it ──► fetches, finds /a/b/c ──► node A owns it ──► ...
-
-   no central queue        no leader in the fetch path        join or leave mid crawl
-```
-
-``` shell
-# machine A
-GF_CLUSTER_NAME=nightly GF_CLUSTER_HOSTS=10.0.0.1,10.0.0.2 ./run-local.sh
-
-# machine B, joining the same crawl
-GF_CLUSTER_NAME=nightly GF_CLUSTER_HOSTS=10.0.0.1,10.0.0.2 ./run-local.sh
-```
-
-``` shell
-GF_CLUSTER_TRANSPORT=NETTY     # the default
-GF_CLUSTER_TRANSPORT=NIO       # the built in transport
-GF_CLUSTER_PORT=22000
-GF_CLUSTER_HOSTS=10.0.0.1,10.0.0.2
-```
-
-- **Completion is decided by everyone.** Every node checks the shared counters against
-  `maxFetchSize` and `fetchDuration`, and the first to notice writes the reason. A leader that
-  dies mid crawl does not leave a crawl that never ends.
-- **What replicates.** Rows, blobs and vectors replicate themselves. The embedded Lucene index and
-  the RocksDB directories are per node, so index documents travel on their own channel and
-  deletions travel as an instruction. Elasticsearch and Qdrant are one shared cluster and need
-  none of it, which is why the startup report recommends them for a cluster of any size.
-
-## What lands on disk
-
-``` text
-deploy/data/
-  system/                                  the crawler's working state, local, always
-    greenfinger.mv.db                      H2, when no database server was configured
-    frontier/                              RocksDB: the urls still to visit
-    dedup/url/  dedup/content/             RocksDB: what has been seen already
-  user/                                    what was crawled, this is what a search reads
-    assets/{catalogId}/v0/
-      settings.json                        how this version was configured, and how it went
-      reports/{stamp}-{action}-{node}.json one file per run
-      pages/ab/cd/{id}.html                the page as fetched
-      pages/ab/cd/{id}.txt                 the article, with the navigation removed
-      images/ab/cd/{id}.jpg                the pictures it referenced
-    index/{prefix}-{catalogId}/            embedded Lucene, one index per catalog
-    vector/{collection}_{dimensions}/      embedded Lucene, one collection per embedding width
-```
-
-`system/` can be deleted without affecting a search, at the cost of a resume. `user/` is the half
-worth backing up. Paths are keyed by catalog id, never name, so renaming moves nothing. MinIO
-object keys are identical to these paths.
-
-## Configuration
-
-Nothing is required to start. H2 and an embedded Lucene index are the defaults. Every external
-system is opt in, one variable at a time, in `deploy/.env`.
-
-``` shell
-# metadata store, H2 file by default
-GF_DB_URL=jdbc:postgresql://db:5432/greenfinger   # or MySQL, SQL Server, Oracle, SQLite
-GF_DB_USERNAME=greenfinger
-GF_DB_PASSWORD=...
-
-# full text
-GF_INDEX_PROVIDER=elasticsearch        # lucene | elasticsearch
-GF_ES_URIS=http://es:9200
-GF_ES_ANALYZER=ik_max_word             # needs the analysis-ik plugin
-GF_LUCENE_ANALYZER=smartcn             # standard | smartcn | cjk
-
-# vectors
-GF_VECTOR_STORE=qdrant                 # lucene | elasticsearch | qdrant | weaviate
-GF_QDRANT_URL=http://qdrant:6333
-
-# files
-GF_FILE_TARGET=minio                   # local | minio
-GF_MINIO_ENDPOINT=http://minio:9000
-GF_MINIO_BUCKET=greenfinger
-
-# crawl defaults, every one overridable per catalog
-GF_OUTPUT_TYPES=file,index
-GF_EXTRACTOR=adaptive
-GF_MAX_FETCH_SIZE=10000
-GF_FETCH_INTERVAL=1000
-GF_WORK_THREADS=16
-```
-
-AWS S3 and Google Cloud Storage publish S3 compatible endpoints, so `GF_FILE_TARGET=minio` with
-their endpoint works. MinIO is what ships and what the test matrix covers.
-
-**Analyzers matter.** The standard analyzer cuts Chinese into single characters. A Chinese analyzer
-drops French characters outright. The setting is per node, on either side.
-
-**Sign in is a file.** ADMIN can crawl, edit, replay and delete. SUPPORT can read every page and is
-offered no button that writes.
-
-``` xml
-<!-- deploy/config/api/users.xml -->
-<users>
-  <user name="admin"  password="..." roles="ADMIN"/>
-  <user name="tester" password="..." roles="SUPPORT"/>
-</users>
-```
-
-## Extending it
-
-Every default is `@ConditionalOnMissingBean`. Publish your own bean and the shipped one is not
-created. No registration file, no ordering property.
+**Code.** Every default is `@ConditionalOnMissingBean`, so publishing a bean is the whole
+registration. Pdf, Word and Excel each mean another dependency with its own licence and its own
+appetite for memory, which is the application's decision rather than the crawler's.
 
 ``` java
 @Bean
-UrlPathAcceptor mySiteRules() { ... }           // added to the chain
+DocumentContentParser pdfParser() {
+    return new DocumentContentParser() {
+        public Set<String> fileTypes() {
+            return Set.of("pdf");
+        }
 
-@Bean
-WebCrawlerComponentFactory myFactory() { ... }  // replaces all of it
+        public String extractText(byte[] content, String url, Charset encoding) throws Exception {
+            return new Tika().parseToString(new ByteArrayInputStream(content));
+        }
+    };
+}
 ```
+
+**Output.** Pdfs linked from a crawled page now contribute text to the index and the vectors. A
+format nothing reads comes back empty rather than throwing, because a site linking a pdf is not a
+broken site.
+
+Every seam works the same way:
 
 | Interface | Decides | What ships |
 |---|---|---|
@@ -536,39 +397,12 @@ WebCrawlerComponentFactory myFactory() { ... }  // replaces all of it
 | `EmbeddingClient` | What turns text into a vector | local ONNX, ollama, openai |
 | `CatalogStore` / `ResourceRecordStore` | The metadata | JPA, json file, memory |
 
-Three ways in:
+`WebCrawlerComponentFactory` builds all of them. Publish your own and none of the defaults are
+created.
 
-| | How | Reaches |
-|---|---|---|
-| A setting | `.env`, or a field on the catalog | Everything already written, configured differently |
-| A bean | Publish one | One piece, for the whole installation |
-| A class name | On the catalog, instantiated by name | One piece, for one catalog |
+### Ship a fresh install with your own catalogs
 
-### Example: a pdf parser
-
-``` java
-@Bean
-DocumentContentParser pdfParser() {
-    return new DocumentContentParser() {
-        public Set<String> fileTypes() {
-            return Set.of("pdf");
-        }
-
-        public String extractText(byte[] content, String url, Charset encoding) throws Exception {
-            return new Tika().parseToString(new ByteArrayInputStream(content));
-        }
-    };
-}
-```
-
-A format nothing reads comes back empty rather than throwing, because a site linking a pdf is not a
-broken site.
-
-### Example: the catalogs a fresh install already has
-
-`classpath:initial_catalogs.json` is read once at startup, and every catalog in it that is not
-already stored is defined. Matching is by name, so a second start defines nothing. Point
-`GF_INITIAL_CATALOGS` at your own file, or set it empty to load none.
+**Input.** A json file of catalog definitions.
 
 ``` json
 [
@@ -584,9 +418,15 @@ already stored is defined. Matching is by name, so a second start defines nothin
 ]
 ```
 
-Every seam with a worked example: **[docs/developer-guide.md](docs/developer-guide.md)**.
+**Execution.** `GF_INITIAL_CATALOGS=/path/to/catalogs.json`, or leave it and the shipped
+`classpath:initial_catalogs.json` is used. Set it empty to load none.
 
-## Embedding in an application
+**Output.** Read once at startup. Every catalog in it that is not already stored is defined.
+Matching is by name, so a second start defines nothing and an edit afterwards is never undone.
+
+### Embed the api in your own application
+
+**Input.** A Spring Boot application of your own.
 
 ``` java
 @EnableGreenfingerServer
@@ -598,7 +438,7 @@ public class MyApplication {
 }
 ```
 
-Or drive a crawl directly:
+Or drive a crawl directly, without the server:
 
 ``` java
 @Autowired
@@ -617,13 +457,15 @@ CrawlerEngine.Result result = crawlerLauncher.crawl(catalog.getId(), context -> 
 });
 ```
 
-## REST api
+**Output.** `CrawlerEngine.Result` carries the counters and the reason the crawl ended.
+`@EnableGreenfingerServer` is explicit rather than auto configured, because sitting on a classpath
+is not a reason to open RocksDB and take a crawl permit.
 
-`/v2` is the prefix. A bearer token from `POST /v2/login` authorises the rest.
+### Call the REST api
+
+**Input.** A bearer token from `POST /v2/login`, then any of these.
 
 ``` text
-POST   /v2/login                         sign in, returns a bearer token
-
 GET    /v2/catalog                       every catalog
 POST   /v2/catalog                       create or update one
 GET    /v2/catalog/{idOrName}            one catalog
@@ -645,25 +487,254 @@ GET    /v2/search/images?q=...           pictures, by describing them
 GET    /v2/resource?catalogId=...        rows in crawl order
 ```
 
-## Stack
+**Output.** Every response is the same envelope, and a `success: false` is an error rather than an
+empty result.
 
-| Technology | Version | Used for |
+``` json
+{ "success": true, "message": "ok", "data": { } }
+```
+
+The web interface uses nothing else, so anything it can do, your code can do.
+
+---
+
+## Configuration
+
+Two levels. **Per catalog** settings describe one site. **Node wide** settings in `deploy/.env`
+describe the installation and provide the defaults a catalog starts from.
+
+### Per catalog
+
+Run `options` at the prompt for this table with the live defaults.
+
+| Property | Default | Description |
 |---|---|---|
-| JDK | 17 or later | Runtime |
-| Spring Boot | 4.1.x | Application framework |
-| Spring Shell | 4.0.x | The interactive prompt |
-| RocksDB | 10.x | Resumable frontier and both dedup stores |
-| Apache HttpClient | 5.x | The fetch engine |
-| HtmlUnit / Playwright / Selenium | 4.x / 1.6x / 4.x | Rendering, in that order of weight |
-| Jsoup | 1.23 | Parsing, link and image extraction |
-| Lucene | 9.12 | The embedded index and vector store, the default |
-| Elasticsearch | 7, 8 or 9 | The search output path, when one machine is not enough |
-| Qdrant / Weaviate | current | The vector output path, likewise |
-| MinIO | 9.x | File storage, when not on local disk |
-| PostgreSQL / MySQL / H2 / SQLite | current | The metadata store, H2 by default |
-| Netty | 4.1.x | Cluster transport, with a built in NIO fallback |
-| Spring Security | 7.x | The server's login, and the two roles |
-| Angular + Material + Tailwind | 21 / 21 / 4 | The web interface, signals throughout |
+| `url` | required | http:// or https://. The identity and the outer boundary |
+| `name` | the domain | Unique text, used everywhere the catalog is referred to |
+| `cat` | `other` | One of nine categories, used to filter and group |
+| `start-url` | `= url` | Where fetching begins. Must sit under `url` |
+| `sitemap-url` | empty | A sitemap in an unusual place. Empty discovers it from robots.txt |
+| `include` | `**.<domain>/**` | Ant path pattern, comma for several |
+| `exclude` | empty | Ant path pattern, comma for several |
+| `encoding` | `UTF-8` | Page charset, when the server is wrong about it |
+| `extractor` | `adaptive` | adaptive, restclient, htmlunit, playwright, selenium |
+| `max-size` | `10000` | Saved pages before the crawl stops |
+| `depth` | `-1` | Link depth from the start url. -1 for no limit |
+| `duration` | `30` | Minutes before the crawl stops |
+| `interval` | `1000` | Milliseconds between fetches, per node |
+| `retry` | `1` | Retries per url |
+| `url-dedup` | `rocksdb` | Or a filter of your own, by class name |
+| `images` | `true` | Whether pictures are fetched at all |
+| `output-types` | `file` | `file+index+vector`. file is always on |
+| `content` | `text+image` | What reaches the index and the vectors |
+| `max-versions` | `10` | How many versions to keep before pruning the oldest |
+
+### Node wide, in `deploy/.env`
+
+**Metadata store.** H2 file by default, nothing to install.
+
+| Property | Default | Description |
+|---|---|---|
+| `GF_DB_URL` | an H2 file | jdbc url. PostgreSQL, MySQL, SQL Server, Oracle, SQLite |
+| `GF_DB_USERNAME` | empty | |
+| `GF_DB_PASSWORD` | empty | |
+| `GF_DB_DDL` | `update` | `update` suits a laptop. Use the schema scripts for anything else |
+
+**Full text index.**
+
+| Property | Default | Description |
+|---|---|---|
+| `GF_INDEX_PROVIDER` | `lucene` | `lucene` or `elasticsearch` |
+| `GF_ES_URIS` | empty | Comma separated, for elasticsearch |
+| `GF_ES_ANALYZER` | `standard` | `ik_max_word` and `ik_smart` need the analysis-ik plugin |
+| `GF_LUCENE_ANALYZER` | `standard` | `standard`, `smartcn` or `cjk` |
+| `GF_LUCENE_COMMIT_EVERY` | `1000` | Documents between commits |
+| `GF_INDEX_PREFIX` | `greenfinger` | One index per catalog, named `<prefix>-<catalogId>` |
+
+**Vector store.**
+
+| Property | Default | Description |
+|---|---|---|
+| `GF_VECTOR_STORE` | `lucene` | `lucene`, `elasticsearch`, `qdrant` or `weaviate` |
+| `GF_QDRANT_URL` | empty | |
+| `GF_WEAVIATE_URL` | empty | |
+
+**Embeddings.** The default provider needs no account and no network.
+
+| Property | Default | Description |
+|---|---|---|
+| `GF_EMBEDDING_PROVIDER` | `local` | `local` ONNX, `ollama` or `openai` |
+| `GF_PRELOAD_TEXT_MODEL` | `true` | Load the text model at startup, on a background thread |
+| `GF_PRELOAD_IMAGE_MODEL` | `true` | The same for the image model |
+| `GF_MODEL_DIR` | `./models` | Where the ONNX files are cached. Downloaded once |
+| `GF_EMBEDDING_OFFLINE` | `false` | Refuse to download, and fail loudly if a model is missing |
+| `GF_OLLAMA_URL` | empty | |
+| `GF_OLLAMA_MODEL` | empty | |
+| `OPENAI_API_KEY` | empty | The only genuinely secret value here |
+
+**Files.**
+
+| Property | Default | Description |
+|---|---|---|
+| `GF_FILE_TARGET` | `local` | `local` or `minio`. Object keys match the local paths exactly |
+| `GF_MINIO_ENDPOINT` | empty | AWS S3 and GCS publish S3 compatible endpoints too |
+| `GF_MINIO_ACCESS_KEY` | empty | |
+| `GF_MINIO_SECRET_KEY` | empty | |
+| `GF_MINIO_BUCKET` | `greenfinger` | |
+| `GF_DATA_STORE` | `./data` | Everything on disk lives under here |
+
+**Crawl defaults.** Each one is the value a new catalog starts from.
+
+| Property | Default | Description |
+|---|---|---|
+| `GF_OUTPUT_TYPES` | `file` | Combine with commas |
+| `GF_EXTRACTOR` | `adaptive` | |
+| `GF_MAX_FETCH_SIZE` | `10000` | |
+| `GF_FETCH_INTERVAL` | `1000` | Milliseconds, per node |
+| `GF_WORK_THREADS` | `16` | Worker threads on each node |
+| `GF_MAX_CONSECUTIVE_FAILURES` | `20` | Fetches in a row that return nothing before giving up |
+| `GF_MAX_VERSIONS` | `10` | |
+| `GF_SKIP_EXTENSIONS` | empty | Extensions never followed as a page. Empty keeps the built in list, `none` turns the check off |
+| `GF_DOCUMENTS` | `false` | Whether linked documents are **fetched and read**. Recording the links is always on |
+| `GF_DOCUMENT_TYPES` | empty | Which formats to read. Naming one nothing can parse fails at startup |
+| `GF_DOCUMENT_MAX_BYTES` | `10485760` | |
+
+**Cluster.**
+
+| Property | Default | Description |
+|---|---|---|
+| `GF_CLUSTER_NAME` | per launcher | Nodes agreeing on name **and** port find each other |
+| `GF_CLUSTER_PORT` | per launcher | 22000 cli, 22010 local, 22020 docker |
+| `GF_CLUSTER_HOSTS` | `127.0.0.1` | Where to knock, for other machines |
+| `GF_CLUSTER_TRANSPORT` | `NETTY` | `NETTY` or the built in `NIO` |
+| `GF_NODES` | `1` | How many processes a launcher starts |
+| `GF_MEMORY` | `2g` | Per container. Caps heap **and** off heap together |
+
+**Server and security.**
+
+| Property | Default | Description |
+|---|---|---|
+| `GF_SERVER_PORT` | `50080` | The api |
+| `GF_WEB_PORT` | `9700` | The page, in front of every node |
+| `GF_SECURITY_ENABLED` | `true` | |
+| `GF_USERS_FILE` | `config/api/users.xml` | Two roles, ADMIN and SUPPORT |
+| `GF_TOKEN_SECRET` | generated | Signed, stateless tokens. Any node verifies one |
+| `GF_TOKEN_VALIDITY` | `8h` | A duration, not a number of seconds |
+| `GF_CORS_ORIGINS` | localhost 4200 and 9700 | Comma separated. The dev server and the page container |
+| `GF_PROFILE` | `dev` | `dev` or `prod`. The only difference is the database |
+
+Anything already in the environment wins over the file, so a one off stays a one off:
+
+``` shell
+GF_DATA_STORE=/var/gf ./greenfinger-cli.sh --cluster=nightly crawl --id=<id>
+```
+
+**What a node is actually running** is one endpoint. `/actuator/settings` merges the packaged yaml,
+the copy beside the launcher, `.env` and the command line, because no single file answers it.
+
+**Two settings worth knowing about.** The standard analyzer cuts Chinese into single characters,
+and a Chinese analyzer drops French characters outright, so `GF_LUCENE_ANALYZER` matters more than
+it looks. And `GF_MEMORY` caps heap plus off heap together, while the ONNX models and a browser are
+both off heap, which is why 1g is not enough for either.
+
+---
+
+## Performance
+
+Numbers from our own runs only. There is no comparison here against other crawlers, because we
+have not run the controlled experiment that would make one honest.
+
+**Test environment.** Apple M2 Max, 12 cores, 32 GB, macOS 26.3.1, JDK 17.0.12. Two nodes started
+by `run-local.sh`, each `-Xms256m -Xmx2g`. H2 file, embedded Lucene index, embedded Lucene vector
+store, pages and images on local disk, local ONNX embeddings. Home broadband. Polite crawling, so
+`fetchInterval` is the floor on throughput rather than the hardware.
+
+### Crawling
+
+| Site | Nodes | Kept | Images | Urls seen | Elapsed |
+|---|---|---|---|---|---|
+| apod.nasa.gov | 2 | 46 pages | 16 | 3,773 | 1m 41s |
+| simplefood.blog | 2 | 140 pages | 2,489 | 22,857 already known | 5m 01s |
+| books.toscrape.com | 1 | 1,000 pages | 3,204 | 28,411 | 4m 12s |
+
+The gap between urls seen and pages kept is the point rather than an inefficiency. On simplefood
+22,340 urls were filtered out by the boundary rules and 561 were duplicate content, which is work
+the outputs never had to do.
+
+### How evenly the work spreads
+
+``` text
+two nodes, apod.nasa.gov
+  node 18bbe738   76 handled   51%   26 pages   9 images
+  node 96c82b18   74 handled   49%   19 pages   7 images
+
+three nodes, a 61 page site, one shared PostgreSQL
+  dispatched 61      handled 66      saved 61
+  node-1: 18 fetches   node-2: 18   node-3: 25     each page exactly once
+```
+
+An earlier run of the same 61 page site showed 161 dispatched, because all three nodes found the
+same link before each other's dedup replicated. That number moves with timing. `saved` was 61 both
+times, because the extra dispatches were refused by the frontier before any fetch happened.
+
+### Search
+
+| | Measured |
+|---|---|
+| Word search, embedded Lucene, 151 documents | 38 matches in **16 ms** |
+| Deep paging | Cursor based, cost independent of depth. Vectors page by offset, capped at 1000 |
+
+### Cluster wire format
+
+``` text
+CrawlTask     JSON 327 bytes, encode + decode 1,394 ns
+              JDK serialization 427 bytes
+```
+
+At a thousand urls per second, which no polite crawler reaches, that is 0.14% of one core. JSON was
+chosen over a faster binary format because nodes are upgraded one at a time and JSON ignores fields
+it does not know.
+
+### Embeddings
+
+| | Measured |
+|---|---|
+| Both ONNX models preloaded | **4.47 s**, on a background thread after the app is ready |
+| Text model | `multilingual-e5-small`, 384 dimensions |
+| Image model | `SigLIP 2`, 768 dimensions |
+| Idle RSS with both loaded | 1.77 to 1.88 GB |
+
+Preloading moved out of the Spring context on purpose. Inside it, every boot paid 4.47 s including
+boots that never embed anything.
+
+### Image vectors
+
+``` text
+before   one point per page that referenced the picture      43× duplication
+after    one point per picture, plus a per run id set        1.00×
+```
+
+### Container memory
+
+| `GF_MEMORY` | Vectors | Playwright |
+|---|---|---|
+| 1g | OOMKilled after 20s | OOMKilled as the browser starts |
+| 2g | passes | passes |
+| 3g | both in one JVM still OOMKilled | |
+
+`MaxRAMPercentage` sizes the heap, but the DJL and ONNX models and the Chromium process are both
+off heap and the cgroup limit caps the total. The default is 2g, and embeddings and a browser want
+separate runs.
+
+### Build and tests
+
+| | |
+|---|---|
+| Backend | 133 test classes, 1,098 test methods |
+| Coverage gate | JaCoCo line coverage at least 80%, in all four modules, failing the build below it |
+| Front end | 27 unit tests, 21 Playwright e2e specs |
+
+---
 
 ## Documentation
 
@@ -671,10 +742,12 @@ GET    /v2/resource?catalogId=...        rows in crawl order
 |---|---|
 | [Command line reference](docs/cli-reference.md) | Every crawl verb, every prompt command, how a terminal attaches to a cluster |
 | [Developer guide](docs/developer-guide.md) | Every seam, what ships behind it, and how to put your own there |
-| [Design notes](docs/design-2.0.md) | Why the system is shaped the way it is |
-| [Schema scripts](docs/sql/schema-scripts.md) | One per database, for creating the schema yourself |
+| [Design](docs/design-2.0.md) | How the system is shaped and why, with diagrams and the numbers behind the decisions |
+| [Schema scripts](docs/sql/schema-scripts.md) | One per database, generated from the entities |
 | [Changelog](CHANGELOG.md) | What changed in 2.0 and what an upgrade involves |
 | [Backend](backend/README.md) / [front end](frontend/README.md) | For working on them |
+
+---
 
 ## Roadmap
 
@@ -688,6 +761,8 @@ GET    /v2/resource?catalogId=...        rows in crawl order
 | Web interface | Done |
 | Distributed crawling | Done |
 | Document parsers for pdf, Word and Excel | Planned |
+
+---
 
 ## Contributing
 

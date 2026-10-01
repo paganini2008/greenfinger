@@ -1,13 +1,9 @@
----
-title: "Greenfinger 2.0: one url in, a searchable archive out"
----
-
 # Greenfinger 2.0: one url in, a searchable archive out
 
-> **Crawl the whole site. Keep every page, every picture, every version.**
-> **Search it by words, by meaning, or by describing a picture you remember.**
-> **Add a node and it goes faster. Kill one and it keeps going.**
-> **Nothing to install. Nothing to sign up for.**
+**Crawl the whole site. Keep every page, every picture, every version.
+Search it by words, by meaning, or by describing a picture you remember.
+Add a node and it goes faster. Kill one and it keeps going.
+Nothing to install. Nothing to sign up for.**
 
 A distributed web crawler for the JVM. One pass writes plain files, a full text index and a vector
 collection. Every node runs the same jar, there is no coordinator to deploy, and the first crawl
@@ -36,17 +32,18 @@ rather than in your code, and the first crawl needs nothing running beside it.
 
 ## Quick start
 
-``` shell
+```
 git clone https://github.com/paganini2008/greenfinger.git
 cd greenfinger/backend && mvn clean install
 cd ../deploy
 
-./greenfinger-cli.sh --cluster=demo crawl --url=https://books.toscrape.com
+./greenfinger-cli.sh --cluster=demo crawl \
+    --url=https://books.toscrape.com
 ```
 
 Result:
 
-``` text
+```
 Crawling 'books.toscrape.com' from https://books.toscrape.com
 
   pages kept    1,000      urls seen   28,411      1 in every 28
@@ -58,8 +55,8 @@ Catalog 01a0c3d5-7d3d-7000-81f6-76057a403db8, version 0, now searchable.
 
 Prefer the console:
 
-``` shell
-./run-local.sh                # nodes plus the page on http://localhost:9700
+```
+./run-local.sh                # nodes plus the page on :9700
 GF_NODES=3 ./run-local.sh     # three nodes sharing one crawl
 ./run-docker.sh               # the same, in containers
 ./run-local.sh stop
@@ -74,12 +71,10 @@ with a fresh install, so there is something to crawl before you have picked anyt
 
 ## Requirements
 
-| | Version | Needed for |
-|---|---|---|
-| **JDK** | 17 or later | Running anything |
-| **Maven** | 3.9 or later | Building from source |
-| **Node** | 20 or later | Building the web interface |
-| **Docker** | any current | `run-docker.sh` only |
+- **JDK 17 or later**, to run anything.
+- **Maven 3.9 or later**, to build from source.
+- **Node 20 or later**, to build the web interface.
+- **Docker**, any current version, for `run-docker.sh` only.
 
 Everything else is optional and opt in one variable at a time: PostgreSQL, MySQL, SQL Server,
 Oracle or SQLite instead of the H2 file, Elasticsearch instead of the embedded Lucene index, Qdrant
@@ -95,18 +90,24 @@ falls back to HtmlUnit, which is pure Java and needs nothing installed.
 
 ### One pass, three outputs
 
-``` text
-                            ┌──────────────┐
-                            │  file        │  local disk, MinIO, any S3 store
-   one crawl  ───────────►  ├──────────────┤
-                            │  index       │  Lucene embedded, Elasticsearch
-                            ├──────────────┤
-                            │  vector      │  Lucene embedded, Qdrant, Weaviate, ES
-                            └──────────────┘
-                                   │
-                    replay ────────┘   rebuild index or vectors from the files,
-                                       without fetching the site again
 ```
+                        ┌─────────────┐
+                        │  file       │  disk, MinIO, any S3
+ one crawl  ──────────► ├─────────────┤
+                        │  index      │  Lucene, Elasticsearch
+                        ├─────────────┤
+                        │  vector     │  Lucene, Qdrant,
+                        │             │  Weaviate, ES
+                        └─────────────┘
+                              │
+             replay ──────────┘  rebuild index or vectors
+                                 from the files, without
+                                 fetching the site again
+```
+
+- **file** holds the page as fetched, the article text and every image.
+- **index** holds the full text, searchable by words.
+- **vector** holds text chunks and image embeddings.
 
 The file layer is always on, because the database keeps metadata only and the other two rebuild
 from what it wrote. **Search never reads the database**, and that single constraint is where the
@@ -114,18 +115,27 @@ rest of the design comes from.
 
 ### What one page goes through
 
-``` text
-  url from the frontier
-        │
-        ├─ UrlPathAcceptor chain    domain, start url prefix, assets, robots.txt,
-        │                           depth, path patterns. First refusal wins
-        ├─ ExistingUrlPathFilter    seen before? RocksDB
-        ├─ Extractor                plain http, browser only for unrendered shells
-        ├─ ContentExtractor         the article, not the navigation
-        │     └─ DocumentContentParser   when it is not html
-        ├─ ContentDedupFilter       SHA-256 or SimHash
-        ├─ OutputChannels           file, index, vector
-        └─ new links ─────────────► back to the frontier, to whichever node owns them
+```
+url from the frontier
+     │
+     ├─ UrlPathAcceptor chain
+     │    domain, start url prefix, assets, robots.txt,
+     │    depth, path patterns. First refusal wins
+     │
+     ├─ ExistingUrlPathFilter     seen before? RocksDB
+     │
+     ├─ Extractor                 plain http, a browser only
+     │                            for unrendered shells
+     │
+     ├─ ContentExtractor          the article, not the navigation
+     │    └─ DocumentContentParser   when it is not html
+     │
+     ├─ ContentDedupFilter        SHA-256 or SimHash
+     │
+     ├─ OutputChannels            file, index, vector
+     │
+     └─ new links ──► back to the frontier, to whichever
+                      node owns them
 ```
 
 Every drop is counted and named. That is why the monitor can say where 22,000 urls went rather than
@@ -133,10 +143,15 @@ only that 140 pages were kept.
 
 ### How the cluster shares one crawl
 
-``` text
-   node A ── finds /a/b ──► node C owns it ──► fetches, finds /a/b/c ──► node A owns it ──► ...
+```
+node A ── finds /a/b ──► node C owns it
+                            │
+                    fetches, finds /a/b/c
+                            │
+                     ──► node A owns it ──► ...
 
-   no central queue        no leader in the fetch path        join or leave mid crawl
+no central queue      no leader in the fetch path
+join or leave mid crawl
 ```
 
 A crawl is a recursive function, and the only thing distribution changes is that the recursive call
@@ -156,25 +171,25 @@ mid crawl cannot leave a crawl that never ends.
 
 **Input.** A catalog id, and a verb.
 
-``` shell
-./greenfinger-cli.sh --cluster=nightly crawl   --id=<id>            # from the start url
-./greenfinger-cli.sh --cluster=nightly update  --id=<id>            # urls that appeared since
-./greenfinger-cli.sh --cluster=nightly merge   --id=<id>            # and revisit what is held
-./greenfinger-cli.sh --cluster=nightly rebuild --id=<id>            # new version, old one served
-./greenfinger-cli.sh --cluster=nightly resume  --id=<id>            # continue after a pause
-./greenfinger-cli.sh --cluster=nightly replay  --id=<id> --layers=index+vector
+```
+./greenfinger-cli.sh --cluster=nightly crawl   --id=<id>
+./greenfinger-cli.sh --cluster=nightly update  --id=<id>
+./greenfinger-cli.sh --cluster=nightly merge   --id=<id>
+./greenfinger-cli.sh --cluster=nightly rebuild --id=<id>
+./greenfinger-cli.sh --cluster=nightly resume  --id=<id>
+./greenfinger-cli.sh --cluster=nightly replay  --id=<id> \
+    --layers=index+vector
 ```
 
 **Output.**
 
-| Verb | Version | Fetches | Writes |
-|---|---|---|---|
-| `crawl` | current | from the start url | everything it saves |
-| `update` | current | only urls not seen before | new pages only |
-| `merge` | current | new urls **and** pages already held | only the pages that changed |
-| `rebuild` | a new one | the whole site again | the new version, old one keeps serving |
-| `resume` | current | what is left on the frontier | as the interrupted run would have |
-| `replay` | a named one | nothing | rebuilds an output from what is stored |
+- **crawl** goes from the start url and writes everything it saves.
+- **update** fetches only urls not seen before, and writes new pages only.
+- **merge** does that and revisits what is held, writing nothing for pages that came back
+  unchanged.
+- **rebuild** opens a new version, crawls the whole site again, and the old version keeps serving.
+- **resume** continues from what is left on the frontier.
+- **replay** fetches nothing and rebuilds an output from what is already stored.
 
 `replay` is the one to remember. Your Elasticsearch was down for an hour, you changed the analyzer,
 or you decided six months in that you want embeddings after all. None of those need the site to be
@@ -184,10 +199,12 @@ polite to you a second time.
 
 **Input.** One box, three modes, from the console or the prompt.
 
-``` text
+```
 greenfinger:> search --query="bread"
-greenfinger:> search --query="what happens when a star runs out of fuel" --mode=meaning
-greenfinger:> search --query="a bright spiral galaxy against black sky" --mode=pictures
+greenfinger:> search --mode=meaning \
+        --query="what happens when a star runs out of fuel"
+greenfinger:> search --mode=pictures \
+        --query="a bright spiral galaxy against black sky"
 ```
 
 **Output.** Words goes to the index, so this is exact terms with the matches highlighted.
@@ -206,14 +223,11 @@ the alt text.
 
 The same thing at the prompt:
 
-``` text
-╭────────┬──────────────────────────────────────────┬────────────────────────────────────────────────╮
-│ Score  │ Title                                    │ Url                                            │
-├────────┼──────────────────────────────────────────┼────────────────────────────────────────────────┤
-│ 0.9356 │ APOD: 2008 June 4 - Chasing the ISS      │ https://apod.nasa.gov/apod/ap080604.html       │
-│ 0.9317 │ APOD Index - Nebulae: Supernova Remnants │ https://apod.nasa.gov/apod/supernova_remnants… │
-│ 0.9289 │ APOD Index - Stars: Binary Stars         │ https://apod.nasa.gov/apod/binary_stars.html   │
-╰────────┴──────────────────────────────────────────┴────────────────────────────────────────────────╯
+```
+Score   Title
+0.9356  APOD: 2008 June 4 - Chasing the ISS
+0.9317  APOD Index - Nebulae: Supernova Remnants
+0.9289  APOD Index - Stars: Binary Stars
 ```
 
 The embedding models run locally and need no account: `multilingual-e5-small` for text and
@@ -226,7 +240,7 @@ The embedding models run locally and need no account: `multilingual-e5-small` fo
 **Code.** Every default component is `@ConditionalOnMissingBean`, so publishing a bean is the whole
 registration. There is no plugin registry and no ordering property.
 
-``` java
+```java
 @Bean
 DocumentContentParser pdfParser() {
     return new DocumentContentParser() {
@@ -234,8 +248,10 @@ DocumentContentParser pdfParser() {
             return Set.of("pdf");
         }
 
-        public String extractText(byte[] content, String url, Charset encoding) throws Exception {
-            return new Tika().parseToString(new ByteArrayInputStream(content));
+        public String extractText(byte[] content, String url,
+                Charset encoding) throws Exception {
+            return new Tika()
+                    .parseToString(new ByteArrayInputStream(content));
         }
     };
 }
@@ -247,24 +263,25 @@ costs nothing. Fetching and reading them is what you just switched on.
 
 The same shape works for every decision the crawler makes:
 
-| Interface | Decides | What ships |
-|---|---|---|
-| `Extractor` | How a page is fetched | restclient, htmlunit, playwright, selenium, adaptive |
-| `UrlPathAcceptor` | Whether a link is followed | Domain, start url, assets, robots.txt, depth, patterns |
-| `ContentDedupFilter` | Whether two urls are the same page | sha256, simhash |
-| `ContentExtractor` | The text inside a page | Link density boilerplate removal |
-| `DocumentContentParser` | Text out of a non html file | text, markdown, csv |
-| `CompletionChecker` | When the crawl is over | Saved count, elapsed time |
-| `OutputChannel` | Where results are written | file, index, vector |
-| `BlobStore` | Pages and images as bytes | local, minio |
-| `Searcher` / `VectorStore` | Full text, and meaning | lucene, elasticsearch, qdrant, weaviate |
-| `EmbeddingClient` | What turns text into a vector | local ONNX, ollama, openai |
+- **Extractor** decides how a page is fetched. Ships restclient, htmlunit, playwright, selenium and
+  adaptive.
+- **UrlPathAcceptor** decides whether a link is followed. Ships domain, start url, assets,
+  robots.txt, depth and path patterns.
+- **ContentDedupFilter** decides whether two urls are the same page. Ships sha256 and simhash.
+- **ContentExtractor** finds the text inside a page. Ships link density boilerplate removal.
+- **DocumentContentParser** gets text out of a non html file. Ships text, markdown and csv.
+- **CompletionChecker** decides when the crawl is over. Ships saved count and elapsed time.
+- **OutputChannel** decides where results are written. Ships file, index and vector.
+- **BlobStore** holds pages and images as bytes. Ships local and minio.
+- **Searcher** and **VectorStore** handle full text and meaning. Ships lucene, elasticsearch,
+  qdrant and weaviate.
+- **EmbeddingClient** turns text into a vector. Ships local ONNX, ollama and openai.
 
 ### Embed it in your own application
 
 **Input.** A Spring Boot application of your own.
 
-``` java
+```java
 @EnableGreenfingerServer
 @SpringBootApplication
 public class MyApplication { }
@@ -272,8 +289,9 @@ public class MyApplication { }
 
 **Output.** The whole REST api, the login and the page, inside your process. It is explicit rather
 than auto configured, because sitting on a classpath is not a reason to open RocksDB and take a
-crawl permit. To drive a crawl without the server, `CrawlerLauncher.crawl(catalogId, onReady)`
-returns a `CrawlerEngine.Result` with the counters and the reason it ended.
+crawl permit. To drive a crawl without the server,
+`CrawlerLauncher.crawl(catalogId, onReady)` returns a `CrawlerEngine.Result` with the counters and
+the reason it ended.
 
 ---
 
@@ -284,42 +302,38 @@ returns a `CrawlerEngine.Result` with the counters and the reason it ended.
 One url is required. Everything else has a default chosen to give a useful crawl of a site you know
 nothing about. Run `options` at the prompt for the live values.
 
-| Property | Default | Description |
-|---|---|---|
-| `url` | required | http:// or https://. The identity and the outer boundary |
-| `name` | the domain | Unique text |
-| `cat` | `other` | One of nine categories, used to filter and group |
-| `start-url` | `= url` | Where fetching begins. Must sit under `url` |
-| `sitemap-url` | empty | Empty discovers it from robots.txt |
-| `include` | `**.<domain>/**` | Ant path pattern, comma for several |
-| `exclude` | empty | Ant path pattern, comma for several |
-| `encoding` | `UTF-8` | Page charset, when the server is wrong about it |
-| `extractor` | `adaptive` | adaptive, restclient, htmlunit, playwright, selenium |
-| `max-size` | `10000` | Saved pages before the crawl stops |
-| `depth` | `-1` | Link depth. -1 for no limit |
-| `duration` | `30` | Minutes before the crawl stops |
-| `interval` | `1000` | Milliseconds between fetches, per node |
-| `retry` | `1` | Retries per url |
-| `images` | `true` | Whether pictures are fetched at all |
-| `output-types` | `file` | `file+index+vector`. file is always on |
-| `content` | `text+image` | What reaches the index and the vectors |
-| `max-versions` | `10` | Versions kept before the oldest is pruned |
+- **url** takes http:// or https://. Required, and it is the identity and the outer boundary.
+- **name** takes unique text. Defaults to the domain.
+- **cat** is one of nine categories, used to filter and group. Defaults to `other`.
+- **start-url** is where fetching begins and must sit under `url`. Defaults to `url`.
+- **sitemap-url** takes a url. Empty discovers it from robots.txt.
+- **include** takes an ant path pattern, comma for several. Defaults to `**.<domain>/**`.
+- **exclude** takes an ant path pattern, comma for several. Defaults to empty.
+- **encoding** is the page charset, for when the server is wrong about it. Defaults to UTF-8.
+- **extractor** takes adaptive, restclient, htmlunit, playwright or selenium. Defaults to adaptive.
+- **max-size** is saved pages before the crawl stops. Defaults to 10000.
+- **depth** is link depth, with -1 for no limit. Defaults to -1.
+- **duration** is minutes before the crawl stops. Defaults to 30.
+- **interval** is milliseconds between fetches, per node. Defaults to 1000.
+- **retry** is retries per url. Defaults to 1.
+- **images** decides whether pictures are fetched at all. Defaults to true.
+- **output-types** takes file+index+vector, and file is always on. Defaults to file.
+- **content** decides what reaches the index and the vectors. Defaults to text+image.
+- **max-versions** is how many versions to keep. Defaults to 10.
 
-### Node wide, in `deploy/.env`
+### Node wide, in deploy/.env
 
-| Property | Default | Description |
-|---|---|---|
-| `GF_DB_URL` | an H2 file | PostgreSQL, MySQL, SQL Server, Oracle, SQLite |
-| `GF_INDEX_PROVIDER` | `lucene` | Or `elasticsearch`, with `GF_ES_URIS` |
-| `GF_VECTOR_STORE` | `lucene` | Or `elasticsearch`, `qdrant`, `weaviate` |
-| `GF_FILE_TARGET` | `local` | Or `minio`. Object keys match the local paths exactly |
-| `GF_EMBEDDING_PROVIDER` | `local` | Or `ollama`, `openai` |
-| `GF_LUCENE_ANALYZER` | `standard` | `standard`, `smartcn` or `cjk` |
-| `GF_ES_ANALYZER` | `standard` | `ik_max_word` needs the analysis-ik plugin |
-| `GF_DOCUMENTS` | `false` | Whether linked documents are fetched and read |
-| `GF_CLUSTER_TRANSPORT` | `NETTY` | Or the built in `NIO` |
-| `GF_NODES` | `1` | How many processes a launcher starts |
-| `GF_MEMORY` | `2g` | Per container. Caps heap **and** off heap together |
+- **GF_DB_URL** defaults to an H2 file. PostgreSQL, MySQL, SQL Server, Oracle and SQLite all work.
+- **GF_INDEX_PROVIDER** defaults to `lucene`, or `elasticsearch` with `GF_ES_URIS`.
+- **GF_VECTOR_STORE** defaults to `lucene`, or `elasticsearch`, `qdrant`, `weaviate`.
+- **GF_FILE_TARGET** defaults to `local`, or `minio`. Object keys match the local paths exactly.
+- **GF_EMBEDDING_PROVIDER** defaults to `local`, or `ollama`, `openai`.
+- **GF_LUCENE_ANALYZER** defaults to `standard`, and takes `smartcn` or `cjk`.
+- **GF_ES_ANALYZER** defaults to `standard`. `ik_max_word` needs the analysis-ik plugin.
+- **GF_DOCUMENTS** defaults to `false`, and decides whether linked documents are fetched and read.
+- **GF_CLUSTER_TRANSPORT** defaults to `NETTY`, or the built in `NIO`.
+- **GF_NODES** defaults to 1, and is how many processes a launcher starts.
+- **GF_MEMORY** defaults to 2g per container, and caps heap **and** off heap together.
 
 Analyzers matter more than they look. The standard analyzer cuts Chinese into single characters,
 and a Chinese analyzer drops French characters outright, so `chaîne` comes back as `cha î ne`.
@@ -336,11 +350,16 @@ by `run-local.sh`, each `-Xms256m -Xmx2g`. H2 file, embedded Lucene index, embed
 store, pages and images on local disk, local ONNX embeddings. Home broadband. Polite crawling, so
 `fetchInterval` is the floor on throughput rather than the hardware.
 
-| Site | Nodes | Kept | Images | Urls seen | Elapsed |
-|---|---|---|---|---|---|
-| apod.nasa.gov | 2 | 46 pages | 16 | 3,773 | 1m 41s |
-| simplefood.blog | 2 | 140 pages | 2,489 | 22,857 already known | 5m 01s |
-| books.toscrape.com | 1 | 1,000 pages | 3,204 | 28,411 | 4m 12s |
+**Crawling.**
+
+```
+site                  nodes  kept        images  urls seen   elapsed
+apod.nasa.gov           2     46 pages      16     3,773      1m 41s
+simplefood.blog         2    140 pages   2,489    22,857 *    5m 01s
+books.toscrape.com      1  1,000 pages   3,204    28,411      4m 12s
+
+* already known
+```
 
 The gap between urls seen and pages kept is the point rather than an inefficiency. On simplefood
 22,340 urls were filtered out by the boundary rules and 561 were duplicate content, which is work
@@ -348,27 +367,27 @@ the outputs never had to do.
 
 **How evenly the work spreads.**
 
-``` text
+```
 two nodes, apod.nasa.gov
   node 18bbe738   76 handled   51%   26 pages   9 images
   node 96c82b18   74 handled   49%   19 pages   7 images
 
 three nodes, a 61 page site, one shared PostgreSQL
   dispatched 61      handled 66      saved 61
-  node-1: 18 fetches   node-2: 18   node-3: 25     each page exactly once
+  node-1: 18 fetches   node-2: 18   node-3: 25
+  each page exactly once
 ```
 
 **Everything else we measured.**
 
-| | Measured |
-|---|---|
-| Word search, embedded Lucene, 151 documents | 38 matches in 16 ms |
-| Cluster wire format, one `CrawlTask` | JSON 327 bytes, encode and decode 1,394 ns |
-| Both ONNX models preloaded | 4.47 s, on a background thread after the app is ready |
-| Idle RSS with both models loaded | 1.77 to 1.88 GB |
-| Image vector duplication, before and after the fix | 43× then 1.00× |
-| Container memory, vectors or a browser | 1g is OOMKilled, 2g passes, and they want separate runs |
-| Tests | 133 classes, 1,098 methods, 80% line coverage gate on four modules |
+- **Word search**, embedded Lucene over 151 documents: 38 matches in 16 ms.
+- **Cluster wire format**, one `CrawlTask`: JSON 327 bytes, encode and decode 1,394 ns.
+- **Both ONNX models preloaded**: 4.47 s, on a background thread after the app is ready.
+- **Idle RSS with both models loaded**: 1.77 to 1.88 GB.
+- **Image vector duplication**, before and after the fix: 43 times, then 1.00 times.
+- **Container memory**: 1g is OOMKilled with either vectors or a browser, 2g passes, and the two
+  want separate runs.
+- **Tests**: 133 classes, 1,098 methods, with an 80% line coverage gate on four modules.
 
 ---
 
@@ -412,4 +431,5 @@ three nodes, a 61 page site, one shared PostgreSQL
 
 ---
 
-Source, issues and full documentation: [github.com/paganini2008/greenfinger](https://github.com/paganini2008/greenfinger)
+Source, issues and full documentation:
+[github.com/paganini2008/greenfinger](https://github.com/paganini2008/greenfinger)
