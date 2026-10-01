@@ -1,4 +1,4 @@
-<h1 align="center">Greenfinger</h1>
+<h1 align="center">Greenfinger 2.0.0</h1>
 
 <h2 align="center">One url in. A searchable archive out.</h2>
 
