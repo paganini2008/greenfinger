@@ -185,6 +185,81 @@ github.com/paganini2008/greenfinger
 
 ---
 
+## LinkedIn
+
+LinkedIn is not Reddit or X. No markdown, so no bold, no bullets and no code blocks. The first
+roughly 200 characters are all that shows before "see more", so the hook has to land there. Short
+paragraphs with blank lines between them, because a wall of text is scrolled past.
+
+### A. The release post
+
+``` text
+I kept writing the same hundred lines around an HTTP client, so I spent a few months building the thing I actually wanted.
+
+Greenfinger 2.0 is open source today.
+
+Give it one url. It crawls the whole site, keeps every page, every picture and every version, and writes three things in one pass: plain files, a full text index, and a vector collection.
+
+Then you can search it three ways.
+
+By words.
+By meaning, so "what happens when a star runs out of fuel" finds the supernova page that never says it.
+By describing a picture, so "a bright spiral galaxy against black sky" hands you the galaxy.
+
+The part I am most pleased with is what it does not need. The first crawl runs with no database, no search server, no API key and no model download. H2 and an embedded Lucene index are the defaults, and the embedding models are ONNX running inside the crawler's own process.
+
+It is distributed with no coordinator to deploy. Every node runs the same jar. Start another one, point it at the same cluster name, and it joins a crawl that is already running. Kill one and the crawl carries on.
+
+Java 17, Spring Boot 4.1, Apache 2.0.
+
+If you have ever needed a site's content as a searchable corpus and found yourself gluing three systems together, I would genuinely like to hear what you ran into.
+
+#OpenSource #Java #WebCrawler #SpringBoot #VectorSearch
+```
+
+1,346 characters, hook 122. Use this one if the goal is the project.
+
+### B. The lessons post
+
+``` text
+Three months ago I needed the contents of a documentation site as something I could search. I ended up writing a crawler, an indexer, and an embedding pipeline, plus the glue between them.
+
+That glue is why Greenfinger exists.
+
+It is an open source distributed web crawler for the JVM. One url in, and one pass writes plain files, a full text index and a vector collection. No database to install, no search server, no API key.
+
+What I learned building it, in case it is useful to anyone doing something similar:
+
+Boundaries matter more than features. Two rules that cannot be switched off, same domain and under the start url, prevent the failure everyone hits once.
+
+Metadata only in the database. Keeping page bodies out of it meant the index and the vectors could always be rebuilt from the files, without crawling the site a second time. That one decision paid for itself repeatedly.
+
+Finishing is a question about shared counters, not a decision for a leader. A leader that dies mid crawl then cannot leave a crawl that never ends.
+
+Java 17, Spring Boot 4.1, Apache 2.0. Link in the comments.
+
+#OpenSource #Java #DistributedSystems #SpringBoot #SoftwareEngineering
+```
+
+1,170 characters, hook 188. Use this one if the goal is reach. Engineering lessons travel further on
+LinkedIn than announcements do.
+
+### How to post it
+
+- **Put the GitHub link in the first comment, not in the post.** LinkedIn shows posts with an
+  external link to fewer people. Post, then immediately comment with the link, then pin that
+  comment.
+- **Attach `monitor-live.jpg` as a native image.** One image, uploaded, not a link preview. It
+  shows a real crawl with the version split and the per node table, which is the screenshot that
+  makes the product obvious in one glance.
+- **Three to five hashtags, at the end.** More than that reads as spam.
+- **Answer every comment in the first two hours.** Replies count as engagement and are most of what
+  decides whether the post keeps being shown.
+- **No markdown.** If you paste `**bold**` it stays as asterisks. Unicode bold characters work but
+  screen readers read them out as gibberish, so leave them alone.
+
+---
+
 ## Before posting
 
 - The blog images point at

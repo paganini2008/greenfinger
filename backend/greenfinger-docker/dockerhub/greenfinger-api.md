@@ -1,0 +1,227 @@
+# Greenfinger
+
+**One url in. A searchable archive out.**
+
+A distributed web crawler for the JVM. One pass writes plain files, a full text index and a vector
+collection. Every node runs the same jar, there is no coordinator to deploy, and the first crawl
+needs no database, no search server and no API key.
+
+This image is one crawler node. For the console in front of it, see
+[fredfeng033/greenfinger-ui](https://hub.docker.com/r/fredfeng033/greenfinger-ui).
+
+![Watching a crawl](https://paganini2008.github.io/greenfinger/blogger/assets/monitor-live.jpg)
+
+- **Source:** https://github.com/paganini2008/greenfinger
+- **Documentation:** https://paganini2008.github.io/greenfinger/
+- **Licence:** Apache 2.0
+
+---
+
+## Quick start
+
+One node, nothing else running:
+
+```
+docker run -d --init --name greenfinger \
+  -p 50080:50080 \
+  -v greenfinger-data:/app/data \
+  fredfeng033/greenfinger-api:latest
+```
+
+Then open `http://localhost:50080`. The jar serves the console itself, so a single container is a
+complete installation. Sign in with `admin` and `admin123`.
+
+For a three node cluster with one address in front of it, use the compose file in
+[backend/greenfinger-docker/docker-compose.yml](https://github.com/paganini2008/greenfinger/blob/main/backend/greenfinger-docker/docker-compose.yml).
+
+---
+
+## What it does
+
+| | |
+|---|---|
+| **Crawls a whole site** | Two boundary rules that cannot be switched off: the registrable domain has to match, and every url has to sit under the start url. robots.txt on top |
+| **Three outputs, one pass** | Files on disk or in MinIO, a full text index in Lucene or Elasticsearch, vectors in Lucene, Qdrant, Weaviate or Elasticsearch |
+| **Rebuilds without recrawling** | `replay` rebuilds the index or the vectors from the files. The site is never touched again |
+| **Keeps pictures** | From `<img>`, `srcset`, `<picture>` and `og:image`, filtered by size and type. Identical bytes stored once |
+| **Reads past html** | Document links recorded on every crawl. Text, markdown and csv parse out of the box once reading is switched on |
+| **Searches three ways** | By words, by meaning, and by describing a picture. The embedding models run locally as ONNX |
+| **Resumable and versioned** | The frontier is on disk. A rebuild opens a new version beside the old one, which keeps answering searches |
+| **Distributed** | One url dispatched is one call to whichever node owns it. No central queue and no leader in the fetch path |
+
+---
+
+## Tags
+
+| Tag | What it is |
+|---|---|
+| `latest` | The most recent release, pre-releases included |
+| `2.0.0` | An exact version |
+| `2.0` | The latest patch of that minor version |
+| `edge` | Built by hand from `main`, between releases |
+
+Both `linux/amd64` and `linux/arm64`. The same images are on GHCR as
+`ghcr.io/paganini2008/greenfinger-api`.
+
+---
+
+## Running a cluster
+
+Nodes agreeing on the cluster **name and port** find each other and share one crawl. Every node is
+told the whole peer list including itself, so they can start in any order.
+
+```
+docker network create --subnet 172.28.0.0/16 gf
+
+for i in 1 2 3; do
+  docker run -d --init --name gf-$i --network gf --ip 172.28.0.$((9+i)) \
+    --memory 2g \
+    -e GF_CLUSTER_NAME=greenfinger-docker \
+    -e GF_CLUSTER_PORT=22020 \
+    -e GF_CLUSTER_HOSTS=172.28.0.10,172.28.0.11,172.28.0.12 \
+    -e GF_CLUSTER_ADVERTISE_HOST=172.28.0.$((9+i)) \
+    -v gf-$i-data:/app/data \
+    fredfeng033/greenfinger-api:latest
+done
+```
+
+`--init` matters. The entry point execs java, so without it nothing reaps the browser's helper
+processes when a page is rendered, and they stay as zombies for the life of the container.
+
+Each node keeps its own complete copy, so **each one needs its own volume**. A container replaced
+without one starts from an empty database and the whole crawl has to be sent to it again.
+
+---
+
+## Configuration
+
+Nothing below is required. H2 and an embedded Lucene index are the defaults.
+
+### Metadata store
+
+| Variable | Default | Description |
+|---|---|---|
+| `GF_DB_URL` | an H2 file in the volume | PostgreSQL, MySQL, SQL Server, Oracle, SQLite |
+| `GF_DB_USERNAME` | empty | |
+| `GF_DB_PASSWORD` | empty | |
+| `GF_DB_DDL` | `update` | Use `none` with the schema scripts on anything you cannot lose |
+
+### Full text and vectors
+
+| Variable | Default | Description |
+|---|---|---|
+| `GF_INDEX_PROVIDER` | `lucene` | Or `elasticsearch`, with `GF_ES_URIS` |
+| `GF_ES_URIS` | empty | Comma separated |
+| `GF_LUCENE_ANALYZER` | `standard` | `standard`, `smartcn` or `cjk` |
+| `GF_ES_ANALYZER` | `standard` | `ik_max_word` needs the analysis-ik plugin |
+| `GF_VECTOR_STORE` | `lucene` | Or `elasticsearch`, `qdrant`, `weaviate` |
+| `GF_QDRANT_URL` | empty | |
+| `GF_WEAVIATE_URL` | empty | |
+
+### Files
+
+| Variable | Default | Description |
+|---|---|---|
+| `GF_FILE_TARGET` | `local` | Or `minio`. Object keys match the local paths exactly |
+| `GF_MINIO_ENDPOINT` | empty | AWS S3 and GCS publish S3 compatible endpoints too |
+| `GF_MINIO_ACCESS_KEY` | empty | |
+| `GF_MINIO_SECRET_KEY` | empty | |
+| `GF_MINIO_BUCKET` | `greenfinger` | |
+
+### Embeddings
+
+| Variable | Default | Description |
+|---|---|---|
+| `GF_EMBEDDING_PROVIDER` | `local` | ONNX in this process. Or `ollama`, `openai` |
+| `GF_PRELOAD_TEXT_MODEL` | `true` | Loaded at startup on a background thread |
+| `GF_PRELOAD_IMAGE_MODEL` | `true` | |
+| `GF_MODEL_DIR` | `/app/data/models` | Inside the volume, so they are downloaded once |
+| `OPENAI_API_KEY` | empty | |
+
+### Cluster
+
+| Variable | Default | Description |
+|---|---|---|
+| `GF_CLUSTER_NAME` | `greenfinger` | Nodes agreeing on name **and** port find each other |
+| `GF_CLUSTER_PORT` | `22000` | |
+| `GF_CLUSTER_HOSTS` | `127.0.0.1` | The whole peer list, including this node |
+| `GF_CLUSTER_ADVERTISE_HOST` | `127.0.0.1` | What peers dial. Set it per node |
+| `GF_CLUSTER_TRANSPORT` | `NETTY` | Or the built in `NIO` |
+
+### Crawl defaults
+
+Every one of these is also a per catalog setting, and the catalog wins.
+
+| Variable | Default | Description |
+|---|---|---|
+| `GF_OUTPUT_TYPES` | `file` | `file,index,vector`. file is always on |
+| `GF_EXTRACTOR` | `adaptive` | adaptive, restclient, htmlunit, playwright, selenium |
+| `GF_MAX_FETCH_SIZE` | `10000` | Saved pages before a crawl stops |
+| `GF_FETCH_INTERVAL` | `1000` | Milliseconds between fetches, per node |
+| `GF_WORK_THREADS` | `16` | |
+| `GF_DOCUMENTS` | `false` | Whether linked documents are fetched and read |
+| `GF_MAX_VERSIONS` | `10` | |
+
+### Server
+
+| Variable | Default | Description |
+|---|---|---|
+| `GF_SERVER_PORT` | `50080` | |
+| `GF_SECURITY_ENABLED` | `true` | |
+| `GF_USERS_FILE` | `config/api/users.xml` | Two roles, ADMIN and SUPPORT |
+| `GF_TOKEN_SECRET` | generated | Set it so a token survives a restart |
+| `GF_TOKEN_VALIDITY` | `8h` | |
+| `GF_PROFILE` | `dev` | `dev` or `prod` |
+| `JAVA_OPTS` | `-XX:MaxRAMPercentage=70` | No fixed `-Xmx`, so the heap follows the container limit |
+
+---
+
+## Volumes and ports
+
+| | |
+|---|---|
+| `/app/data` | Everything. `system/` is working state, `user/` is what was crawled. **Use a volume** |
+| `/app/config` | Mount your own `users.xml` or `application.yml` over the packaged ones |
+| `50080` | The api and the console |
+| `22000` | Cluster traffic between nodes. Not for the outside world |
+
+---
+
+## Memory
+
+`GF_MEMORY` or `--memory` caps heap **and** off heap together, and both the ONNX embedding models
+and a headless chromium live off heap.
+
+| Limit | Vectors | A browser |
+|---|---|---|
+| 1g | OOMKilled after about 20 seconds | OOMKilled as the browser starts |
+| 2g | passes | passes |
+
+Give a node 2g, and give it more if it is doing both at once.
+
+---
+
+## Own your own accounts
+
+Two roles, in `users.xml`. ADMIN can crawl, edit, replay and delete. SUPPORT can read every page
+and is offered no button that writes.
+
+```
+docker run -d --init \
+  -v ./users.xml:/app/config/api/users.xml:ro \
+  -v greenfinger-data:/app/data \
+  -p 50080:50080 \
+  fredfeng033/greenfinger-api:latest
+```
+
+```xml
+<users>
+  <user name="admin"  password="..." roles="ADMIN"/>
+  <user name="tester" password="..." roles="SUPPORT"/>
+</users>
+```
+
+---
+
+Apache License 2.0. Issues and pull requests at
+https://github.com/paganini2008/greenfinger.

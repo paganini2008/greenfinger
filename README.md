@@ -237,8 +237,8 @@ with a fresh install, so there is something to crawl before you have picked anyt
 | `greenfinger-cli.sh`, `greenfinger-shell.sh`, `run.conf`, `.env.example` | `backend/greenfinger-shell/src/main/resources/bin/` |
 | `run-local.sh`, `run-docker.sh` | `backend/greenfinger-api/src/main/resources/bin/` |
 | `config/` | `backend/greenfinger-shell/src/main/resources/config/` |
-| `docker/Dockerfile` | `backend/greenfinger-api/src/main/resources/docker/` |
-| `docker/Dockerfile.web`, `docker/server.js`, `docker/static/` | `frontend/greenfinger-ui/` |
+| `docker/Dockerfile`, `docker/Dockerfile.shell`, `docker/Dockerfile.web`, `.dockerignore` | `backend/greenfinger-docker/` |
+| `docker/server.js`, `docker/static/` | `frontend/greenfinger-ui/` (`npm run build:deploy`) |
 
 Deleting `deploy/` and rebuilding is safe, with three exceptions a build cannot put back: `data/`,
 `.env`, and a `run.conf` you have filled in.
