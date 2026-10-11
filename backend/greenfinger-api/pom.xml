@@ -235,21 +235,25 @@
                   <directory>${project.basedir}/src/main/resources/bin</directory>
                   <filtering>false</filtering>
                 </resource>
-                <!-- the image definition; the build context is deploy/ itself, because that is
-                     where the jar and the front end build are -->
+                <!-- The image definitions, which live in greenfinger-docker beside this module
+                     rather than under it: one of them builds the front end container, so they
+                     are not the api's to own. The build context is deploy/ itself, because that
+                     is where the jar and the front end build are. -->
                 <resource>
-                  <directory>${project.basedir}/src/main/resources/docker</directory>
+                  <directory>${project.basedir}/../greenfinger-docker</directory>
                   <targetPath>docker</targetPath>
                   <filtering>false</filtering>
-                  <excludes>
-                    <exclude>dockerignore</exclude>
-                  </excludes>
+                  <includes>
+                    <include>Dockerfile</include>
+                    <include>Dockerfile.shell</include>
+                    <include>Dockerfile.web</include>
+                  </includes>
                 </resource>
                 <!-- docker reads this only at the root of the context, and the resources plugin
                      skips a name starting with a dot, so it is carried under a plain name and
                      renamed on the way -->
                 <resource>
-                  <directory>${project.basedir}/src/main/resources/docker</directory>
+                  <directory>${project.basedir}/../greenfinger-docker</directory>
                   <includes>
                     <include>dockerignore</include>
                   </includes>

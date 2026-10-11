@@ -1,0 +1,220 @@
+name: Publish Docker Images
+
+# Publishes both images to Docker Hub and to the GitHub Container Registry, the same build to
+# both. Every tag moves latest, pre-releases included: users always pull latest.
+#   v2.0.0-rc1 -> 2.0.0-rc1, latest
+#   v2.0.0     -> 2.0.0, 2.0, latest
+#
+# Run by hand from the Actions tab to publish an `edge` tag from whatever is on main.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOCKERHUB_NAMESPACE: fredfeng033
+  # GHCR names must be lowercase
+  GHCR_NAMESPACE: ghcr.io/paganini2008
+
+  # The front end image is node:22-alpine with no build step, so both architectures are cheap.
+  UI_PLATFORMS: linux/amd64,linux/arm64
+  # The api image installs a headless chromium at build time, and under QEMU that step is slow.
+  # Drop this to linux/amd64 if the job starts running into the six hour limit.
+  API_PLATFORMS: linux/amd64,linux/arm64
+
+jobs:
+  # Nothing is published unless both suites pass, including the 80% coverage gate on all four
+  # backend modules.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - name: Backend tests
+        working-directory: backend
+        run: mvn -B verify
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/greenfinger-ui/package-lock.json
+
+      - name: Front end tests
+        working-directory: frontend/greenfinger-ui
+        run: |
+          npm ci
+          npm run lint
+          npm test
+
+  # One job rather than a matrix, because both images are built from the same context and that
+  # context costs a Maven build and an Angular build to produce. A matrix would make it twice.
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Push to GHCR with the workflow's own GITHUB_TOKEN
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/greenfinger-ui/package-lock.json
+
+      # deploy/ is a build output and is not in the repository. Both Dockerfiles take it as their
+      # build context, so it has to exist before anything is built. Tests already ran in the job
+      # above, so this is the jars and nothing else.
+      - name: Assemble deploy/
+        run: |
+          mvn -B -f backend/pom.xml package -DskipTests -Djacoco.skip=true
+          cd frontend/greenfinger-ui
+          npm ci
+          npm run build:deploy
+
+      # docker reads .dockerignore only at the root of the build context, and the Maven resources
+      # plugin cannot write a name starting with a dot, so packaging carries it as `dockerignore`.
+      # run-docker.sh does this same copy.
+      - name: Put .dockerignore where docker looks
+        run: cp deploy/dockerignore deploy/.dockerignore
+
+      - name: Check the context is complete
+        run: |
+          test -f deploy/lib/greenfinger-api-*.jar || { echo "no api jar in deploy/lib"; exit 1; }
+          test -f deploy/docker/static/index.html || { echo "no front end build"; exit 1; }
+          test -f deploy/docker/server.js         || { echo "no server.js"; exit 1; }
+          ls -la deploy/lib deploy/docker
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ---- greenfinger-api ----------------------------------------------------------------
+      - name: Tags and labels for greenfinger-api
+        id: meta-api
+        uses: docker/metadata-action@v5
+        with:
+          # One build, tagged for both registries
+          images: |
+            ${{ env.DOCKERHUB_NAMESPACE }}/greenfinger-api
+            ${{ env.GHCR_NAMESPACE }}/greenfinger-api
+          # latest on every tag, not only on releases (metadata-action's default)
+          flavor: |
+            latest=true
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=edge,enable=${{ github.event_name == 'workflow_dispatch' }}
+          labels: |
+            org.opencontainers.image.title=greenfinger-api
+            org.opencontainers.image.description=A distributed web crawler for the JVM. One pass writes files, a full text index and vectors.
+            org.opencontainers.image.licenses=Apache-2.0
+          # metadata-action also sets org.opencontainers.image.source to this repository, which
+          # is what links the GHCR packages to it
+
+      - name: Build and push greenfinger-api
+        uses: docker/build-push-action@v6
+        with:
+          context: ./deploy
+          file: ./deploy/docker/Dockerfile
+          platforms: ${{ env.API_PLATFORMS }}
+          push: true
+          tags: ${{ steps.meta-api.outputs.tags }}
+          labels: ${{ steps.meta-api.outputs.labels }}
+          cache-from: type=gha,scope=greenfinger-api
+          cache-to: type=gha,scope=greenfinger-api,mode=max
+
+      # ---- greenfinger-ui -----------------------------------------------------------------
+      - name: Tags and labels for greenfinger-ui
+        id: meta-ui
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.DOCKERHUB_NAMESPACE }}/greenfinger-ui
+            ${{ env.GHCR_NAMESPACE }}/greenfinger-ui
+          flavor: |
+            latest=true
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=edge,enable=${{ github.event_name == 'workflow_dispatch' }}
+          labels: |
+            org.opencontainers.image.title=greenfinger-ui
+            org.opencontainers.image.description=The web console for Greenfinger. One address in front of every crawler node.
+            org.opencontainers.image.licenses=Apache-2.0
+
+      - name: Build and push greenfinger-ui
+        uses: docker/build-push-action@v6
+        with:
+          context: ./deploy
+          file: ./deploy/docker/Dockerfile.web
+          platforms: ${{ env.UI_PLATFORMS }}
+          push: true
+          tags: ${{ steps.meta-ui.outputs.tags }}
+          labels: ${{ steps.meta-ui.outputs.labels }}
+          cache-from: type=gha,scope=greenfinger-ui
+          cache-to: type=gha,scope=greenfinger-ui,mode=max
+
+  # Keeps the Docker Hub overview pages in step with backend/greenfinger-docker/dockerhub/, so the description on the
+  # registry is the one in the repository rather than something edited in a web form once.
+  describe:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Docker Hub overview for greenfinger-api
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ env.DOCKERHUB_NAMESPACE }}/greenfinger-api
+          readme-filepath: ./backend/greenfinger-docker/dockerhub/greenfinger-api.md
+          short-description: A distributed web crawler for the JVM. Files, a full text index and vectors in one pass.
+
+      - name: Docker Hub overview for greenfinger-ui
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ env.DOCKERHUB_NAMESPACE }}/greenfinger-ui
+          readme-filepath: ./backend/greenfinger-docker/dockerhub/greenfinger-ui.md
+          short-description: The web console for Greenfinger. One address in front of every crawler node.

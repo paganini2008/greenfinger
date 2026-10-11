@@ -41,9 +41,9 @@
 #   run-local.sh, run-docker.sh
 #                          backend/greenfinger-api/src/main/resources/bin/
 #   config/                backend/greenfinger-shell/src/main/resources/config/
-#   docker/Dockerfile, dockerignore
-#                          backend/greenfinger-api/src/main/resources/docker/
-#   docker/Dockerfile.web, docker/server.js, docker/static/
+#   docker/Dockerfile, docker/Dockerfile.shell, docker/Dockerfile.web, dockerignore
+#                          backend/greenfinger-docker/
+#   docker/server.js, docker/static/
 #                          frontend/greenfinger-ui/  (npm run build:deploy)
 #   lib/                   the two executable jars
 #   data/, logs/           what a run leaves behind

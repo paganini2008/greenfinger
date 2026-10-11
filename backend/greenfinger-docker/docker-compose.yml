@@ -1,0 +1,222 @@
+# Greenfinger, as a three node cluster with one console in front of it.
+#
+#   docker compose up -d          start it
+#   open http://localhost:9700    admin / admin123
+#   docker compose logs -f api-1  watch one node
+#   docker compose down           stop, keeping the volumes
+#   docker compose down -v        stop and throw the crawled data away
+#
+# Nothing else is needed. The default is an H2 file per node and an embedded Lucene index, so
+# there is no database to provision before the first crawl. The two commented blocks at the
+# bottom switch the metadata store to PostgreSQL or MySQL.
+#
+# Fewer nodes:  docker compose up -d api-1 ui
+# More nodes:   copy an api block, give it the next ip, and add it to GF_CLUSTER_HOSTS everywhere.
+
+name: greenfinger
+
+# Every node is the same jar with the same settings, so the differences are pulled out here and
+# each service overrides only its own address.
+x-api: &api
+  image: fredfeng033/greenfinger-api:latest
+  restart: unless-stopped
+  # tini as pid 1. The entry point execs java, so without this nothing reaps the browser's helper
+  # processes when a page is rendered and they pile up as zombies for the life of the container.
+  init: true
+  # Caps heap and off heap together. The ONNX embedding models and a headless chromium are both
+  # off heap, so 1g is not enough for either of them.
+  mem_limit: 2g
+  environment: &api-env
+    # Nodes agreeing on the name AND the port find each other and share one crawl.
+    GF_CLUSTER_NAME: greenfinger-docker
+    GF_CLUSTER_PORT: '22020'
+    # Every node is told the whole list including itself, which is what lets them start in any
+    # order. No node waits for a particular other one.
+    GF_CLUSTER_HOSTS: 172.28.0.10,172.28.0.11,172.28.0.12
+    GF_PROFILE: dev
+    JAVA_OPTS: -XX:MaxRAMPercentage=70 -Dfile.encoding=UTF-8
+  networks:
+    cluster:
+  healthcheck:
+    test: ["CMD-SHELL", "wget -qO- http://localhost:50080/actuator/health | grep -q UP"]
+    interval: 15s
+    timeout: 5s
+    # The two ONNX models load on a background thread after the app is ready, so the first
+    # minute of a cold start is spent on them.
+    start_period: 120s
+    retries: 5
+
+services:
+  # ---- the crawler, three nodes ---------------------------------------------------------
+  # Static addresses rather than service names: the cluster property is ip-addresses, and a
+  # node has to advertise something its peers can dial.
+  api-1:
+    <<: *api
+    container_name: greenfinger-1
+    environment:
+      <<: *api-env
+      GF_CLUSTER_ADVERTISE_HOST: 172.28.0.10
+    networks:
+      cluster:
+        ipv4_address: 172.28.0.10
+    ports:
+      # One node published, for curl and for the api directly. The console does not need this.
+      - "50080:50080"
+    volumes:
+      - api-1-data:/app/data
+
+  api-2:
+    <<: *api
+    container_name: greenfinger-2
+    environment:
+      <<: *api-env
+      GF_CLUSTER_ADVERTISE_HOST: 172.28.0.11
+    networks:
+      cluster:
+        ipv4_address: 172.28.0.11
+    volumes:
+      - api-2-data:/app/data
+
+  api-3:
+    <<: *api
+    container_name: greenfinger-3
+    environment:
+      <<: *api-env
+      GF_CLUSTER_ADVERTISE_HOST: 172.28.0.12
+    networks:
+      cluster:
+        ipv4_address: 172.28.0.12
+    volumes:
+      - api-3-data:/app/data
+
+  # ---- the console, one of it -----------------------------------------------------------
+  # Serves the page and forwards /v2 and /actuator across all three nodes, so the browser talks
+  # to one address and the request lands on whichever node is free. A token is signed, so any
+  # node can verify one.
+  ui:
+    image: fredfeng033/greenfinger-ui:latest
+    container_name: greenfinger-ui
+    restart: unless-stopped
+    environment:
+      GF_UPSTREAMS: 172.28.0.10:50080,172.28.0.11:50080,172.28.0.12:50080
+    ports:
+      - "9700:80"
+    networks:
+      cluster:
+    depends_on:
+      - api-1
+      - api-2
+      - api-3
+
+networks:
+  cluster:
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+volumes:
+  # A node keeps its own complete copy, so each one needs its own. Replacing a container without
+  # a volume starts it from an empty database, and the whole crawl has to be sent to it again.
+  api-1-data:
+  api-2-data:
+  api-3-data:
+
+# ===============================================================================================
+# A real metadata store
+# ===============================================================================================
+#
+# The default is an H2 file inside each node's volume, which is right for trying it out and wrong
+# for anything you cannot afford to lose. Point all three nodes at one database instead and the
+# catalog table stops being three copies that have to be reconciled.
+#
+# Create the schema first, with the script for your database from
+# https://github.com/paganini2008/greenfinger/tree/main/docs/sql, rather than letting Hibernate
+# do it. Then set GF_DB_DDL=none.
+#
+# ---- PostgreSQL -------------------------------------------------------------------------
+# Add to x-api-env above:
+#
+#     GF_DB_URL: jdbc:postgresql://postgres:5432/greenfinger
+#     GF_DB_USERNAME: greenfinger
+#     GF_DB_PASSWORD: greenfinger
+#
+# and add this service, plus `postgres` to each api service's depends_on:
+#
+#   postgres:
+#     image: postgres:16-alpine
+#     restart: unless-stopped
+#     environment:
+#       POSTGRES_DB: greenfinger
+#       POSTGRES_USER: greenfinger
+#       POSTGRES_PASSWORD: greenfinger
+#     networks:
+#       cluster:
+#     volumes:
+#       - postgres-data:/var/lib/postgresql/data
+#     healthcheck:
+#       test: ["CMD-SHELL", "pg_isready -U greenfinger"]
+#       interval: 10s
+#       retries: 5
+#
+# and `postgres-data:` to the volumes block.
+#
+# ---- MySQL ------------------------------------------------------------------------------
+# Add to x-api-env above:
+#
+#     GF_DB_URL: jdbc:mysql://mysql:3306/greenfinger?useUnicode=true&characterEncoding=utf8
+#     GF_DB_USERNAME: greenfinger
+#     GF_DB_PASSWORD: greenfinger
+#
+# and add this service, plus `mysql` to each api service's depends_on:
+#
+#   mysql:
+#     image: mysql:8
+#     restart: unless-stopped
+#     environment:
+#       MYSQL_DATABASE: greenfinger
+#       MYSQL_USER: greenfinger
+#       MYSQL_PASSWORD: greenfinger
+#       MYSQL_ROOT_PASSWORD: greenfinger
+#     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+#     networks:
+#       cluster:
+#     volumes:
+#       - mysql-data:/var/lib/mysql
+#     healthcheck:
+#       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+#       interval: 10s
+#       retries: 10
+#
+# and `mysql-data:` to the volumes block.
+#
+# ===============================================================================================
+# Everything else worth switching on
+# ===============================================================================================
+#
+# All of these go in x-api-env, so every node gets them.
+#
+#   Full text in Elasticsearch rather than the embedded index
+#     GF_INDEX_PROVIDER: elasticsearch
+#     GF_ES_URIS: http://elasticsearch:9200
+#     GF_ES_ANALYZER: ik_max_word        # needs the analysis-ik plugin
+#
+#   Vectors in Qdrant rather than the embedded store
+#     GF_VECTOR_STORE: qdrant
+#     GF_QDRANT_URL: http://qdrant:6333
+#
+#   Pages and images in MinIO rather than each node's own disk
+#     GF_FILE_TARGET: minio
+#     GF_MINIO_ENDPOINT: http://minio:9000
+#     GF_MINIO_ACCESS_KEY: ...
+#     GF_MINIO_SECRET_KEY: ...
+#     GF_MINIO_BUCKET: greenfinger
+#
+#   A shared index and a shared blob store are what a cluster of any size wants. With the
+#   embedded ones, every node pays for a copy of the extracted text.
+#
+#   Chinese or Japanese pages, with the embedded index
+#     GF_LUCENE_ANALYZER: smartcn        # standard | smartcn | cjk
+#
+#   Accounts are read from a file. To use your own, mount it over the packaged one:
+#     volumes:
+#       - ./users.xml:/app/config/api/users.xml:ro

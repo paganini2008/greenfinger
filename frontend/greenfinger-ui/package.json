@@ -10,7 +10,7 @@
     "test": "ng test",
     "test:server": "node --test docker/server.test.js",
     "lint": "ng lint",
-    "build:deploy": "npm run version:sync && ng build && rm -rf ../../deploy/docker/static && mkdir -p ../../deploy/docker && cp -R dist/greenfinger-ui/browser ../../deploy/docker/static && cp docker/Dockerfile.web docker/server.js ../../deploy/docker/",
+    "build:deploy": "npm run version:sync && ng build && rm -rf ../../deploy/docker/static && mkdir -p ../../deploy/docker && cp -R dist/greenfinger-ui/browser ../../deploy/docker/static && cp docker/server.js ../../deploy/docker/",
     "icons": "node tools/make-icons.mjs",
     "e2e": "playwright test"
   },
