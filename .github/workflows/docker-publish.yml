@@ -194,6 +194,9 @@ jobs:
 
   # Keeps the Docker Hub overview pages in step with backend/greenfinger-docker/dockerhub/, so the description on the
   # registry is the one in the repository rather than something edited in a web form once.
+  # DOCKERHUB_TOKEN needs read/write/delete here. Pushing an image only needs write, but the
+  # overview is a PATCH on the repository itself, which is an admin call and 403s on a narrower
+  # token, after both images have already gone out.
   describe:
     needs: publish
     runs-on: ubuntu-latest

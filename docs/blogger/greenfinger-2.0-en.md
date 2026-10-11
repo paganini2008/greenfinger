@@ -36,6 +36,20 @@ rather than in your code, and the first crawl needs nothing running beside it.
 
 ## Quick start
 
+Three nodes and a console, from the published images. Nothing to build.
+
+``` shell
+curl -O https://raw.githubusercontent.com/paganini2008/greenfinger/main/backend/greenfinger-docker/docker-compose.yml
+echo "GF_TOKEN_SECRET=$(openssl rand -base64 32)" > .env
+docker compose up -d
+```
+
+Then `http://localhost:9700`, `admin` and `admin123`. The key is not optional: tokens are signed
+rather than kept in a session, so every node needs the same one or it rejects the others'
+sign-ins. Give Docker 6GB for three nodes, or start one with `docker compose up -d api-1 ui`.
+
+From source instead, and crawling a site in a single command:
+
 ``` shell
 git clone https://github.com/paganini2008/greenfinger.git
 cd greenfinger/backend && mvn clean install

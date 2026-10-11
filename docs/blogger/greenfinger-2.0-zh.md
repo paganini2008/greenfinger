@@ -31,6 +31,20 @@ jar，没有协调者要部署，第一次爬取不需要数据库、不需要�
 
 ## Quick Start
 
+三个节点加一个控制台，直接用已发布的镜像，不用编译。
+
+``` shell
+curl -O https://raw.githubusercontent.com/paganini2008/greenfinger/main/backend/greenfinger-docker/docker-compose.yml
+echo "GF_TOKEN_SECRET=$(openssl rand -base64 32)" > .env
+docker compose up -d
+```
+
+打开 `http://localhost:9700`，用 `admin` / `admin123` 登录。那个密钥不是可选项：token 是签名的，不是
+存在 session 里的，所以每个节点必须拿同一把钥匙，否则互相不认对方签发的登录态。三个节点给 Docker 留
+6GB，只想起一个就 `docker compose up -d api-1 ui`。
+
+从源码构建，并用一条命令爬完一个站：
+
 ``` shell
 git clone https://github.com/paganini2008/greenfinger.git
 cd greenfinger/backend && mvn clean install

@@ -390,11 +390,16 @@
   <div class="wrap">
     <div class="split">
       <div>
-        <h2 style="margin-top:0">From clone to a searchable site in one command</h2>
+        <h2 style="margin-top:0">Three nodes and a console, in three commands</h2>
         <p class="sub">
-          The crawler needs nothing else running. Metadata goes into an H2 file, pages go under
-          <code>./data</code>, and a live dashboard is drawn while it works. First crawl in about
-          five minutes, most of which is Maven.
+          Nothing to build and no database to provision. Metadata goes into an H2 file per node,
+          pages go into a volume, and a live dashboard is drawn while it works. The images are on
+          Docker Hub for <code>linux/amd64</code> and <code>linux/arm64</code>.
+        </p>
+        <p class="sub">
+          The signing key is not optional. Tokens are signed rather than kept in a session, so
+          every node needs the same one. Give Docker 6GB for three nodes, or start one with
+          <code>docker compose up -d api-1 ui</code>.
         </p>
         <p>
           <a class="btn btn-primary" href="https://github.com/paganini2008/greenfinger">Browse the repo</a>
@@ -402,21 +407,20 @@
       </div>
       <div class="codebox">
         <button class="copy" type="button">Copy</button>
-<pre class="code"><span class="c"># clone and build</span>
+<pre class="code"><span class="c"># three nodes and the console on 9700</span>
+curl -O https://raw.githubusercontent.com/paganini2008/\
+greenfinger/main/backend/greenfinger-docker/docker-compose.yml
+<span class="p">echo</span> "GF_TOKEN_SECRET=$(openssl rand -base64 32)" &gt; .env
+docker compose up -d
+
+<span class="c"># admin / admin123, then crawl from the page</span>
+
+<span class="c"># or from source, one command and one site</span>
 git clone https://github.com/paganini2008/greenfinger
 <span class="p">cd</span> greenfinger/backend &amp;&amp; mvn clean install
-
-<span class="c"># crawl a site, right now</span>
 <span class="p">cd</span> ../deploy
 ./greenfinger-cli.sh --cluster=demo <span class="p">crawl</span> \
-    --url=https://books.toscrape.com
-
-<span class="c"># or bring up the nodes and the console</span>
-./run-local.sh              <span class="c"># http://localhost:9700</span>
-GF_NODES=3 ./run-local.sh   <span class="c"># three nodes, one crawl</span>
-
-<span class="c"># a terminal on those nodes</span>
-./greenfinger-shell.sh --cluster=greenfinger-local</pre>
+    --url=https://books.toscrape.com</pre>
       </div>
     </div>
   </div>

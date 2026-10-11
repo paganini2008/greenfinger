@@ -175,7 +175,39 @@ extractor falls back to HtmlUnit, which is pure Java and needs nothing installed
 
 ## Quick start
 
-### Build
+### From the published images
+
+Nothing to build. Take the compose file, give it a signing key, and start it.
+
+``` shell
+curl -O https://raw.githubusercontent.com/paganini2008/greenfinger/main/backend/greenfinger-docker/docker-compose.yml
+echo "GF_TOKEN_SECRET=$(openssl rand -base64 32)" > .env
+docker compose up -d
+```
+
+Expected output:
+
+``` text
+ Container greenfinger-1   Started
+ Container greenfinger-2   Started
+ Container greenfinger-3   Started
+ Container greenfinger-ui  Started
+```
+
+Then `http://localhost:9700`, `admin` and `admin123`. Three crawler nodes sharing one crawl, with
+the console in front of them.
+
+Two things that bite:
+
+| | |
+|---|---|
+| **`GF_TOKEN_SECRET` is required, and the same on every node** | Tokens are signed rather than kept in a session, so a node cannot verify one signed with another key. Without it the console logs you out on two requests in three |
+| **Give Docker 6GB** | A warm node settles around 1.7GB. Short of it the host kernel kills a jvm, and because that is the host rather than the container's limit, docker reports neither an OOM nor a non zero exit. All you see is containers restarting with an empty log. One node and the console fit in 2GB: `docker compose up -d api-1 ui` |
+
+`fredfeng033/greenfinger-api` and `fredfeng033/greenfinger-ui` on Docker Hub, the same images at
+`ghcr.io/paganini2008/`, both `linux/amd64` and `linux/arm64`.
+
+### Or build it
 
 ``` shell
 git clone https://github.com/paganini2008/greenfinger.git

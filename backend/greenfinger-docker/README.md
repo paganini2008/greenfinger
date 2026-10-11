@@ -77,3 +77,17 @@ overview pages, so the description on the registry is the one in this repository
 The api image installs a headless chromium at build time, and under QEMU that step is slow. The
 platforms are `API_PLATFORMS` and `UI_PLATFORMS` at the top of the workflow if it ever needs to
 be cut back to amd64.
+
+## Running the published images
+
+``` shell
+echo "GF_TOKEN_SECRET=$(openssl rand -base64 32)" > .env
+docker compose up -d
+```
+
+Two things the compose file exists to get right, both of which fail quietly rather than loudly:
+
+| | |
+|---|---|
+| **One signing key across the nodes** | Tokens are signed rather than kept in a session, so a node cannot verify one signed with another key. Each node otherwise generates its own, warns about it in the first screen of log, and the console throws a signed in browser back to the login page on two requests in three |
+| **2g a node, and 6GB for the three** | At 1.5g a node reports healthy, joins the cluster and takes work, and is killed a minute later as the image model loads. When it is the host that is short rather than the container, docker reports neither an OOM nor a non zero exit, so all you see is a container restarting with an empty log |
