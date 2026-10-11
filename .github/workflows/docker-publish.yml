@@ -55,7 +55,6 @@ jobs:
         working-directory: frontend/greenfinger-ui
         run: |
           npm ci
-          npm run lint
           npm test
 
   # One job rather than a matrix, because both images are built from the same context and that

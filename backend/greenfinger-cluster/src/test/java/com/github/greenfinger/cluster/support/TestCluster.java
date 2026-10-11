@@ -172,12 +172,29 @@ public final class TestCluster implements AutoCloseable {
         throw new AssertionError("Timed out after " + timeoutMs + "ms: " + message.get());
     }
 
+    /**
+     * A free port that is not one spreader could hand a node as its own work port, which it
+     * refuses to start with.
+     *
+     * <p>
+     * Port 0 asks the kernel for an ephemeral one, and the range that comes from is the operating
+     * system's rather than ours: macOS uses 49152-65535 and never collides with the work range,
+     * Linux uses 32768-60999 and collides with about a quarter of it. So this passed on a laptop
+     * and failed on CI, scattered across whichever tests happened to draw a low number.
+     */
     private static int freePort() {
-        try (ServerSocket socket = new ServerSocket(0)) {
-            return socket.getLocalPort();
-        } catch (IOException e) {
-            throw new IllegalStateException("no free port", e);
+        for (int attempt = 0; attempt < 50; attempt++) {
+            try (ServerSocket socket = new ServerSocket(0)) {
+                int port = socket.getLocalPort();
+                if (port < WORK_PORT_MIN || port > WORK_PORT_MAX) {
+                    return port;
+                }
+            } catch (IOException e) {
+                throw new IllegalStateException("no free port", e);
+            }
         }
+        throw new IllegalStateException("no free port outside " + WORK_PORT_MIN + "-"
+                + WORK_PORT_MAX + " after 50 tries");
     }
 
     /**
