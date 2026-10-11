@@ -448,5 +448,22 @@
       <id>central</id>
       <url>https://repo1.maven.org/maven2</url>
     </repository>
+    <!--
+      openspreader and spreader are published as snapshots rather than releases, and Maven Central
+      hosts no snapshots at all. Without this a clean machine fails on greenfinger-cluster with
+      "NOT allowed from central", which is what CI does on a fresh runner even though a developer
+      with them already in ~/.m2 never notices.
+    -->
+    <repository>
+      <id>central-portal-snapshots</id>
+      <name>Central Portal Snapshots</name>
+      <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
   </repositories>
 </project>
