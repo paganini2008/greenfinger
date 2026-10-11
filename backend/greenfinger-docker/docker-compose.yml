@@ -1,16 +1,24 @@
 # Greenfinger, as a three node cluster with one console in front of it.
 #
+#   echo "GF_TOKEN_SECRET=$(openssl rand -base64 32)" > .env    once, before the first start
 #   docker compose up -d          start it
 #   open http://localhost:9700    admin / admin123
 #   docker compose logs -f api-1  watch one node
 #   docker compose down           stop, keeping the volumes
 #   docker compose down -v        stop and throw the crawled data away
 #
-# Nothing else is needed. The default is an H2 file per node and an embedded Lucene index, so
-# there is no database to provision before the first crawl. The two commented blocks at the
-# bottom switch the metadata store to PostgreSQL or MySQL.
+# No database to provision. The default is an H2 file per node and an embedded Lucene index, so
+# the only thing to decide before the first crawl is how many nodes. The two commented blocks at
+# the bottom switch the metadata store to PostgreSQL or MySQL.
 #
-# Fewer nodes:  docker compose up -d api-1 ui
+# Give Docker 6GB. A warm node holds about 1.7GB, most of it the embedding models and the headless
+# browser rather than heap, so three of them plus the console need that much to stay up. Short of
+# it the host kernel kills whichever jvm it reaches first, and because that is the host rather
+# than the container's own limit, docker reports neither an OOM nor a non zero exit: all you see
+# is containers restarting with nothing in the log. Docker Desktop ships with less than this on
+# some machines, and whatever else is already running comes out of the same pool.
+#
+# Fewer nodes:  docker compose up -d api-1 ui      one node, about 2GB
 # More nodes:   copy an api block, give it the next ip, and add it to GF_CLUSTER_HOSTS everywhere.
 
 name: greenfinger
@@ -34,6 +42,10 @@ x-api: &api
     # order. No node waits for a particular other one.
     GF_CLUSTER_HOSTS: 172.28.0.10,172.28.0.11,172.28.0.12
     GF_PROFILE: dev
+    # Tokens are signed rather than kept in a session, so every node has to hold the same key or
+    # it rejects the others' sign-ins and the console logs you out on two requests in three.
+    # Without this line each node generates its own and warns about it in the first screen of log.
+    GF_TOKEN_SECRET: "${GF_TOKEN_SECRET:?missing. Run - echo GF_TOKEN_SECRET=$$(openssl rand -base64 32) > .env}"
     JAVA_OPTS: -XX:MaxRAMPercentage=70 -Dfile.encoding=UTF-8
   networks:
     cluster:

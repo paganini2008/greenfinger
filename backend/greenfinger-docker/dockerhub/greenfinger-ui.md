@@ -39,9 +39,23 @@ docker run -d --name greenfinger-ui \
 
 Then open `http://localhost:9700`. Sign in with `admin` and `admin123`.
 
-The container has to be on the same network as the nodes it forwards to. The compose file in
-[backend/greenfinger-docker/docker-compose.yml](https://github.com/paganini2008/greenfinger/blob/main/backend/greenfinger-docker/docker-compose.yml)
-sets up three nodes and this console together, which is the shortest way to see it work.
+The container has to be on the same network as the nodes it forwards to, so on its own this is
+rarely what you want. Three nodes and this console together, which is the shortest way to see it
+work:
+
+```
+curl -O https://raw.githubusercontent.com/paganini2008/greenfinger/main/backend/greenfinger-docker/docker-compose.yml
+echo "GF_TOKEN_SECRET=$(openssl rand -base64 32)" > .env
+docker compose up -d
+```
+
+`GF_TOKEN_SECRET` is what makes this console usable at all against more than one node. Tokens are
+signed rather than kept in a session, so a node cannot verify one signed with another node's key.
+Without a shared key every node generates its own, this console round robins across them, and a
+signed in browser is thrown back to the login page on two requests in three.
+
+Give Docker 6GB for three nodes. One node and this console fit in 2GB, with
+`docker compose up -d api-1 ui`.
 
 ---
 

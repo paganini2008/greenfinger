@@ -31,8 +31,10 @@ docker run -d --init --name greenfinger \
 Then open `http://localhost:50080`. The jar serves the console itself, so a single container is a
 complete installation. Sign in with `admin` and `admin123`.
 
-For a three node cluster with one address in front of it, use the compose file in
-[backend/greenfinger-docker/docker-compose.yml](https://github.com/paganini2008/greenfinger/blob/main/backend/greenfinger-docker/docker-compose.yml).
+Give the container 2GB. Both the ONNX embedding models and the headless chromium live off heap,
+so a 1g node is killed the first time it meets either.
+
+For three nodes with one address in front of them, see **Running a cluster** below.
 
 ---
 
@@ -70,26 +72,115 @@ Both `linux/amd64` and `linux/arm64`. The same images are on GHCR as
 Nodes agreeing on the cluster **name and port** find each other and share one crawl. Every node is
 told the whole peer list including itself, so they can start in any order.
 
+Save this as `docker-compose.yml`:
+
+```yaml
+name: greenfinger
+
+# Three crawler nodes and one console in front of them. Static addresses because the cluster
+# setting is a list of ip addresses, so a node has to advertise something its peers can dial.
+x-api: &api
+  image: fredfeng033/greenfinger-api:latest
+  restart: unless-stopped
+  init: true      # reaps the headless browser's helper processes
+  mem_limit: 2g   # the embedding models and chromium are both off heap
+  environment: &api-env
+    GF_CLUSTER_NAME: greenfinger
+    GF_CLUSTER_PORT: '22020'
+    GF_CLUSTER_HOSTS: 172.28.0.10,172.28.0.11,172.28.0.12
+    # Tokens are signed, not looked up, so every node needs the same key or it rejects the
+    # others' sign-ins and the console logs you out on two requests in three.
+    GF_TOKEN_SECRET: "${GF_TOKEN_SECRET:?missing. Run - echo GF_TOKEN_SECRET=$$(openssl rand -base64 32) > .env}"
+  networks:
+    cluster:
+
+services:
+  api-1:
+    <<: *api
+    environment:
+      <<: *api-env
+      GF_CLUSTER_ADVERTISE_HOST: 172.28.0.10
+    networks:
+      cluster:
+        ipv4_address: 172.28.0.10
+    ports:
+      - "50080:50080"   # one node published, for curl. The console does not need it
+    volumes:
+      - api-1-data:/app/data
+
+  api-2:
+    <<: *api
+    environment:
+      <<: *api-env
+      GF_CLUSTER_ADVERTISE_HOST: 172.28.0.11
+    networks:
+      cluster:
+        ipv4_address: 172.28.0.11
+    volumes:
+      - api-2-data:/app/data
+
+  api-3:
+    <<: *api
+    environment:
+      <<: *api-env
+      GF_CLUSTER_ADVERTISE_HOST: 172.28.0.12
+    networks:
+      cluster:
+        ipv4_address: 172.28.0.12
+    volumes:
+      - api-3-data:/app/data
+
+  ui:
+    image: fredfeng033/greenfinger-ui:latest
+    restart: unless-stopped
+    environment:
+      GF_UPSTREAMS: 172.28.0.10:50080,172.28.0.11:50080,172.28.0.12:50080
+    ports:
+      - "9700:80"
+    networks:
+      cluster:
+    depends_on: [api-1, api-2, api-3]
+
+networks:
+  cluster:
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+volumes:
+  api-1-data:
+  api-2-data:
+  api-3-data:
 ```
-docker network create --subnet 172.28.0.0/16 gf
 
-for i in 1 2 3; do
-  docker run -d --init --name gf-$i --network gf --ip 172.28.0.$((9+i)) \
-    --memory 2g \
-    -e GF_CLUSTER_NAME=greenfinger-docker \
-    -e GF_CLUSTER_PORT=22020 \
-    -e GF_CLUSTER_HOSTS=172.28.0.10,172.28.0.11,172.28.0.12 \
-    -e GF_CLUSTER_ADVERTISE_HOST=172.28.0.$((9+i)) \
-    -v gf-$i-data:/app/data \
-    fredfeng033/greenfinger-api:latest
-done
+Then:
+
+```
+echo "GF_TOKEN_SECRET=$(openssl rand -base64 32)" > .env
+docker compose up -d
+open http://localhost:9700
 ```
 
-`--init` matters. The entry point execs java, so without it nothing reaps the browser's helper
-processes when a page is rendered, and they stay as zombies for the life of the container.
+Or take the annotated version, which has commented blocks for PostgreSQL, MySQL, Elasticsearch,
+Qdrant and MinIO:
 
-Each node keeps its own complete copy, so **each one needs its own volume**. A container replaced
-without one starts from an empty database and the whole crawl has to be sent to it again.
+```
+curl -O https://raw.githubusercontent.com/paganini2008/greenfinger/main/backend/greenfinger-docker/docker-compose.yml
+```
+
+Four things in there are easy to get wrong:
+
+| | Why |
+|---|---|
+| `GF_TOKEN_SECRET`, the same on every node | Tokens are signed rather than kept in a session. Without a shared key each node signs with its own and rejects the others', so the console logs you out on two requests in three |
+| `init: true` | The entry point execs java, so without it nothing reaps the browser's helper processes when a page is rendered and they stay as zombies for the life of the container |
+| A volume per node | Each node keeps its own complete copy. A container replaced without one starts from an empty database and the whole crawl has to be sent to it again |
+| Static addresses | The cluster setting is a list of ip addresses, so a node has to advertise something its peers can dial. Service names do not work here |
+
+**Give Docker 6GB for this.** A warm node holds about 1.7GB. Short of it the host kernel kills
+whichever jvm it reaches first, and because that is the host rather than the container's own
+limit, docker reports neither an OOM nor a non zero exit: all you see is containers restarting
+with nothing in the log. One node and the console fit in 2GB.
 
 ---
 
@@ -147,6 +238,7 @@ Nothing below is required. H2 and an embedded Lucene index are the defaults.
 | `GF_CLUSTER_HOSTS` | `127.0.0.1` | The whole peer list, including this node |
 | `GF_CLUSTER_ADVERTISE_HOST` | `127.0.0.1` | What peers dial. Set it per node |
 | `GF_CLUSTER_TRANSPORT` | `NETTY` | Or the built in `NIO` |
+| `GF_TOKEN_SECRET` | generated | **Set the same value on every node.** Tokens are signed rather than kept in a session, so a node cannot verify one signed with another key. Left unset, each node generates its own and warns about it |
 
 ### Crawl defaults
 
@@ -195,9 +287,20 @@ and a headless chromium live off heap.
 | Limit | Vectors | A browser |
 |---|---|---|
 | 1g | OOMKilled after about 20 seconds | OOMKilled as the browser starts |
+| 1.5g | OOMKilled while the image model loads | not reached |
 | 2g | passes | passes |
 
+The 1.5g row is the one worth knowing about, because a node looks fine at 1.5g until the image
+model arrives: the text model loads, the node reports healthy, joins the cluster and takes work,
+and the kill comes a minute later on a thread called `greenfinger-emb`.
+
 Give a node 2g, and give it more if it is doing both at once.
+
+That is the container's own limit. The host needs the sum of them: a warm node settles around
+1.7GB, so three nodes and the console want **6GB of Docker memory**. When the host runs short it
+is the host kernel that kills a jvm, not the container's limit, and docker then reports neither
+an OOM nor a non zero exit. A container that restarts every minute or two with nothing in its log
+is this, every time.
 
 ---
 

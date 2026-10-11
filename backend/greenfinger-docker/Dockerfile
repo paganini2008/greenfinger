@@ -12,12 +12,12 @@ FROM eclipse-temurin:17-jre
 
 WORKDIR /app
 
-# Configuration is mounted rather than baked in, so changing a setting does not mean rebuilding
-# the image. The jar is copied because it is what the image is for.
-# bin/, which is where packaging puts it, and by the versioned name it now carries. The copy at
-# the top of deploy/ is whatever was there before the jars moved, and building from it is how an
-# image ends up a release behind. Renamed on the way in so the entry point needs no wildcard.
+# The jar is taken from lib/ by its versioned name and renamed on the way in, so the entry point
+# needs no wildcard. The configuration is baked in because the entry point points at it and a
+# missing directory is a hard startup failure, which is what a plain `docker run` used to hit.
+# run-docker.sh still mounts its own over /app/config, so a setting can change without a rebuild.
 COPY lib/greenfinger-api-*.jar /app/greenfinger-api.jar
+COPY config /app/config
 COPY docker/static /app/static
 
 # The browser adaptive renders with, installed at build time rather than on the first page that
