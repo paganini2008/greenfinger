@@ -129,7 +129,6 @@ Application bundle generation complete. [3.3 seconds]
 
 ``` shell
 npm test             # unit tests
-npm run lint
 npm run e2e          # Playwright, against a running node
 npm run build:deploy # build, and copy into deploy/docker/static/
 ```
